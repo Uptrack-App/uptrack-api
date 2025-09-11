@@ -1,0 +1,389 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-start">
+    <div>
+      <div class="flex items-center gap-3 mb-2">
+        <h1 class="text-3xl font-bold">{@monitor.name}</h1>
+        <%= if @recent_checks != [] do %>
+          <% latest = List.first(@recent_checks) %>
+          <span class={"badge #{status_badge(latest.status)} text-white"}>
+            {String.upcase(latest.status)}
+          </span>
+        <% else %>
+          <span class="badge badge-neutral">NO DATA</span>
+        <% end %>
+      </div>
+      <p class="text-base-content/70">{@monitor.url}</p>
+      <%= if @monitor.description do %>
+        <p class="text-sm text-base-content/60 mt-2">{@monitor.description}</p>
+      <% end %>
+    </div>
+    <div class="flex gap-2">
+      <.link patch={~p"/dashboard/monitors/#{@monitor.id}/edit"} class="btn btn-outline">
+        <.icon name="hero-pencil" class="w-4 h-4" /> Edit
+      </.link>
+      <button
+        phx-click="delete"
+        phx-value-id={@monitor.id}
+        class="btn btn-error"
+        data-confirm="Are you sure you want to delete this monitor?"
+      >
+        <.icon name="hero-trash" class="w-4 h-4" /> Delete
+      </button>
+    </div>
+  </div>
+  
+<!-- Stats Overview -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Uptime (30 days)</p>
+            <p class="text-2xl font-bold text-success">
+              {:erlang.float_to_binary(@uptime, decimals: 2)}%
+            </p>
+          </div>
+          <div class="bg-success/20 p-3 rounded-lg">
+            <.icon name="hero-check-circle" class="w-6 h-6 text-success" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%= if @recent_checks != [] do %>
+      <% latest = List.first(@recent_checks) %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-base-content/70">Response Time</p>
+              <p class={"text-2xl font-bold #{status_color(latest.status)}"}>
+                {format_response_time(latest.response_time)}
+              </p>
+            </div>
+            <div class="bg-primary/20 p-3 rounded-lg">
+              <.icon name="hero-clock" class="w-6 h-6 text-primary" />
+            </div>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-base-content/70">Response Time</p>
+              <p class="text-2xl font-bold text-base-content/50">—</p>
+            </div>
+            <div class="bg-base-300 p-3 rounded-lg">
+              <.icon name="hero-clock" class="w-6 h-6 text-base-content/50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Check Interval</p>
+            <p class="text-2xl font-bold">{@monitor.interval}s</p>
+          </div>
+          <div class="bg-info/20 p-3 rounded-lg">
+            <.icon name="hero-arrow-path" class="w-6 h-6 text-info" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Monitor Type</p>
+            <p class="text-2xl font-bold">{String.upcase(@monitor.monitor_type)}</p>
+          </div>
+          <div class="bg-secondary/20 p-3 rounded-lg">
+            <.icon name="hero-globe-alt" class="w-6 h-6 text-secondary" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<!-- Analytics Cards -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Incident Statistics -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg mb-4">Incident Statistics (30 days)</h3>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-base-content/70">Total Incidents</span>
+            <span class="font-medium text-lg">{@incident_stats.total_incidents}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-base-content/70">Ongoing</span>
+            <span class="font-medium text-lg text-error">
+              {@incident_stats.ongoing_incidents}
+            </span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-base-content/70">Resolved</span>
+            <span class="font-medium text-lg text-success">
+              {@incident_stats.resolved_incidents}
+            </span>
+          </div>
+          <div class="divider my-2"></div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-base-content/70">Mean Time To Recovery</span>
+            <span class="font-medium text-lg text-info">{@incident_stats.mttr_minutes}m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<!-- Uptime Chart Card -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg mb-4">30-Day Uptime Trend</h3>
+        <div class="h-32 bg-base-200 rounded-lg flex items-center justify-center mb-4">
+          <div class="text-center">
+            <.icon name="hero-chart-bar" class="w-8 h-8 mx-auto text-base-content/30 mb-1" />
+            <p class="text-xs text-base-content/50">Simple uptime bars</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+          <%= for %{date: date, uptime: uptime} <- Enum.take(@uptime_chart_data, -7) do %>
+            <div class="text-center">
+              <div
+                class={[
+                  "h-8 w-full rounded-sm mb-1",
+                  cond do
+                    uptime >= 99 -> "bg-success"
+                    uptime >= 95 -> "bg-warning"
+                    true -> "bg-error"
+                  end
+                ]}
+                title={"#{date}: #{uptime}% uptime"}
+              >
+              </div>
+              <div class="text-xs text-base-content/50">
+                {Date.day_of_week(date)
+                |> case do
+                  1 -> "M"
+                  2 -> "T"
+                  3 -> "W"
+                  4 -> "T"
+                  5 -> "F"
+                  6 -> "S"
+                  7 -> "S"
+                end}
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+<!-- Response Time Trends -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg mb-4">Response Time (7 days)</h3>
+        <div class="space-y-2">
+          <%= for %{date: date, avg: avg, min: min, max: max} <- Enum.take(@response_time_trends, -7) do %>
+            <div class="flex items-center gap-2 text-sm">
+              <div class="w-12 text-base-content/60 text-xs">
+                {Calendar.strftime(date, "%m/%d")}
+              </div>
+              <div class="flex-1 flex items-center gap-2">
+                <div class="w-8 text-xs text-base-content/60">
+                  {if min > 0, do: "#{min}ms", else: "—"}
+                </div>
+                <div class="flex-1 bg-base-200 h-2 rounded-full relative">
+                  <%= if avg > 0 do %>
+                    <div
+                      class="bg-primary h-2 rounded-full"
+                      style={"width: #{min(avg / 1000 * 100, 100)}%"}
+                    >
+                    </div>
+                  <% end %>
+                </div>
+                <div class="w-10 text-xs font-medium text-right">
+                  {if avg > 0, do: "#{:erlang.float_to_binary(avg, decimals: 0)}ms", else: "—"}
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <%= if Enum.all?(@response_time_trends, &(&1.avg == 0)) do %>
+          <div class="text-center text-base-content/50 py-4">
+            <p class="text-sm">No response time data available</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+<!-- Recent Checks Chart -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-header p-6 border-b border-base-200">
+      <h2 class="text-xl font-semibold">Response Time History</h2>
+    </div>
+    <div class="card-body">
+      <%= if @recent_checks != [] do %>
+        <div class="h-64 flex items-center justify-center bg-base-200 rounded-lg">
+          <div class="text-center">
+            <.icon name="hero-chart-bar" class="w-12 h-12 mx-auto text-base-content/30 mb-2" />
+            <p class="text-base-content/70">Chart visualization would go here</p>
+            <p class="text-sm text-base-content/50">Integration with a charting library needed</p>
+          </div>
+        </div>
+      <% else %>
+        <div class="h-64 flex items-center justify-center">
+          <div class="text-center">
+            <.icon name="hero-chart-bar" class="w-12 h-12 mx-auto text-base-content/30 mb-2" />
+            <p class="text-base-content/70">No check data available yet</p>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+<!-- Recent Checks Table -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-header p-6 border-b border-base-200">
+      <h2 class="text-xl font-semibold">Recent Checks</h2>
+    </div>
+    <div class="card-body p-0">
+      <%= if @recent_checks != [] do %>
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Response Time</th>
+                <th>Status Code</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for check <- Enum.take(@recent_checks, 20) do %>
+                <tr>
+                  <td>
+                    <time class="text-sm">
+                      {Calendar.strftime(check.checked_at, "%m/%d/%Y %H:%M:%S")}
+                    </time>
+                  </td>
+                  <td>
+                    <span class={"badge #{status_badge(check.status)} text-white"}>
+                      {String.upcase(check.status)}
+                    </span>
+                  </td>
+                  <td>
+                    <span class={status_color(check.status)}>
+                      {format_response_time(check.response_time)}
+                    </span>
+                  </td>
+                  <td>
+                    <%= if check.status_code do %>
+                      <code class="text-sm">{check.status_code}</code>
+                    <% else %>
+                      <span class="text-base-content/50">—</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= if check.error_message do %>
+                      <span
+                        class="text-sm text-error truncate max-w-xs"
+                        title={check.error_message}
+                      >
+                        {check.error_message}
+                      </span>
+                    <% else %>
+                      <span class="text-base-content/50">—</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="p-12 text-center">
+          <.icon name="hero-clock" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
+          <h3 class="text-lg font-medium mb-2">No checks yet</h3>
+          <p class="text-base-content/70">Checks will appear here once monitoring begins.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+<!-- Recent Incidents -->
+  <%= if @incidents != [] do %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-header p-6 border-b border-base-200">
+        <h2 class="text-xl font-semibold">Recent Incidents</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Cause</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for incident <- @incidents do %>
+                <tr>
+                  <td>
+                    <time class="text-sm">
+                      {Calendar.strftime(incident.started_at, "%m/%d/%Y %H:%M")}
+                    </time>
+                  </td>
+                  <td>
+                    {format_duration(incident.duration)}
+                  </td>
+                  <td>
+                    <span class={"badge #{if incident.status == "resolved", do: "badge-success", else: "badge-error"} text-white"}>
+                      {String.upcase(incident.status)}
+                    </span>
+                  </td>
+                  <td>
+                    <%= if incident.cause do %>
+                      <span class="text-sm">{incident.cause}</span>
+                    <% else %>
+                      <span class="text-base-content/50">—</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Edit form for monitor -->
+<%= if @live_action == :edit do %>
+  <div class="card bg-base-100 shadow mt-6">
+    <div class="card-body">
+      <.live_component
+        module={UptrackWeb.MonitorLive.FormComponent}
+        id={@monitor.id}
+        title="Edit Monitor"
+        action={@live_action}
+        monitor={@monitor}
+        patch={~p"/dashboard/monitors/#{@monitor.id}"}
+      />
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,74 @@
+defmodule Uptrack.Monitoring.Monitor do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  alias Uptrack.Accounts.User
+  alias Uptrack.Monitoring.{MonitorCheck, Incident}
+
+  @monitor_types ~w(http https tcp ping keyword)
+  @statuses ~w(active paused disabled)
+
+  schema "monitors" do
+    field :name, :string
+    field :url, :string
+    field :monitor_type, :string, default: "http"
+    field :interval, :integer, default: 300
+    field :timeout, :integer, default: 30
+    field :status, :string, default: "active"
+    field :description, :string
+    field :alert_contacts, :map, default: %{}
+    field :settings, :map, default: %{}
+
+    belongs_to :user, User
+    has_many :monitor_checks, MonitorCheck, preload_order: [desc: :checked_at]
+    has_many :incidents, Incident, preload_order: [desc: :started_at]
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @doc false
+  def changeset(monitor, attrs) do
+    monitor
+    |> cast(attrs, [
+      :name,
+      :url,
+      :monitor_type,
+      :interval,
+      :timeout,
+      :status,
+      :description,
+      :alert_contacts,
+      :settings,
+      :user_id
+    ])
+    |> validate_required([:name, :url, :user_id])
+    |> validate_inclusion(:monitor_type, @monitor_types)
+    |> validate_inclusion(:status, @statuses)
+    |> validate_number(:interval, greater_than: 60)
+    |> validate_number(:timeout, greater_than: 5, less_than: 300)
+    |> validate_url()
+    |> foreign_key_constraint(:user_id)
+  end
+
+  @doc false
+  def create_changeset(monitor, attrs) do
+    monitor
+    |> changeset(attrs)
+    |> put_change(:status, "active")
+  end
+
+  defp validate_url(changeset) do
+    validate_change(changeset, :url, fn :url, url ->
+      case URI.parse(url) do
+        %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and not is_nil(host) ->
+          []
+
+        _ ->
+          [url: "must be a valid HTTP or HTTPS URL"]
+      end
+    end)
+  end
+
+  def monitor_types, do: @monitor_types
+  def statuses, do: @statuses
+end
