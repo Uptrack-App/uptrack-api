@@ -1,0 +1,301 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold">Dashboard</h1>
+      <p class="text-base-content/70">Monitor your services and track uptime</p>
+    </div>
+    <.link patch={~p"/dashboard/monitors/new"} class="btn btn-primary">
+      <.icon name="hero-plus" class="w-4 h-4" /> Add Monitor
+    </.link>
+  </div>
+  
+<!-- Navigation Tabs -->
+  <div class="tabs tabs-bordered">
+    <.link navigate={~p"/dashboard"} class="tab tab-active">
+      <.icon name="hero-chart-bar" class="w-4 h-4" /> Dashboard
+    </.link>
+    <.link navigate={~p"/dashboard/alerts"} class="tab">
+      <.icon name="hero-bell" class="w-4 h-4" /> Alert Channels
+    </.link>
+    <.link navigate={~p"/dashboard/status-pages"} class="tab">
+      <.icon name="hero-globe-alt" class="w-4 h-4" /> Status Pages
+    </.link>
+    <.link navigate={~p"/dashboard/incidents"} class="tab">
+      <.icon name="hero-exclamation-triangle" class="w-4 h-4" /> Incidents
+    </.link>
+  </div>
+  
+<!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Total Monitors</p>
+            <p class="text-2xl font-bold">{@stats.total_monitors}</p>
+          </div>
+          <div class="bg-primary/20 p-3 rounded-lg">
+            <.icon name="hero-chart-bar" class="w-6 h-6 text-primary" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Active Monitors</p>
+            <p class="text-2xl font-bold text-success">{@stats.active_monitors}</p>
+          </div>
+          <div class="bg-success/20 p-3 rounded-lg">
+            <.icon name="hero-check-circle" class="w-6 h-6 text-success" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Ongoing Incidents</p>
+            <p class="text-2xl font-bold text-error">{@stats.ongoing_incidents}</p>
+          </div>
+          <div class="bg-error/20 p-3 rounded-lg">
+            <.icon name="hero-exclamation-triangle" class="w-6 h-6 text-error" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-base-content/70">Recent Incidents</p>
+            <p class="text-2xl font-bold text-warning">{@stats.recent_incidents}</p>
+          </div>
+          <div class="bg-warning/20 p-3 rounded-lg">
+            <.icon name="hero-clock" class="w-6 h-6 text-warning" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<!-- Overall Uptime Analytics -->
+  <%= if @stats.total_monitors > 0 do %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Overall System Health</h2>
+          <div class="text-sm text-base-content/60">Last 30 days</div>
+        </div>
+
+        <div class="flex items-center justify-center mb-6">
+          <div class="relative w-32 h-32">
+            <!-- Simple circular progress -->
+            <svg class="transform -rotate-90 w-32 h-32" viewBox="0 0 36 36">
+              <path
+                class="text-base-200"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="transparent"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <path
+                class={[
+                  "transition-all duration-1000 ease-in-out",
+                  cond do
+                    @overall_uptime >= 99 -> "text-success"
+                    @overall_uptime >= 95 -> "text-warning"
+                    true -> "text-error"
+                  end
+                ]}
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                fill="transparent"
+                stroke-dasharray={"#{@overall_uptime}, 100"}
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="text-center">
+                <div class={[
+                  "text-2xl font-bold",
+                  cond do
+                    @overall_uptime >= 99 -> "text-success"
+                    @overall_uptime >= 95 -> "text-warning"
+                    true -> "text-error"
+                  end
+                ]}>
+                  {:erlang.float_to_binary(@overall_uptime, decimals: 1)}%
+                </div>
+                <div class="text-xs text-base-content/60">Uptime</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div class="text-lg font-semibold text-success">
+              {@stats.active_monitors}
+            </div>
+            <div class="text-xs text-base-content/60">Active</div>
+          </div>
+          <div>
+            <div class="text-lg font-semibold text-error">
+              {@stats.ongoing_incidents}
+            </div>
+            <div class="text-xs text-base-content/60">Incidents</div>
+          </div>
+          <div>
+            <div class="text-lg font-semibold text-info">
+              {@stats.total_monitors}
+            </div>
+            <div class="text-xs text-base-content/60">Total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  
+<!-- Monitors List -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-header p-6 border-b border-base-200">
+      <h2 class="text-xl font-semibold">Your Monitors</h2>
+    </div>
+    <div class="card-body p-0">
+      <%= if Enum.empty?(@monitors) do %>
+        <div class="p-12 text-center">
+          <.icon name="hero-chart-bar" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
+          <h3 class="text-lg font-medium mb-2">No monitors yet</h3>
+          <p class="text-base-content/70 mb-4">
+            Get started by adding your first monitor to track uptime.
+          </p>
+          <.link patch={~p"/dashboard/monitors/new"} class="btn btn-primary">
+            Add Your First Monitor
+          </.link>
+        </div>
+      <% else %>
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th>Monitor</th>
+                <th>Status</th>
+                <th>Response Time</th>
+                <th>Uptime</th>
+                <th>Type</th>
+                <th>Last Check</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for monitor <- @monitors do %>
+                <% latest = latest_check(monitor) %>
+                <tr>
+                  <td>
+                    <div>
+                      <div class="font-medium">{monitor.name}</div>
+                      <div class="text-sm text-base-content/70">{monitor.url}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <%= if latest do %>
+                      <span class={"badge #{status_badge(latest.status)} text-white"}>
+                        {String.upcase(latest.status)}
+                      </span>
+                    <% else %>
+                      <span class="badge badge-neutral">UNKNOWN</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <span class={
+                      if latest, do: status_color(latest.status), else: "text-base-content/50"
+                    }>
+                      {if latest, do: format_response_time(latest.response_time), else: "—"}
+                    </span>
+                  </td>
+                  <td>
+                    {format_uptime(Monitoring.get_uptime_percentage(monitor.id))}
+                  </td>
+                  <td>
+                    <span class="badge badge-outline">
+                      {String.upcase(monitor.monitor_type)}
+                    </span>
+                  </td>
+                  <td>
+                    <%= if latest do %>
+                      <time class="text-sm text-base-content/70">
+                        {Calendar.strftime(latest.checked_at, "%m/%d %H:%M")}
+                      </time>
+                    <% else %>
+                      <span class="text-sm text-base-content/50">Never</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <div class="flex gap-2">
+                      <button
+                        phx-click="check_now"
+                        phx-value-id={monitor.id}
+                        class="btn btn-sm btn-ghost text-info hover:bg-info/10"
+                        title="Check now"
+                      >
+                        <.icon name="hero-arrow-path" class="w-4 h-4" />
+                      </button>
+                      <.link
+                        navigate={~p"/dashboard/monitors/#{monitor.id}"}
+                        class="btn btn-sm btn-ghost"
+                      >
+                        <.icon name="hero-eye" class="w-4 h-4" />
+                      </.link>
+                      <.link
+                        patch={~p"/dashboard/monitors/#{monitor.id}/edit"}
+                        class="btn btn-sm btn-ghost"
+                      >
+                        <.icon name="hero-pencil" class="w-4 h-4" />
+                      </.link>
+                      <button
+                        phx-click="delete_monitor"
+                        phx-value-id={monitor.id}
+                        class="btn btn-sm btn-ghost text-error hover:bg-error/10"
+                        data-confirm="Are you sure you want to delete this monitor?"
+                      >
+                        <.icon name="hero-trash" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Form for new monitor -->
+<%= if @live_action == :new_monitor do %>
+  <div class="card bg-base-100 shadow mt-6">
+    <div class="card-body">
+      <.live_component
+        module={UptrackWeb.MonitorLive.FormComponent}
+        id={:new}
+        title={@page_title}
+        action={@live_action}
+        monitor={@monitor}
+        patch={~p"/dashboard"}
+      />
+    </div>
+  </div>
+<% end %>

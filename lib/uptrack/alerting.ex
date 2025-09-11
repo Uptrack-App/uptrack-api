@@ -1,0 +1,262 @@
+defmodule Uptrack.Alerting do
+  @moduledoc """
+  Context for managing alerts and notifications.
+  """
+
+  import Ecto.Query, warn: false
+  alias Uptrack.Repo
+  alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
+  alias Uptrack.Alerting.{EmailAlert, SlackAlert, WebhookAlert}
+  alias Uptrack.Accounts.User
+  require Logger
+
+  @doc """
+  Sends alerts for a new incident based on the monitor's alert configuration.
+  """
+  def send_incident_alerts(%Incident{} = incident, %Monitor{} = monitor) do
+    Logger.info("Sending alerts for incident #{incident.id} on monitor #{monitor.name}")
+
+    # Get user and check notification preferences
+    user = Repo.get!(User, monitor.user_id)
+
+    unless User.should_notify?(user, :monitor_down) do
+      Logger.info("User #{user.id} has disabled monitor down notifications")
+      [{:skipped_user_preferences, user.id}]
+    else
+      # Check quiet hours
+      if in_quiet_hours?(user) do
+        Logger.info("Skipping incident alert for user #{user.id} due to quiet hours")
+        [{:skipped_quiet_hours, user.id}]
+      else
+        # Get user's alert channels
+        alert_channels = list_active_alert_channels(monitor.user_id)
+
+        # Get monitor-specific alert settings
+        monitor_alert_contacts = monitor.alert_contacts || %{}
+
+        # Send alerts through all configured channels
+        results =
+          Enum.map(alert_channels, fn channel ->
+            if should_send_alert?(channel, monitor_alert_contacts, user) do
+              send_alert(channel, incident, monitor, user)
+            else
+              {:skipped, channel.id}
+            end
+          end)
+
+        # Log results
+        successful = Enum.count(results, &match?({:ok, _}, &1))
+        total = length(results)
+        Logger.info("Sent #{successful}/#{total} alerts for incident #{incident.id}")
+
+        results
+      end
+    end
+  end
+
+  @doc """
+  Sends resolution notifications for a resolved incident.
+  """
+  def send_resolution_alerts(%Incident{} = incident, %Monitor{} = monitor) do
+    Logger.info(
+      "Sending resolution alerts for incident #{incident.id} on monitor #{monitor.name}"
+    )
+
+    # Get user and check notification preferences
+    user = Repo.get!(User, monitor.user_id)
+
+    unless User.should_notify?(user, :monitor_up) do
+      Logger.info("User #{user.id} has disabled monitor up notifications")
+      [{:skipped_user_preferences, user.id}]
+    else
+      # Check quiet hours (but allow critical resolution notifications)
+      # Resolution notifications are typically allowed even during quiet hours
+
+      # Get user's alert channels
+      alert_channels = list_active_alert_channels(monitor.user_id)
+
+      # Get monitor-specific alert settings
+      monitor_alert_contacts = monitor.alert_contacts || %{}
+
+      # Send resolution alerts through configured channels
+      results =
+        Enum.map(alert_channels, fn channel ->
+          if should_send_alert?(channel, monitor_alert_contacts, user) do
+            send_resolution_alert(channel, incident, monitor, user)
+          else
+            {:skipped, channel.id}
+          end
+        end)
+
+      # Log results
+      successful = Enum.count(results, &match?({:ok, _}, &1))
+      total = length(results)
+      Logger.info("Sent #{successful}/#{total} resolution alerts for incident #{incident.id}")
+
+      results
+    end
+  end
+
+  @doc """
+  Returns the list of active alert channels for a user.
+  """
+  def list_active_alert_channels(user_id) do
+    AlertChannel
+    |> where([ac], ac.user_id == ^user_id and ac.is_active == true)
+    |> order_by([ac], asc: ac.name)
+    |> Repo.all()
+  end
+
+  @doc """
+  Creates an alert channel.
+  """
+  def create_alert_channel(attrs) do
+    %AlertChannel{}
+    |> AlertChannel.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates an alert channel.
+  """
+  def update_alert_channel(%AlertChannel{} = alert_channel, attrs) do
+    alert_channel
+    |> AlertChannel.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes an alert channel.
+  """
+  def delete_alert_channel(%AlertChannel{} = alert_channel) do
+    Repo.delete(alert_channel)
+  end
+
+  @doc """
+  Gets a single alert channel.
+  """
+  def get_alert_channel!(id), do: Repo.get!(AlertChannel, id)
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking alert channel changes.
+  """
+  def change_alert_channel(%AlertChannel{} = alert_channel, attrs \\ %{}) do
+    AlertChannel.changeset(alert_channel, attrs)
+  end
+
+  # Private functions
+
+  defp should_send_alert?(channel, monitor_alert_contacts, user) do
+    # Check if this alert channel is enabled for this monitor
+    # If monitor_alert_contacts is empty, send to all channels
+    monitor_enabled =
+      case Map.get(monitor_alert_contacts, channel.type) do
+        # No specific config, send alert
+        nil -> true
+        # Explicitly disabled
+        false -> false
+        # Explicitly enabled
+        true -> true
+        %{"enabled" => enabled} -> enabled
+        # Default to enabled
+        _ -> true
+      end
+
+    # Check user notification preferences for email channels
+    if channel.type == "email" do
+      prefs = User.get_notification_preferences(user)
+      email_enabled = prefs["email_enabled"]
+      monitor_enabled && email_enabled
+    else
+      monitor_enabled
+    end
+  end
+
+  defp in_quiet_hours?(user) do
+    prefs = User.get_notification_preferences(user)
+
+    if prefs["quiet_hours_enabled"] do
+      now = DateTime.utc_now()
+      current_time = Time.new!(now.hour, now.minute, 0)
+
+      start_time = parse_time(prefs["quiet_hours_start"])
+      end_time = parse_time(prefs["quiet_hours_end"])
+
+      if start_time && end_time do
+        if Time.compare(start_time, end_time) == :gt do
+          # Quiet hours span midnight (e.g., 22:00 to 08:00)
+          Time.compare(current_time, start_time) != :lt ||
+            Time.compare(current_time, end_time) != :gt
+        else
+          # Quiet hours within same day (e.g., 12:00 to 14:00)
+          Time.compare(current_time, start_time) != :lt &&
+            Time.compare(current_time, end_time) != :gt
+        end
+      else
+        false
+      end
+    else
+      false
+    end
+  end
+
+  defp parse_time(time_string) when is_binary(time_string) do
+    case String.split(time_string, ":") do
+      [hour_str, minute_str] ->
+        with {hour, ""} <- Integer.parse(hour_str),
+             {minute, ""} <- Integer.parse(minute_str),
+             {:ok, time} <- Time.new(hour, minute, 0) do
+          time
+        else
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp parse_time(_), do: nil
+
+  defp send_alert(channel, incident, monitor, user) do
+    case channel.type do
+      "email" ->
+        EmailAlert.send_incident_alert(channel, incident, monitor, user)
+
+      "slack" ->
+        SlackAlert.send_incident_alert(channel, incident, monitor)
+
+      "webhook" ->
+        WebhookAlert.send_incident_alert(channel, incident, monitor)
+
+      type ->
+        Logger.error("Unknown alert channel type: #{type}")
+        {:error, :unknown_type}
+    end
+  rescue
+    e ->
+      Logger.error("Error sending alert via #{channel.type}: #{Exception.message(e)}")
+      {:error, Exception.message(e)}
+  end
+
+  defp send_resolution_alert(channel, incident, monitor, user) do
+    case channel.type do
+      "email" ->
+        EmailAlert.send_resolution_alert(channel, incident, monitor, user)
+
+      "slack" ->
+        SlackAlert.send_resolution_alert(channel, incident, monitor)
+
+      "webhook" ->
+        WebhookAlert.send_resolution_alert(channel, incident, monitor)
+
+      type ->
+        Logger.error("Unknown alert channel type: #{type}")
+        {:error, :unknown_type}
+    end
+  rescue
+    e ->
+      Logger.error("Error sending resolution alert via #{channel.type}: #{Exception.message(e)}")
+      {:error, Exception.message(e)}
+  end
+end
