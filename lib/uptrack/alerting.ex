@@ -4,7 +4,7 @@ defmodule Uptrack.Alerting do
   """
 
   import Ecto.Query, warn: false
-  alias Uptrack.Repo
+  alias Uptrack.AppRepo
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   alias Uptrack.Alerting.{EmailAlert, SlackAlert, WebhookAlert}
   alias Uptrack.Accounts.User
@@ -17,7 +17,7 @@ defmodule Uptrack.Alerting do
     Logger.info("Sending alerts for incident #{incident.id} on monitor #{monitor.name}")
 
     # Get user and check notification preferences
-    user = Repo.get!(User, monitor.user_id)
+    user = AppRepo.get!(User, monitor.user_id)
 
     unless User.should_notify?(user, :monitor_down) do
       Logger.info("User #{user.id} has disabled monitor down notifications")
@@ -63,7 +63,7 @@ defmodule Uptrack.Alerting do
     )
 
     # Get user and check notification preferences
-    user = Repo.get!(User, monitor.user_id)
+    user = AppRepo.get!(User, monitor.user_id)
 
     unless User.should_notify?(user, :monitor_up) do
       Logger.info("User #{user.id} has disabled monitor up notifications")
@@ -104,7 +104,7 @@ defmodule Uptrack.Alerting do
     AlertChannel
     |> where([ac], ac.user_id == ^user_id and ac.is_active == true)
     |> order_by([ac], asc: ac.name)
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -113,7 +113,7 @@ defmodule Uptrack.Alerting do
   def create_alert_channel(attrs) do
     %AlertChannel{}
     |> AlertChannel.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -122,20 +122,20 @@ defmodule Uptrack.Alerting do
   def update_alert_channel(%AlertChannel{} = alert_channel, attrs) do
     alert_channel
     |> AlertChannel.changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
   Deletes an alert channel.
   """
   def delete_alert_channel(%AlertChannel{} = alert_channel) do
-    Repo.delete(alert_channel)
+    AppRepo.delete(alert_channel)
   end
 
   @doc """
   Gets a single alert channel.
   """
-  def get_alert_channel!(id), do: Repo.get!(AlertChannel, id)
+  def get_alert_channel!(id), do: AppRepo.get!(AlertChannel, id)
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking alert channel changes.

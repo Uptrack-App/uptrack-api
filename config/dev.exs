@@ -1,6 +1,37 @@
 import Config
 
-# Configure your database
+# Configure your databases - all point to same DB initially for painless migration
+config :uptrack, Uptrack.AppRepo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "uptrack_dev",
+  parameters: [search_path: "app,public"],
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+
+config :uptrack, Uptrack.ObanRepo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "uptrack_dev",
+  parameters: [search_path: "oban,public"],
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 5
+
+config :uptrack, Uptrack.ResultsRepo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "uptrack_dev",
+  parameters: [search_path: "results,public"],
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+
+# Legacy repo config (for migration compatibility)
 config :uptrack, Uptrack.Repo,
   username: "postgres",
   password: "postgres",

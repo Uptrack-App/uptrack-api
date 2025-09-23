@@ -4,7 +4,7 @@ defmodule Uptrack.Accounts do
   """
 
   import Ecto.Query, warn: false
-  alias Uptrack.Repo
+  alias Uptrack.AppRepo
 
   alias Uptrack.Accounts.User
 
@@ -18,7 +18,7 @@ defmodule Uptrack.Accounts do
 
   """
   def list_users do
-    Repo.all(User)
+    AppAppRepo.all(User)
   end
 
   @doc """
@@ -35,7 +35,7 @@ defmodule Uptrack.Accounts do
       ** (Ecto.NoResultsError)
 
   """
-  def get_user!(id), do: Repo.get!(User, id)
+  def get_user!(id), do: AppRepo.get!(User, id)
 
   @doc """
   Creates a user.
@@ -52,7 +52,7 @@ defmodule Uptrack.Accounts do
   def create_user(attrs) do
     %User{}
     |> User.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -70,7 +70,7 @@ defmodule Uptrack.Accounts do
   def update_user(%User{} = user, attrs) do
     user
     |> User.changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
@@ -86,7 +86,7 @@ defmodule Uptrack.Accounts do
 
   """
   def delete_user(%User{} = user) do
-    Repo.delete(user)
+    AppRepo.delete(user)
   end
 
   @doc """
@@ -115,7 +115,7 @@ defmodule Uptrack.Accounts do
 
   """
   def get_user_by_email(email) when is_binary(email) do
-    Repo.get_by(User, email: email)
+    AppRepo.get_by(User, email: email)
   end
 
   @doc """
@@ -133,7 +133,7 @@ defmodule Uptrack.Accounts do
   def register_user(attrs) do
     %User{}
     |> User.registration_changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -151,7 +151,7 @@ defmodule Uptrack.Accounts do
   def create_user_from_oauth(attrs) do
     %User{}
     |> User.oauth_changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -182,7 +182,7 @@ defmodule Uptrack.Accounts do
   def update_user_preferences(%User{} = user, attrs) do
     user
     |> User.notification_preferences_changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """

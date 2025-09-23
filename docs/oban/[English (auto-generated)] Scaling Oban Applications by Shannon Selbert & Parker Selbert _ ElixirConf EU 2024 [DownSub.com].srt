@@ -1,0 +1,2395 @@
+1
+00:00:00,660 --> 00:00:11,150
+[Music]
+
+2
+00:00:11,150 --> 00:00:12,100
+[Applause]
+
+3
+00:00:12,100 --> 00:00:16,480
+[Music]
+
+4
+00:00:18,039 --> 00:00:19,240
+and over to
+
+5
+00:00:19,240 --> 00:00:23,160
+you okay well welcome thanks for coming
+
+6
+00:00:23,160 --> 00:00:26,519
+to scaling uh Obin applications so I'm
+
+7
+00:00:26,519 --> 00:00:28,279
+Parker and this is Shannon we've been
+
+8
+00:00:28,279 --> 00:00:31,840
+business partners for 15 years uh we are
+
+9
+00:00:31,840 --> 00:00:34,480
+obviously husband and wife this is one
+
+10
+00:00:34,480 --> 00:00:35,920
+of the first times we've done this with
+
+11
+00:00:35,920 --> 00:00:39,000
+pants on for the rehearsal so for your
+
+12
+00:00:39,000 --> 00:00:41,399
+benefit American pants you're welcome
+
+13
+00:00:41,399 --> 00:00:43,079
+most importantly we are the people
+
+14
+00:00:43,079 --> 00:00:44,280
+behind
+
+15
+00:00:44,280 --> 00:00:47,480
+Oben and I'm Shannon and when I'm not
+
+16
+00:00:47,480 --> 00:00:50,879
+supporting Oben customers I am cooking
+
+17
+00:00:50,879 --> 00:00:53,320
+world Cuisines with a myriad of spices
+
+18
+00:00:53,320 --> 00:00:56,000
+it's something I
+
+19
+00:00:56,000 --> 00:01:01,600
+love my dog our dog dog
+
+20
+00:01:01,600 --> 00:01:04,159
+our dog I love our
+
+21
+00:01:04,159 --> 00:01:06,840
+dog I dislike the bottom of swimming
+
+22
+00:01:06,840 --> 00:01:09,200
+pools I mean so much so that if it's
+
+23
+00:01:09,200 --> 00:01:11,200
+pomus I will do anything to avoid
+
+24
+00:01:11,200 --> 00:01:14,960
+touching it really dislike the feeling
+
+25
+00:01:14,960 --> 00:01:16,720
+and I'm Parker and when I'm not fixing
+
+26
+00:01:16,720 --> 00:01:20,200
+things in open uh usually that I broke I
+
+27
+00:01:20,200 --> 00:01:23,360
+love eating World Cuisine with a myriad
+
+28
+00:01:23,360 --> 00:01:27,680
+of spices uh maybe cleaning up I truly
+
+29
+00:01:27,680 --> 00:01:29,640
+love big chunky tires like you find on
+
+30
+00:01:29,640 --> 00:01:32,000
+track trors or construction equipment
+
+31
+00:01:32,000 --> 00:01:34,079
+it's like a Boyhood fantasy carried into
+
+32
+00:01:34,079 --> 00:01:36,280
+adulthood and I loathe backing up an
+
+33
+00:01:36,280 --> 00:01:39,280
+Airstream on a really crowded Street he
+
+34
+00:01:39,280 --> 00:01:40,880
+does it's harder harder than it looks
+
+35
+00:01:40,880 --> 00:01:44,680
+he's very good at it I try uh but this
+
+36
+00:01:44,680 --> 00:01:47,920
+talk is about scaling Obin applications
+
+37
+00:01:47,920 --> 00:01:49,040
+uh but we're going to start with some
+
+38
+00:01:49,040 --> 00:01:52,520
+things that may or may not scale very
+
+39
+00:01:52,520 --> 00:01:55,719
+well cargo ships cargo ships scale
+
+40
+00:01:55,719 --> 00:01:57,240
+incredibly well there's something that
+
+41
+00:01:57,240 --> 00:01:59,399
+look like they shouldn't cross an ocean
+
+42
+00:01:59,399 --> 00:02:01,079
+with all of our goods and yet they do
+
+43
+00:02:01,079 --> 00:02:04,719
+they transport and they do it
+
+44
+00:02:04,719 --> 00:02:07,520
+well uh trains trains scale very well
+
+45
+00:02:07,520 --> 00:02:09,599
+this one's overs scaled so much that
+
+46
+00:02:09,599 --> 00:02:11,640
+it's covered in people all along the
+
+47
+00:02:11,640 --> 00:02:14,040
+side my favorite is the guy at the front
+
+48
+00:02:14,040 --> 00:02:16,200
+making a phone
+
+49
+00:02:16,200 --> 00:02:19,080
+call he's got things to do and it's
+
+50
+00:02:19,080 --> 00:02:21,400
+working
+
+51
+00:02:21,959 --> 00:02:26,120
+out but not everything scales your
+
+52
+00:02:26,120 --> 00:02:28,160
+grandmother's knitting perhaps she
+
+53
+00:02:28,160 --> 00:02:30,760
+cannot knit for your customers your
+
+54
+00:02:30,760 --> 00:02:32,319
+clients the entire
+
+55
+00:02:32,319 --> 00:02:34,519
+family her poor little hands are going
+
+56
+00:02:34,519 --> 00:02:37,360
+to freeze up and they wanted $80 for
+
+57
+00:02:37,360 --> 00:02:39,319
+this on shutter stock so pardon yeah
+
+58
+00:02:39,319 --> 00:02:41,800
+you're getting a shutter scot
+
+59
+00:02:41,800 --> 00:02:45,879
+logo uh well the beam in erlang OTP is
+
+60
+00:02:45,879 --> 00:02:47,959
+Renown for scaling
+
+61
+00:02:47,959 --> 00:02:50,599
+horizontally and it's so ubiquitous that
+
+62
+00:02:50,599 --> 00:02:53,120
+it's reported that 50% of the world's
+
+63
+00:02:53,120 --> 00:02:54,519
+internet traffic goes through earling
+
+64
+00:02:54,519 --> 00:02:57,440
+nodes and it's uniformally used for 5G
+
+65
+00:02:57,440 --> 00:03:00,879
+in the US and in uh Europe
+
+66
+00:03:00,879 --> 00:03:02,760
+we all know that Elixir scales that's
+
+67
+00:03:02,760 --> 00:03:04,640
+why we're here it's been shown to scale
+
+68
+00:03:04,640 --> 00:03:07,799
+time and time again you may remember the
+
+69
+00:03:07,799 --> 00:03:09,920
+road to 2 million web stock con
+
+70
+00:03:09,920 --> 00:03:12,680
+connection showing the process model
+
+71
+00:03:12,680 --> 00:03:15,799
+scales um but slightly more obscure is
+
+72
+00:03:15,799 --> 00:03:18,440
+elixir RAM and the template of Doom
+
+73
+00:03:18,440 --> 00:03:20,319
+which demonstrates that the io model
+
+74
+00:03:20,319 --> 00:03:23,120
+also scales and if you've never seen
+
+75
+00:03:23,120 --> 00:03:25,159
+this article before it has the Stellar
+
+76
+00:03:25,159 --> 00:03:27,360
+endorsement of Elixir is more
+
+77
+00:03:27,360 --> 00:03:29,000
+interesting than any programming
+
+78
+00:03:29,000 --> 00:03:30,280
+language you've ever SE seen in your
+
+79
+00:03:30,280 --> 00:03:32,599
+life which how do you argue with that
+
+80
+00:03:32,599 --> 00:03:34,519
+ever
+
+81
+00:03:34,519 --> 00:03:37,840
+ever and as a database pogress is Renown
+
+82
+00:03:37,840 --> 00:03:40,280
+for versatility and its ability to scale
+
+83
+00:03:40,280 --> 00:03:41,640
+vertically and
+
+84
+00:03:41,640 --> 00:03:44,239
+horizontally as illustrated by Earth's
+
+85
+00:03:44,239 --> 00:03:46,200
+largest land mammals which start off
+
+86
+00:03:46,200 --> 00:03:49,080
+incredibly small and become Majestic
+
+87
+00:03:49,080 --> 00:03:51,200
+behemoths this is a postgress pond in
+
+88
+00:03:51,200 --> 00:03:53,079
+case you didn't catch it's an elephant
+
+89
+00:03:53,079 --> 00:03:55,239
+it's low fruit and I'm not above it she
+
+90
+00:03:55,239 --> 00:03:56,400
+let me have
+
+91
+00:03:56,400 --> 00:03:59,519
+it uh more practically postris has been
+
+92
+00:03:59,519 --> 00:04:02,519
+know to scale to 1 billion inserts a
+
+93
+00:04:02,519 --> 00:04:05,319
+second which is in certain optimized
+
+94
+00:04:05,319 --> 00:04:07,400
+situations and well beyond the reason of
+
+95
+00:04:07,400 --> 00:04:09,159
+what you'd need for a background job
+
+96
+00:04:09,159 --> 00:04:11,360
+queue and that's how we're going to talk
+
+97
+00:04:11,360 --> 00:04:14,200
+about this which is postgress as a queue
+
+98
+00:04:14,200 --> 00:04:16,199
+and we're going to be overtly technical
+
+99
+00:04:16,199 --> 00:04:18,560
+for a second but in the past eight years
+
+100
+00:04:18,560 --> 00:04:20,880
+postgress has made a lot of progress in
+
+101
+00:04:20,880 --> 00:04:22,360
+adding new features that make it
+
+102
+00:04:22,360 --> 00:04:24,919
+scalable and work as a queue starting
+
+103
+00:04:24,919 --> 00:04:28,440
+with in 9.4 they added Json B so you can
+
+104
+00:04:28,440 --> 00:04:31,479
+have a hybrid document seal relational
+
+105
+00:04:31,479 --> 00:04:34,280
+database very important essentially in
+
+106
+00:04:34,280 --> 00:04:36,360
+9.6 they added skip locked which is like
+
+107
+00:04:36,360 --> 00:04:38,120
+the secret sauce to being able to have
+
+108
+00:04:38,120 --> 00:04:40,639
+Q's at all without
+
+109
+00:04:40,639 --> 00:04:43,360
+contention and 12 they added reindex
+
+110
+00:04:43,360 --> 00:04:45,360
+concurrently which lets you rebuild your
+
+111
+00:04:45,360 --> 00:04:49,039
+indexes to U minimize
+
+112
+00:04:49,039 --> 00:04:52,320
+space and then in 13 they added B tree
+
+113
+00:04:52,320 --> 00:04:54,160
+duplication which is important when you
+
+114
+00:04:54,160 --> 00:04:56,240
+have a state machine modeled as a q
+
+115
+00:04:56,240 --> 00:04:57,400
+because there are a lot of duplicate
+
+116
+00:04:57,400 --> 00:04:59,120
+rows and it's important to be able to PR
+
+117
+00:04:59,120 --> 00:05:00,720
+through those quickly
+
+118
+00:05:00,720 --> 00:05:02,960
+and then at 14 they added optimized
+
+119
+00:05:02,960 --> 00:05:05,320
+skipping B splits which I don't know
+
+120
+00:05:05,320 --> 00:05:07,120
+what that
+
+121
+00:05:07,120 --> 00:05:10,720
+means you should look that up I'll make
+
+122
+00:05:10,720 --> 00:05:14,080
+a note of that it's good plan open is
+
+123
+00:05:14,080 --> 00:05:16,400
+the sum of Elixir and postgress
+
+124
+00:05:16,400 --> 00:05:18,319
+components that meld wonderfully and
+
+125
+00:05:18,319 --> 00:05:20,919
+complement each other I'm sorry to
+
+126
+00:05:20,919 --> 00:05:23,440
+disappoint any SQL light fans I'm not
+
+127
+00:05:23,440 --> 00:05:24,680
+saying you should leave the room right
+
+128
+00:05:24,680 --> 00:05:27,479
+now you will not self-destruct but
+
+129
+00:05:27,479 --> 00:05:29,720
+you're already on your path to Global
+
+130
+00:05:29,720 --> 00:05:32,440
+domination and we're not doing that
+
+131
+00:05:32,440 --> 00:05:35,280
+today so we know that combining Elixir
+
+132
+00:05:35,280 --> 00:05:37,160
+and postgress scales well many of us
+
+133
+00:05:37,160 --> 00:05:38,919
+have applications built on exactly that
+
+134
+00:05:38,919 --> 00:05:41,120
+stack and they work out really well the
+
+135
+00:05:41,120 --> 00:05:43,720
+question is whether Obin can also
+
+136
+00:05:43,720 --> 00:05:47,520
+scale and in the past we've shown that 1
+
+137
+00:05:47,520 --> 00:05:49,479
+million jobs a minute is possible in a
+
+138
+00:05:49,479 --> 00:05:52,240
+single queue on a single node on a mere
+
+139
+00:05:52,240 --> 00:05:55,520
+little laptop that's a blog post which
+
+140
+00:05:55,520 --> 00:05:57,600
+that is a blog post that's a blog post
+
+141
+00:05:57,600 --> 00:05:59,800
+with some fancy charts okay well that
+
+142
+00:05:59,800 --> 00:06:01,319
+showed that actually gets closer to 2
+
+143
+00:06:01,319 --> 00:06:03,199
+million jobs a second and that is also
+
+144
+00:06:03,199 --> 00:06:05,600
+possible charts are fancy charts are
+
+145
+00:06:05,600 --> 00:06:08,280
+data but not always proof all right we
+
+146
+00:06:08,280 --> 00:06:10,680
+go to the next slide we have proof so
+
+147
+00:06:10,680 --> 00:06:12,880
+this is an htop screenshot which shows
+
+148
+00:06:12,880 --> 00:06:15,440
+that four cores are heavily utilized uh
+
+149
+00:06:15,440 --> 00:06:17,039
+while the other six are really not doing
+
+150
+00:06:17,039 --> 00:06:18,360
+much and that's why the Dum row was
+
+151
+00:06:18,360 --> 00:06:20,440
+running so you see all those idle cores
+
+152
+00:06:20,440 --> 00:06:22,520
+doing nothing well you know what they
+
+153
+00:06:22,520 --> 00:06:24,880
+say about idle cores Parker it's a great
+
+154
+00:06:24,880 --> 00:06:28,440
+band name idle cores so it can scale the
+
+155
+00:06:28,440 --> 00:06:30,800
+small but what about the large can you
+
+156
+00:06:30,800 --> 00:06:34,639
+push 1 million jobs in a minute for a
+
+157
+00:06:34,639 --> 00:06:35,720
+whole
+
+158
+00:06:35,720 --> 00:06:39,280
+day which is well over 1 billion jobs a
+
+159
+00:06:39,280 --> 00:06:42,639
+day um yes 1.4 billion jobs yes you can
+
+160
+00:06:42,639 --> 00:06:44,720
+so it's a little teaser about what we're
+
+161
+00:06:44,720 --> 00:06:46,840
+attempting to do that we'll tell you
+
+162
+00:06:46,840 --> 00:06:49,360
+about later we're attempting to do that
+
+163
+00:06:49,360 --> 00:06:50,479
+right now while we're giving this
+
+164
+00:06:50,479 --> 00:06:52,960
+presentation so little live demo at the
+
+165
+00:06:52,960 --> 00:06:55,120
+end hopefully it all works out according
+
+166
+00:06:55,120 --> 00:06:58,319
+to plan Brazen huh no pressure no
+
+167
+00:06:58,319 --> 00:07:01,319
+pressure
+
+168
+00:07:01,560 --> 00:07:03,120
+well we're going to show how you can
+
+169
+00:07:03,120 --> 00:07:05,520
+tune cues for maximum
+
+170
+00:07:05,520 --> 00:07:08,479
+throughput and you can also minimize
+
+171
+00:07:08,479 --> 00:07:10,520
+impact on the rest of the application
+
+172
+00:07:10,520 --> 00:07:13,039
+these are essential qualities for
+
+173
+00:07:13,039 --> 00:07:16,560
+scaling minimize impact on the
+
+174
+00:07:16,560 --> 00:07:20,319
+database and avoid the dreaded bloat
+
+175
+00:07:20,319 --> 00:07:22,080
+personally I don't bloat he says that
+
+176
+00:07:22,080 --> 00:07:23,960
+physically this is not something that's
+
+177
+00:07:23,960 --> 00:07:25,879
+a problem for me yeah you say that all
+
+178
+00:07:25,879 --> 00:07:28,080
+the time you say you never bloat I'm a
+
+179
+00:07:28,080 --> 00:07:30,680
+good company where where avoiding that
+
+180
+00:07:30,680 --> 00:07:32,360
+that's our job to avoid the
+
+181
+00:07:32,360 --> 00:07:34,599
+bloat uh so we're going to talk about
+
+182
+00:07:34,599 --> 00:07:37,479
+some practical problems causes and
+
+183
+00:07:37,479 --> 00:07:39,360
+solutions things that are easily
+
+184
+00:07:39,360 --> 00:07:42,520
+identifiable in your own applications uh
+
+185
+00:07:42,520 --> 00:07:44,280
+why those are happening and then what
+
+186
+00:07:44,280 --> 00:07:48,240
+you can do very quickly to to address
+
+187
+00:07:48,240 --> 00:07:50,440
+those and we're going to start with
+
+188
+00:07:50,440 --> 00:07:53,720
+quick fire tips so minimize the size of
+
+189
+00:07:53,720 --> 00:07:56,639
+your jobs arcs um there are several
+
+190
+00:07:56,639 --> 00:07:59,520
+benefits to storing minimal values like
+
+191
+00:07:59,520 --> 00:08:02,440
+like IDs and arcs one it's less data
+
+192
+00:08:02,440 --> 00:08:04,919
+over the wir to the database two it's
+
+193
+00:08:04,919 --> 00:08:07,759
+less data stored and less data indexed
+
+194
+00:08:07,759 --> 00:08:10,120
+and three it's resilient to updates or
+
+195
+00:08:10,120 --> 00:08:12,840
+changes or if the job is retried later
+
+196
+00:08:12,840 --> 00:08:15,680
+which it most likely is have some
+
+197
+00:08:15,680 --> 00:08:17,879
+confidence I'm going
+
+198
+00:08:17,879 --> 00:08:21,080
+there all right so you should also prune
+
+199
+00:08:21,080 --> 00:08:24,199
+aggressively to get rid of old jobs so
+
+200
+00:08:24,199 --> 00:08:25,479
+historic jobs the ones that are
+
+201
+00:08:25,479 --> 00:08:27,440
+completed canceled or discarded they
+
+202
+00:08:27,440 --> 00:08:29,000
+just build up in the database and you
+
+203
+00:08:29,000 --> 00:08:32,440
+don't need to keep them around so by
+
+204
+00:08:32,440 --> 00:08:34,440
+letting the pruner run in the background
+
+205
+00:08:34,440 --> 00:08:37,320
+as a plugin it will delete those to free
+
+206
+00:08:37,320 --> 00:08:40,080
+up the database uh make room for
+
+207
+00:08:40,080 --> 00:08:43,320
+uniqueness queries and
+
+208
+00:08:43,320 --> 00:08:45,920
+introspection also use insert all
+
+209
+00:08:45,920 --> 00:08:48,120
+whenever possible this is a pretty
+
+210
+00:08:48,120 --> 00:08:50,440
+standard rule for application use don't
+
+211
+00:08:50,440 --> 00:08:52,399
+insert one thing at a time if you don't
+
+212
+00:08:52,399 --> 00:08:55,880
+have to uh it's just the laws of physics
+
+213
+00:08:55,880 --> 00:08:58,240
+if you make one insert it has to go over
+
+214
+00:08:58,240 --> 00:09:00,200
+the wire back and forth so bundle those
+
+215
+00:09:00,200 --> 00:09:02,760
+up into one insert if you can that's
+
+216
+00:09:02,760 --> 00:09:05,880
+fewer queries fewer
+
+217
+00:09:06,760 --> 00:09:09,800
+transactions each insert operation is a
+
+218
+00:09:09,800 --> 00:09:12,240
+round trip query to that database so
+
+219
+00:09:12,240 --> 00:09:15,040
+update your postrest version I think
+
+220
+00:09:15,040 --> 00:09:17,640
+we'll say that what two or three times
+
+221
+00:09:17,640 --> 00:09:21,480
+maybe more so upgrading is difficult um
+
+222
+00:09:21,480 --> 00:09:24,279
+I don't want to we don't want to say
+
+223
+00:09:24,279 --> 00:09:26,440
+that it's easy to coordinate that we all
+
+224
+00:09:26,440 --> 00:09:29,079
+know that it is so every postrest
+
+225
+00:09:29,079 --> 00:09:31,839
+version it improves performance and adds
+
+226
+00:09:31,839 --> 00:09:35,399
+helpful features it's worth it it looks
+
+227
+00:09:35,399 --> 00:09:38,079
+minimal but we know it's not but really
+
+228
+00:09:38,079 --> 00:09:39,200
+have you thought about upgrading your
+
+229
+00:09:39,200 --> 00:09:41,440
+postgress version he hars on it Obin
+
+230
+00:09:41,440 --> 00:09:43,839
+only supports back to version 12 and
+
+231
+00:09:43,839 --> 00:09:45,760
+it's currently on version 16 there are a
+
+232
+00:09:45,760 --> 00:09:47,399
+lot of improvements between those two
+
+233
+00:09:47,399 --> 00:09:49,839
+versions so you get free performance and
+
+234
+00:09:49,839 --> 00:09:52,320
+extra features and when we inevitably
+
+235
+00:09:52,320 --> 00:09:54,519
+bump that requirement you won't be left
+
+236
+00:09:54,519 --> 00:09:57,440
+behind so seriously consider upgrading
+
+237
+00:09:57,440 --> 00:10:00,519
+it's hard it's worth it
+
+238
+00:10:00,519 --> 00:10:03,720
+after you update scale your database the
+
+239
+00:10:03,720 --> 00:10:05,880
+most immediate win possible is to
+
+240
+00:10:05,880 --> 00:10:07,720
+vertically scale your database the
+
+241
+00:10:07,720 --> 00:10:11,200
+effect is instantaneous and the cost is
+
+242
+00:10:11,200 --> 00:10:16,200
+marginal is sure so now some realish
+
+243
+00:10:16,200 --> 00:10:18,240
+life scenarios this is based on feedback
+
+244
+00:10:18,240 --> 00:10:20,680
+that we've gotten people's emails slack
+
+245
+00:10:20,680 --> 00:10:22,959
+messages whatever other support channels
+
+246
+00:10:22,959 --> 00:10:24,839
+we've gotten and these are based on real
+
+247
+00:10:24,839 --> 00:10:26,760
+problems identifying the causes that
+
+248
+00:10:26,760 --> 00:10:29,000
+were behind them and then going through
+
+249
+00:10:29,000 --> 00:10:31,160
+some practical Solutions the names have
+
+250
+00:10:31,160 --> 00:10:33,480
+been changed to protect the innocent or
+
+251
+00:10:33,480 --> 00:10:35,480
+avoid direct
+
+252
+00:10:35,480 --> 00:10:37,440
+harassment
+
+253
+00:10:37,440 --> 00:10:40,560
+innocent La
+
+254
+00:10:40,560 --> 00:10:44,040
+Dua La asks why does our instrumentation
+
+255
+00:10:44,040 --> 00:10:46,279
+show PG notify at the top of our
+
+256
+00:10:46,279 --> 00:10:49,480
+frequent queries it's a very La question
+
+257
+00:10:49,480 --> 00:10:50,480
+so
+
+258
+00:10:50,480 --> 00:10:53,800
+la well lave does two things that are
+
+259
+00:10:53,800 --> 00:10:56,320
+great he asks the question and he
+
+260
+00:10:56,320 --> 00:11:01,000
+provides proof so we investigate clearly
+
+261
+00:11:01,000 --> 00:11:03,279
+that's happening oven uses Pub sub
+
+262
+00:11:03,279 --> 00:11:05,320
+notifications for communication between
+
+263
+00:11:05,320 --> 00:11:08,120
+nodes like job inserts pausing cues
+
+264
+00:11:08,120 --> 00:11:11,120
+resuming cues and metrics for web the
+
+265
+00:11:11,120 --> 00:11:13,880
+default Notifier uses postgress because
+
+266
+00:11:13,880 --> 00:11:16,279
+it doesn't require any extra
+
+267
+00:11:16,279 --> 00:11:19,120
+setup every notification requires a
+
+268
+00:11:19,120 --> 00:11:21,560
+separate query we tried using a single
+
+269
+00:11:21,560 --> 00:11:25,959
+connection a bottleneck and taint at
+
+270
+00:11:25,959 --> 00:11:27,560
+scale
+
+271
+00:11:27,560 --> 00:11:30,639
+so what do we do uh you start by rolling
+
+272
+00:11:30,639 --> 00:11:32,360
+back trying to use a single connection
+
+273
+00:11:32,360 --> 00:11:33,760
+because that doesn't work that's
+
+274
+00:11:33,760 --> 00:11:36,120
+actually a very bad idea uh and then
+
+275
+00:11:36,120 --> 00:11:37,800
+once you've done that you tell everybody
+
+276
+00:11:37,800 --> 00:11:40,200
+to try to use a different Notifier like
+
+277
+00:11:40,200 --> 00:11:44,000
+PG or process groups uh that minimizes
+
+278
+00:11:44,000 --> 00:11:46,440
+your load on the database uh it gets rid
+
+279
+00:11:46,440 --> 00:11:48,760
+of your total queries and it allows
+
+280
+00:11:48,760 --> 00:11:51,680
+bigger payloads it's a win all around
+
+281
+00:11:51,680 --> 00:11:54,440
+and if you have a functional cluster and
+
+282
+00:11:54,440 --> 00:11:56,279
+I mean distributed Earline cluster not
+
+283
+00:11:56,279 --> 00:11:58,800
+kubernetes or some other sort of cluster
+
+284
+00:11:58,800 --> 00:12:00,720
+then it's it's a single line change you
+
+285
+00:12:00,720 --> 00:12:04,720
+just go from postgress to
+
+286
+00:12:05,240 --> 00:12:09,720
+PG and ptis retro says inserting jobs
+
+287
+00:12:09,720 --> 00:12:11,399
+generates too many notifications from
+
+288
+00:12:11,399 --> 00:12:14,560
+the database can we disable that well
+
+289
+00:12:14,560 --> 00:12:18,600
+good news for pis is yes yes you can so
+
+290
+00:12:18,600 --> 00:12:21,240
+inserting jobs emits a trigger and the
+
+291
+00:12:21,240 --> 00:12:22,959
+trigger is a notification that lets any
+
+292
+00:12:22,959 --> 00:12:24,480
+running qes know that there's something
+
+293
+00:12:24,480 --> 00:12:26,639
+for them to fetch and execute and it
+
+294
+00:12:26,639 --> 00:12:28,519
+does this so that between the 1 second
+
+295
+00:12:28,519 --> 00:12:30,320
+polling time you can have a very
+
+296
+00:12:30,320 --> 00:12:33,399
+immediate responsive job fetch uh
+
+297
+00:12:33,399 --> 00:12:35,160
+originally that was part of postgress it
+
+298
+00:12:35,160 --> 00:12:36,600
+was done as a trigger in the database
+
+299
+00:12:36,600 --> 00:12:38,480
+that's the name triggers uh but that
+
+300
+00:12:38,480 --> 00:12:40,120
+doesn't scale very well when you do bulk
+
+301
+00:12:40,120 --> 00:12:41,839
+inserts because it has to D duplicate
+
+302
+00:12:41,839 --> 00:12:45,760
+all of those so what do we do to fix
+
+303
+00:12:45,760 --> 00:12:48,560
+that well managing triggers from Obin
+
+304
+00:12:48,560 --> 00:12:51,720
+itself provides more control and it's
+
+305
+00:12:51,720 --> 00:12:53,360
+made it possible to have triggers with
+
+306
+00:12:53,360 --> 00:12:55,800
+other notifiers like PG which is better
+
+307
+00:12:55,800 --> 00:12:57,680
+for
+
+308
+00:12:57,680 --> 00:13:01,000
+scaling a Val Val if you need a
+
+309
+00:13:01,000 --> 00:13:03,800
+subsecond job dispatch without it jobs
+
+310
+00:13:03,800 --> 00:13:05,680
+may wait up to 1 second before running
+
+311
+00:13:05,680 --> 00:13:08,320
+but that's not a concern for busy cues
+
+312
+00:13:08,320 --> 00:13:10,720
+since they're constantly fetching and
+
+313
+00:13:10,720 --> 00:13:13,160
+dispatching than for applications busy
+
+314
+00:13:13,160 --> 00:13:14,560
+that's what they're doing it's a good
+
+315
+00:13:14,560 --> 00:13:17,600
+thing disabling the triggers is a single
+
+316
+00:13:17,600 --> 00:13:20,560
+line of configuration and if you upgrade
+
+317
+00:13:20,560 --> 00:13:23,800
+there's a teeny tiny database migration
+
+318
+00:13:23,800 --> 00:13:26,240
+it's not painful at all just a teen tiny
+
+319
+00:13:26,240 --> 00:13:29,240
+one
+
+320
+00:13:30,040 --> 00:13:32,279
+milp fighten that's a real name it's the
+
+321
+00:13:32,279 --> 00:13:36,000
+most realistic one so far yes milp asks
+
+322
+00:13:36,000 --> 00:13:38,399
+how do I stop open job indexes from
+
+323
+00:13:38,399 --> 00:13:42,959
+taking up so much space on dis well milp
+
+324
+00:13:42,959 --> 00:13:44,600
+the transactional model applies to
+
+325
+00:13:44,600 --> 00:13:47,720
+indexes as well as tables that leaves
+
+326
+00:13:47,720 --> 00:13:50,000
+bloat from inserting updating and
+
+327
+00:13:50,000 --> 00:13:52,920
+deleting jobs and the autov vacuuming
+
+328
+00:13:52,920 --> 00:13:55,920
+won't always fix that
+
+329
+00:13:55,920 --> 00:13:58,600
+so the index situation gets better after
+
+330
+00:13:58,600 --> 00:14:01,880
+version 14 but they're still prone to
+
+331
+00:14:01,880 --> 00:14:05,399
+bloating so how do we fix that well the
+
+332
+00:14:05,399 --> 00:14:06,800
+bloating problem which is not a problem
+
+333
+00:14:06,800 --> 00:14:09,759
+for me clearly never you uh is to
+
+334
+00:14:09,759 --> 00:14:13,480
+reindex so use the re indexer plugin to
+
+335
+00:14:13,480 --> 00:14:15,680
+intermittently concurrently without any
+
+336
+00:14:15,680 --> 00:14:18,320
+locking or any downtime rebuild all of
+
+337
+00:14:18,320 --> 00:14:20,600
+those essential indexes so that does a
+
+338
+00:14:20,600 --> 00:14:22,639
+couple of things one it minimizes their
+
+339
+00:14:22,639 --> 00:14:24,880
+size on disk and it also optimizes them
+
+340
+00:14:24,880 --> 00:14:26,440
+to make your queries
+
+341
+00:14:26,440 --> 00:14:29,959
+faster um it's part of Open Source
+
+342
+00:14:29,959 --> 00:14:31,560
+and you can just add it to your list of
+
+343
+00:14:31,560 --> 00:14:34,240
+plugins normally it runs at midnight by
+
+344
+00:14:34,240 --> 00:14:35,920
+default but if that's a little bit too
+
+345
+00:14:35,920 --> 00:14:38,040
+aggressive then you can tweak it it uses
+
+346
+00:14:38,040 --> 00:14:39,880
+a crownlike schedule and you can have it
+
+347
+00:14:39,880 --> 00:14:42,440
+run weekly
+
+348
+00:14:42,519 --> 00:14:45,560
+instead and jevin Laxon jeevan Laxon
+
+349
+00:14:45,560 --> 00:14:47,800
+says inserting bulk unique jobs times
+
+350
+00:14:47,800 --> 00:14:49,800
+out sometimes there aren't that many
+
+351
+00:14:49,800 --> 00:14:52,720
+jobs what's going on it's very sassy
+
+352
+00:14:52,720 --> 00:14:55,680
+it's very jevic so uh well the problem
+
+353
+00:14:55,680 --> 00:14:57,399
+is inserting unique jobs requires an
+
+354
+00:14:57,399 --> 00:15:00,480
+extra query whenever it's inserted so
+
+355
+00:15:00,480 --> 00:15:04,079
+one query is to check for existing jobs
+
+356
+00:15:04,079 --> 00:15:06,240
+and the other one is an advisory lock
+
+357
+00:15:06,240 --> 00:15:08,920
+that ensures that different transactions
+
+358
+00:15:08,920 --> 00:15:11,800
+don't compete with each
+
+359
+00:15:11,959 --> 00:15:14,279
+other and when you stack those up
+
+360
+00:15:14,279 --> 00:15:15,639
+instead of making a single query to
+
+361
+00:15:15,639 --> 00:15:17,560
+insert a job you actually have three
+
+362
+00:15:17,560 --> 00:15:19,880
+queries and that doesn't scale very well
+
+363
+00:15:19,880 --> 00:15:22,079
+despite the fact that they're very fast
+
+364
+00:15:22,079 --> 00:15:27,040
+the checks just aren't free many things
+
+365
+00:15:27,240 --> 00:15:29,680
+aren't so
+
+366
+00:15:29,680 --> 00:15:30,639
+what do you
+
+367
+00:15:30,639 --> 00:15:33,519
+do frequently people set uniqueness for
+
+368
+00:15:33,519 --> 00:15:36,480
+jobs and they don't really need it this
+
+369
+00:15:36,480 --> 00:15:39,319
+happens a lot so first evaluate whether
+
+370
+00:15:39,319 --> 00:15:42,240
+or not uniqueness is necessary for your
+
+371
+00:15:42,240 --> 00:15:45,800
+workload reduce the work to match jobs
+
+372
+00:15:45,800 --> 00:15:48,000
+by selecting a single field rather than
+
+373
+00:15:48,000 --> 00:15:52,040
+an entire Json field it's important
+
+374
+00:15:52,040 --> 00:15:53,800
+avoid checking the unique period if at
+
+375
+00:15:53,800 --> 00:15:56,360
+all possible and if that's not possible
+
+376
+00:15:56,360 --> 00:15:58,440
+set the time stamp option to scheduled
+
+377
+00:15:58,440 --> 00:16:00,639
+at you might wonder why isn't that the
+
+378
+00:16:00,639 --> 00:16:02,680
+default well it just didn't exist back
+
+379
+00:16:02,680 --> 00:16:04,560
+then so for legacy reasons we can't
+
+380
+00:16:04,560 --> 00:16:07,079
+change it but now that you know you can
+
+381
+00:16:07,079 --> 00:16:08,720
+change it and make it all better they
+
+382
+00:16:08,720 --> 00:16:11,480
+can use that as an
+
+383
+00:16:11,480 --> 00:16:15,240
+index so as shown here it's just a few
+
+384
+00:16:15,240 --> 00:16:20,440
+lines of configuration in your worker
+
+385
+00:16:20,440 --> 00:16:23,199
+so now Shameless Pro tip and now a word
+
+386
+00:16:23,199 --> 00:16:26,360
+from our sponsor uh so in open Pro the
+
+387
+00:16:26,360 --> 00:16:28,959
+smart engine can do bulk unique inserts
+
+388
+00:16:28,959 --> 00:16:31,160
+in a single transaction so instead of
+
+389
+00:16:31,160 --> 00:16:33,839
+one query per job and one advisory lock
+
+390
+00:16:33,839 --> 00:16:36,560
+per job it does that in just two queries
+
+391
+00:16:36,560 --> 00:16:38,399
+and then it inserts them all together
+
+392
+00:16:38,399 --> 00:16:41,680
+fewer queries fewer
+
+393
+00:16:41,759 --> 00:16:43,880
+transactions wogan
+
+394
+00:16:43,880 --> 00:16:46,440
+wagger wogen asks how do we stop seeing
+
+395
+00:16:46,440 --> 00:16:49,440
+Ecto timeout errors from Obin when our
+
+396
+00:16:49,440 --> 00:16:51,440
+application is
+
+397
+00:16:51,440 --> 00:16:54,800
+busy Obin uses connections from your
+
+398
+00:16:54,800 --> 00:16:56,880
+applications repo pool to talk to the
+
+399
+00:16:56,880 --> 00:16:59,360
+database when that pool is busy it can
+
+400
+00:16:59,360 --> 00:17:01,600
+starve OB of connections and you're
+
+401
+00:17:01,600 --> 00:17:04,160
+going to see timeout errors on the other
+
+402
+00:17:04,160 --> 00:17:07,199
+hand despite fast queries if Oben is an
+
+403
+00:17:07,199 --> 00:17:09,679
+extremely busy thing at that moment it's
+
+404
+00:17:09,679 --> 00:17:11,400
+going to starve your application of
+
+405
+00:17:11,400 --> 00:17:14,079
+connections which is not what we want so
+
+406
+00:17:14,079 --> 00:17:15,319
+how do we fix
+
+407
+00:17:15,319 --> 00:17:19,439
+that well a good solution is to set up
+
+408
+00:17:19,439 --> 00:17:22,240
+another repo a secondary one that's
+
+409
+00:17:22,240 --> 00:17:24,799
+dedicated just to Oben so Obin use it to
+
+410
+00:17:24,799 --> 00:17:26,319
+fetch act and do the other things that
+
+411
+00:17:26,319 --> 00:17:28,319
+it needs to do without competing with
+
+412
+00:17:28,319 --> 00:17:29,559
+your applic
+
+413
+00:17:29,559 --> 00:17:30,960
+for those
+
+414
+00:17:30,960 --> 00:17:33,919
+resources so the dedicated pool isolates
+
+415
+00:17:33,919 --> 00:17:35,960
+those queries it's really easy to set up
+
+416
+00:17:35,960 --> 00:17:37,320
+as well you just pointed at the same
+
+417
+00:17:37,320 --> 00:17:39,799
+database little bit of configuration it
+
+418
+00:17:39,799 --> 00:17:41,720
+doesn't need a lot of connections Obin
+
+419
+00:17:41,720 --> 00:17:43,360
+actually uses very few connections by
+
+420
+00:17:43,360 --> 00:17:45,919
+itself most of the time uh and it's a
+
+421
+00:17:45,919 --> 00:17:47,400
+single line change to your config to
+
+422
+00:17:47,400 --> 00:17:49,400
+just point it at the other dedicated
+
+423
+00:17:49,400 --> 00:17:53,760
+bre so when Bilson he says pruning old
+
+424
+00:17:53,760 --> 00:17:56,000
+jobs works well but the size of our jobs
+
+425
+00:17:56,000 --> 00:17:58,919
+table is bloated and it keeps growing
+
+426
+00:17:58,919 --> 00:18:01,760
+again with the bloat it happens this
+
+427
+00:18:01,760 --> 00:18:03,400
+happens
+
+428
+00:18:03,400 --> 00:18:07,200
+often so problem is like
+
+429
+00:18:07,200 --> 00:18:10,400
+indexes the transactional system only
+
+430
+00:18:10,400 --> 00:18:13,559
+Flags rows for deletion later and so
+
+431
+00:18:13,559 --> 00:18:16,559
+when you delete it then has to flag it
+
+432
+00:18:16,559 --> 00:18:18,159
+and then autovacuum comes around and it
+
+433
+00:18:18,159 --> 00:18:19,760
+empties it but it still doesn't actually
+
+434
+00:18:19,760 --> 00:18:22,559
+get rid of it off the disc and the more
+
+435
+00:18:22,559 --> 00:18:24,720
+that you run these things the busier
+
+436
+00:18:24,720 --> 00:18:27,840
+that it is uh the more garbage that you
+
+437
+00:18:27,840 --> 00:18:29,760
+accumulate
+
+438
+00:18:29,760 --> 00:18:32,919
+and so you have to tune well I don't
+
+439
+00:18:32,919 --> 00:18:34,440
+want to give that away I'm sorry the
+
+440
+00:18:34,440 --> 00:18:36,280
+default settings aren't that great so
+
+441
+00:18:36,280 --> 00:18:37,280
+what do we
+
+442
+00:18:37,280 --> 00:18:41,080
+do well I mean autov vacuuming can be
+
+443
+00:18:41,080 --> 00:18:45,080
+tweaked for the obin's jobs table alone
+
+444
+00:18:45,080 --> 00:18:49,200
+just in solitary and the exact scale
+
+445
+00:18:49,200 --> 00:18:51,600
+factor uh it's going to
+
+446
+00:18:51,600 --> 00:18:54,120
+vary I feel like this is unusual because
+
+447
+00:18:54,120 --> 00:18:55,559
+it will be based on your unique
+
+448
+00:18:55,559 --> 00:18:57,600
+situation your table rows your table
+
+449
+00:18:57,600 --> 00:19:00,720
+size and your database load so there's
+
+450
+00:19:00,720 --> 00:19:03,559
+no one that's General I'm sure yeah but
+
+451
+00:19:03,559 --> 00:19:06,960
+it does lead to a Shameless Pro tip So
+
+452
+00:19:06,960 --> 00:19:09,760
+Pro tip number two which is open Pro
+
+453
+00:19:09,760 --> 00:19:12,400
+Dynamic partitioner instead of having to
+
+454
+00:19:12,400 --> 00:19:15,400
+use a pruner for deletion it partitions
+
+455
+00:19:15,400 --> 00:19:17,720
+all jobs and by state and then it
+
+456
+00:19:17,720 --> 00:19:20,200
+manages dropping those entirely and when
+
+457
+00:19:20,200 --> 00:19:21,840
+you drop a table there's no bloat left
+
+458
+00:19:21,840 --> 00:19:23,600
+over there's nothing at all it's
+
+459
+00:19:23,600 --> 00:19:26,360
+virtually instantaneous and another
+
+460
+00:19:26,360 --> 00:19:28,120
+benefit is that all of those tables are
+
+461
+00:19:28,120 --> 00:19:29,799
+smaller which means they have less
+
+462
+00:19:29,799 --> 00:19:31,520
+activity and autov vacuuming is faster
+
+463
+00:19:31,520 --> 00:19:34,280
+follow of those as
+
+464
+00:19:34,840 --> 00:19:39,120
+well ton munsky Tonica asks why do we
+
+465
+00:19:39,120 --> 00:19:40,640
+start to see connection errors under
+
+466
+00:19:40,640 --> 00:19:43,880
+Peak load in high concurrency cues well
+
+467
+00:19:43,880 --> 00:19:46,799
+Tonica fetching jobs takes a single
+
+468
+00:19:46,799 --> 00:19:49,280
+optimized query for each queue however
+
+469
+00:19:49,280 --> 00:19:51,960
+acing when a job finishes takes a single
+
+470
+00:19:51,960 --> 00:19:55,240
+connection for each job so in a busy
+
+471
+00:19:55,240 --> 00:19:57,799
+system with high concurrency all of the
+
+472
+00:19:57,799 --> 00:20:00,720
+acing causes pool contention and despite
+
+473
+00:20:00,720 --> 00:20:03,440
+the individual queries being very fast
+
+474
+00:20:03,440 --> 00:20:04,919
+this is still something that we have to
+
+475
+00:20:04,919 --> 00:20:06,679
+solve what do we
+
+476
+00:20:06,679 --> 00:20:09,679
+do well you've heard this one before um
+
+477
+00:20:09,679 --> 00:20:12,120
+but increase your pool size and reduce
+
+478
+00:20:12,120 --> 00:20:15,080
+your overal concurrency uh the ratio
+
+479
+00:20:15,080 --> 00:20:16,880
+between the number of jobs executing and
+
+480
+00:20:16,880 --> 00:20:18,799
+the number of available Connections in
+
+481
+00:20:18,799 --> 00:20:21,640
+your pool has to be tweaked to minimize
+
+482
+00:20:21,640 --> 00:20:23,400
+any competition that's
+
+483
+00:20:23,400 --> 00:20:27,159
+happening so start by using a dedicated
+
+484
+00:20:27,159 --> 00:20:29,880
+pool okay we set it before it's really
+
+485
+00:20:29,880 --> 00:20:31,600
+very important when you have a dedicated
+
+486
+00:20:31,600 --> 00:20:34,159
+pool you know a baseline of how many
+
+487
+00:20:34,159 --> 00:20:35,600
+connections are available for Oben
+
+488
+00:20:35,600 --> 00:20:37,320
+compared to your application and they
+
+489
+00:20:37,320 --> 00:20:39,679
+don't mix that gives you better
+
+490
+00:20:39,679 --> 00:20:41,000
+predictable
+
+491
+00:20:41,000 --> 00:20:43,559
+performance and then in extreme cases
+
+492
+00:20:43,559 --> 00:20:45,080
+when you're running 100 million plus
+
+493
+00:20:45,080 --> 00:20:47,320
+jobs a day you might want very
+
+494
+00:20:47,320 --> 00:20:49,320
+predictable performance and that's when
+
+495
+00:20:49,320 --> 00:20:51,159
+you might think about having a dedicated
+
+496
+00:20:51,159 --> 00:20:56,080
+database just for open jobs uh which can
+
+497
+00:20:56,080 --> 00:20:59,039
+help uh so here's an example a somewhat
+
+498
+00:20:59,039 --> 00:21:01,080
+trivial example of increasing their pool
+
+499
+00:21:01,080 --> 00:21:03,640
+size minimizing concurrency it's not
+
+500
+00:21:03,640 --> 00:21:06,080
+always that simple but just consider if
+
+501
+00:21:06,080 --> 00:21:09,520
+you need 50 jobs running at a time or 30
+
+502
+00:21:09,520 --> 00:21:10,279
+might
+
+503
+00:21:10,279 --> 00:21:13,200
+work and the final Pro
+
+504
+00:21:13,200 --> 00:21:17,240
+tip is open Pro Smart engine acts all
+
+505
+00:21:17,240 --> 00:21:18,799
+those jobs together so instead of a
+
+506
+00:21:18,799 --> 00:21:20,400
+single connection and transaction every
+
+507
+00:21:20,400 --> 00:21:23,200
+time a job finishes it bundles them all
+
+508
+00:21:23,200 --> 00:21:25,200
+together and waits and does that in a
+
+509
+00:21:25,200 --> 00:21:26,640
+single transaction the next time it
+
+510
+00:21:26,640 --> 00:21:31,360
+fetches far fewer transactions far fewer
+
+511
+00:21:32,039 --> 00:21:34,880
+queries all right I think it's time for
+
+512
+00:21:34,880 --> 00:21:38,400
+some tips so the first one isolate open
+
+513
+00:21:38,400 --> 00:21:40,120
+from your app it's probably the fourth
+
+514
+00:21:40,120 --> 00:21:41,679
+time we've said that in the last 5
+
+515
+00:21:41,679 --> 00:21:44,559
+minutes it is the number one quick fire
+
+516
+00:21:44,559 --> 00:21:46,840
+tip that we could give to you out of the
+
+517
+00:21:46,840 --> 00:21:49,720
+scenarios that we see most often
+
+518
+00:21:49,720 --> 00:21:52,720
+minimize extra transactions which is
+
+519
+00:21:52,720 --> 00:21:54,960
+very similar
+
+520
+00:21:54,960 --> 00:21:58,200
+to minimize extra queries again fewer
+
+521
+00:21:58,200 --> 00:22:00,960
+queries fewer transactions better off
+
+522
+00:22:00,960 --> 00:22:02,720
+for your
+
+523
+00:22:02,720 --> 00:22:06,240
+app also minimize index bloat and
+
+524
+00:22:06,240 --> 00:22:09,279
+minimize table
+
+525
+00:22:09,279 --> 00:22:12,600
+blow all right it's time to put up or
+
+526
+00:22:12,600 --> 00:22:13,720
+shut up
+
+527
+00:22:13,720 --> 00:22:15,919
+right so there's a good chance of shut
+
+528
+00:22:15,919 --> 00:22:17,120
+up we'll
+
+529
+00:22:17,120 --> 00:22:19,840
+see we get it worked earlier and this is
+
+530
+00:22:19,840 --> 00:22:21,760
+always what happens it works through the
+
+531
+00:22:21,760 --> 00:22:23,480
+run through and you decide you're just
+
+532
+00:22:23,480 --> 00:22:26,120
+going to go for it so so the idea is we
+
+533
+00:22:26,120 --> 00:22:28,159
+take all of the tips here we put them
+
+534
+00:22:28,159 --> 00:22:30,080
+together in a single application that
+
+535
+00:22:30,080 --> 00:22:31,279
+application actually runs in the
+
+536
+00:22:31,279 --> 00:22:33,640
+background and it should be capable of
+
+537
+00:22:33,640 --> 00:22:36,679
+running what is 1 billion jobs a day on
+
+538
+00:22:36,679 --> 00:22:39,559
+a laptop just locally while we're giving
+
+539
+00:22:39,559 --> 00:22:43,279
+a keynote look at this all right go
+
+540
+00:22:43,279 --> 00:22:45,720
+ahead and run
+
+541
+00:22:45,799 --> 00:22:49,360
+it oh and no you can see the
+
+542
+00:22:49,360 --> 00:22:51,440
+configuration but it's not happy about
+
+543
+00:22:51,440 --> 00:22:55,360
+it so you can try to
+
+544
+00:22:55,360 --> 00:22:57,960
+restart yes I'm I'm going to move it
+
+545
+00:22:57,960 --> 00:23:00,440
+over
+
+546
+00:23:03,279 --> 00:23:05,480
+H it's always the thing it's so nice to
+
+547
+00:23:05,480 --> 00:23:07,120
+be in a room full of friends when you
+
+548
+00:23:07,120 --> 00:23:09,270
+put yourself out there with a live
+
+549
+00:23:09,270 --> 00:23:11,159
+[Music]
+
+550
+00:23:11,159 --> 00:23:14,000
+demo maybe not the best idea for the
+
+551
+00:23:14,000 --> 00:23:17,520
+live demo I think it was a great idea oh
+
+552
+00:23:17,520 --> 00:23:19,520
+well uh we can always go through the
+
+553
+00:23:19,520 --> 00:23:23,440
+code though as well I'm trying to uh get
+
+554
+00:23:23,440 --> 00:23:26,720
+it off of no oh
+
+555
+00:23:26,720 --> 00:23:29,799
+well all right
+
+556
+00:23:29,799 --> 00:23:32,200
+there you
+
+557
+00:23:33,360 --> 00:23:35,760
+go
+
+558
+00:23:35,760 --> 00:23:38,000
+no yeah on
+
+559
+00:23:38,000 --> 00:23:39,760
+both
+
+560
+00:23:39,760 --> 00:23:42,039
+okay all right so there's all of the
+
+561
+00:23:42,039 --> 00:23:44,720
+configuration put
+
+562
+00:23:44,720 --> 00:23:48,960
+together which we really promise can run
+
+563
+00:23:48,960 --> 00:23:52,200
+700,000 jobs a minute in better
+
+564
+00:23:52,200 --> 00:23:54,760
+circumstances than these uh and if you
+
+565
+00:23:54,760 --> 00:23:56,240
+put that all together that's over 1
+
+566
+00:23:56,240 --> 00:23:58,799
+billion jobs a day you can see triggers
+
+567
+00:23:58,799 --> 00:24:01,480
+are disabled the Notifier has changed
+
+568
+00:24:01,480 --> 00:24:04,360
+it's partitioned it's not pruning and
+
+569
+00:24:04,360 --> 00:24:06,600
+it's a little bit of all of those things
+
+570
+00:24:06,600 --> 00:24:08,360
+put together and I can bet you if you
+
+571
+00:24:08,360 --> 00:24:11,080
+find us outside an hour from now he will
+
+572
+00:24:11,080 --> 00:24:13,559
+have this running to anyone come
+
+573
+00:24:13,559 --> 00:24:14,679
+there'll be a little dashboard you can
+
+574
+00:24:14,679 --> 00:24:17,240
+look at it it's got the things ticking
+
+575
+00:24:17,240 --> 00:24:20,480
+in let's
+
+576
+00:24:22,559 --> 00:24:26,399
+see you can try to print it again though
+
+577
+00:24:26,399 --> 00:24:28,760
+yeah
+
+578
+00:24:28,760 --> 00:24:32,640
+I can't see so
+
+579
+00:24:32,840 --> 00:24:35,679
+well doesn't like
+
+580
+00:24:35,679 --> 00:24:40,320
+it are you getting red yeah we'll
+
+581
+00:24:40,360 --> 00:24:43,559
+see come
+
+582
+00:24:45,279 --> 00:24:48,440
+on I think we're I don't know if we have
+
+583
+00:24:48,440 --> 00:24:53,159
+time or not we started late all right
+
+584
+00:24:53,159 --> 00:24:55,720
+it's disappointing all right well I'm
+
+585
+00:24:55,720 --> 00:24:58,880
+sorry to I'm sorry to let you down
+
+586
+00:24:58,880 --> 00:25:01,880
+but that's the that's the bravado of a
+
+587
+00:25:01,880 --> 00:25:04,320
+live demo during a talk with two people
+
+588
+00:25:04,320 --> 00:25:06,840
+right so we're so pleased to be here
+
+589
+00:25:06,840 --> 00:25:08,919
+with you it's so nice to see all of you
+
+590
+00:25:08,919 --> 00:25:11,720
+if you've spoken to Us online or if you
+
+591
+00:25:11,720 --> 00:25:13,120
+want to speak to us for the first time
+
+592
+00:25:13,120 --> 00:25:15,080
+we're very happy to meet you we're so
+
+593
+00:25:15,080 --> 00:25:18,200
+appreciative of our people and The
+
+594
+00:25:18,200 --> 00:25:20,840
+Elixir community and we're so proud to
+
+595
+00:25:20,840 --> 00:25:25,240
+be here thank you for your time AB
+
+596
+00:25:33,799 --> 00:25:36,799
+I
+
+597
+00:25:37,860 --> 00:25:49,660
+[Music]
+
+598
+00:25:49,660 --> 00:25:50,650
+[Applause]
+
+599
+00:25:50,650 --> 00:25:55,609
+[Music]
