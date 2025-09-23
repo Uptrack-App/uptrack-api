@@ -5,11 +5,31 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-config :uptrack, Uptrack.Repo,
+# Configure all three repos for testing
+config :uptrack, Uptrack.AppRepo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
   database: "uptrack_test#{System.get_env("MIX_TEST_PARTITION")}",
+  parameters: [search_path: "app,public"],
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2
+
+config :uptrack, Uptrack.ObanRepo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "uptrack_test#{System.get_env("MIX_TEST_PARTITION")}",
+  parameters: [search_path: "oban,public"],
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2
+
+config :uptrack, Uptrack.ResultsRepo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "uptrack_test#{System.get_env("MIX_TEST_PARTITION")}",
+  parameters: [search_path: "results,public"],
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
@@ -19,6 +39,15 @@ config :uptrack, UptrackWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "REMOVED_TEST_SECRET_KEY_BASE",
   server: false
+
+# Configure Wallaby for E2E testing
+config :wallaby,
+  driver: Wallaby.Chrome,
+  base_url: "http://localhost:4002",
+  screenshot_on_failure: true,
+  chrome: [
+    headless: true
+  ]
 
 # In test we don't send emails
 config :uptrack, Uptrack.Mailer, adapter: Swoosh.Adapters.Test
