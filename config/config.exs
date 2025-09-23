@@ -88,9 +88,8 @@ config :ueberauth, Ueberauth.Strategy.Google.OAuth,
   client_id: System.get_env("GOOGLE_CLIENT_ID"),
   client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
 
-# Configure Tidewave for real-time updates
-config :tidewave,
-  pubsub: Uptrack.PubSub
+# Configure Tesla (disable deprecation warnings)
+config :tesla, disable_deprecated_builder_warning: true
 
 # Configure Oban for background jobs
 config :uptrack, Oban,

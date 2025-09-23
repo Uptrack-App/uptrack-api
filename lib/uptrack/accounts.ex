@@ -18,7 +18,7 @@ defmodule Uptrack.Accounts do
 
   """
   def list_users do
-    AppAppRepo.all(User)
+    AppRepo.all(User)
   end
 
   @doc """
