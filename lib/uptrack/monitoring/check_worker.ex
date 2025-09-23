@@ -4,7 +4,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
   """
 
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.{Monitor, MonitorCheck, Incident, Events}
+  alias Uptrack.Monitoring.{Monitor, MonitorCheck, Events}
   alias Uptrack.Alerting
   require Logger
 

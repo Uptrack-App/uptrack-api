@@ -4,7 +4,8 @@ defmodule Uptrack.Monitoring do
   """
 
   import Ecto.Query, warn: false
-  alias Uptrack.Repo
+  alias Uptrack.AppRepo
+  alias Uptrack.ResultsRepo
 
   alias Uptrack.Monitoring.{
     Monitor,
@@ -25,7 +26,7 @@ defmodule Uptrack.Monitoring do
     Monitor
     |> where([m], m.user_id == ^user_id)
     |> order_by([m], desc: m.inserted_at)
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -34,7 +35,7 @@ defmodule Uptrack.Monitoring do
   def list_active_monitors(user_id) do
     Monitor
     |> where([m], m.user_id == ^user_id and m.status == "active")
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -43,13 +44,13 @@ defmodule Uptrack.Monitoring do
   def get_all_active_monitors do
     Monitor
     |> where([m], m.status == "active")
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
   Gets a single monitor.
   """
-  def get_monitor!(id), do: Repo.get!(Monitor, id)
+  def get_monitor!(id), do: AppRepo.get!(Monitor, id)
 
   @doc """
   Gets a monitor by user.
@@ -57,7 +58,7 @@ defmodule Uptrack.Monitoring do
   def get_user_monitor!(user_id, monitor_id) do
     Monitor
     |> where([m], m.user_id == ^user_id and m.id == ^monitor_id)
-    |> Repo.one!()
+    |> AppRepo.one!()
   end
 
   @doc """
@@ -66,7 +67,7 @@ defmodule Uptrack.Monitoring do
   def create_monitor(attrs) do
     %Monitor{}
     |> Monitor.create_changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -75,14 +76,14 @@ defmodule Uptrack.Monitoring do
   def update_monitor(%Monitor{} = monitor, attrs) do
     monitor
     |> Monitor.changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
   Deletes a monitor.
   """
   def delete_monitor(%Monitor{} = monitor) do
-    Repo.delete(monitor)
+    AppRepo.delete(monitor)
   end
 
   @doc """
@@ -99,7 +100,7 @@ defmodule Uptrack.Monitoring do
   """
   def create_monitor_check(attrs) do
     MonitorCheck.create_changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -110,7 +111,7 @@ defmodule Uptrack.Monitoring do
     |> where([mc], mc.monitor_id == ^monitor_id)
     |> order_by([mc], desc: mc.checked_at)
     |> limit(^limit)
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -121,7 +122,7 @@ defmodule Uptrack.Monitoring do
     |> where([mc], mc.monitor_id == ^monitor_id)
     |> order_by([mc], desc: mc.checked_at)
     |> limit(1)
-    |> Repo.one()
+    |> AppRepo.one()
   end
 
   @doc """
@@ -138,7 +139,7 @@ defmodule Uptrack.Monitoring do
           up: count(mc.id) |> filter(mc.status == "up")
         }
 
-    case Repo.one(query) do
+    case AppRepo.one(query) do
       %{total: 0} -> 100.0
       %{total: total, up: up} -> (up / total * 100) |> Float.round(2)
     end
@@ -151,7 +152,7 @@ defmodule Uptrack.Monitoring do
   """
   def create_incident(attrs) do
     Incident.create_changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -160,7 +161,7 @@ defmodule Uptrack.Monitoring do
   def resolve_incident(%Incident{} = incident, attrs \\ %{}) do
     incident
     |> Incident.resolve_changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
@@ -169,7 +170,7 @@ defmodule Uptrack.Monitoring do
   def get_ongoing_incident(monitor_id) do
     Incident
     |> where([i], i.monitor_id == ^monitor_id and i.status == "ongoing")
-    |> Repo.one()
+    |> AppRepo.one()
   end
 
   @doc """
@@ -185,7 +186,7 @@ defmodule Uptrack.Monitoring do
         limit: ^limit,
         preload: [:monitor]
 
-    Repo.all(query)
+    AppRepo.all(query)
   end
 
   # Alert Channel functions
@@ -197,13 +198,13 @@ defmodule Uptrack.Monitoring do
     AlertChannel
     |> where([ac], ac.user_id == ^user_id)
     |> order_by([ac], asc: ac.name)
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
   Gets a single alert channel.
   """
-  def get_alert_channel!(id), do: Repo.get!(AlertChannel, id)
+  def get_alert_channel!(id), do: AppRepo.get!(AlertChannel, id)
 
   @doc """
   Creates an alert channel.
@@ -211,7 +212,7 @@ defmodule Uptrack.Monitoring do
   def create_alert_channel(attrs) do
     %AlertChannel{}
     |> AlertChannel.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -220,14 +221,14 @@ defmodule Uptrack.Monitoring do
   def update_alert_channel(%AlertChannel{} = alert_channel, attrs) do
     alert_channel
     |> AlertChannel.changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
   Deletes an alert channel.
   """
   def delete_alert_channel(%AlertChannel{} = alert_channel) do
-    Repo.delete(alert_channel)
+    AppRepo.delete(alert_channel)
   end
 
   # Status Page functions
@@ -239,7 +240,7 @@ defmodule Uptrack.Monitoring do
     StatusPage
     |> where([sp], sp.user_id == ^user_id)
     |> order_by([sp], asc: sp.name)
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -249,7 +250,7 @@ defmodule Uptrack.Monitoring do
     StatusPage
     |> where([sp], sp.slug == ^slug)
     |> preload([sp], [:monitors, :status_page_monitors])
-    |> Repo.one!()
+    |> AppRepo.one!()
   end
 
   @doc """
@@ -266,7 +267,7 @@ defmodule Uptrack.Monitoring do
         where: spm.status_page_id == ^status_page.id,
         order_by: [asc: spm.sort_order, asc: m.name]
       )
-      |> Repo.all()
+      |> AppRepo.all()
 
     monitor_ids = Enum.map(monitors, & &1.id)
 
@@ -279,7 +280,7 @@ defmodule Uptrack.Monitoring do
             distinct: mc.monitor_id,
             select: mc
 
-        Repo.all(subquery)
+        AppRepo.all(subquery)
         |> Enum.group_by(& &1.monitor_id)
       else
         %{}
@@ -297,7 +298,7 @@ defmodule Uptrack.Monitoring do
   @doc """
   Gets a single status page.
   """
-  def get_status_page!(id), do: Repo.get!(StatusPage, id)
+  def get_status_page!(id), do: AppRepo.get!(StatusPage, id)
 
   @doc """
   Creates a status page.
@@ -305,7 +306,7 @@ defmodule Uptrack.Monitoring do
   def create_status_page(attrs) do
     %StatusPage{}
     |> StatusPage.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -314,14 +315,14 @@ defmodule Uptrack.Monitoring do
   def update_status_page(%StatusPage{} = status_page, attrs) do
     status_page
     |> StatusPage.changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
   Deletes a status page.
   """
   def delete_status_page(%StatusPage{} = status_page) do
-    Repo.delete(status_page)
+    AppRepo.delete(status_page)
   end
 
   @doc """
@@ -332,7 +333,7 @@ defmodule Uptrack.Monitoring do
 
     %StatusPageMonitor{}
     |> StatusPageMonitor.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -341,7 +342,7 @@ defmodule Uptrack.Monitoring do
   def remove_monitor_from_status_page(status_page_id, monitor_id) do
     StatusPageMonitor
     |> where([spm], spm.status_page_id == ^status_page_id and spm.monitor_id == ^monitor_id)
-    |> Repo.delete_all()
+    |> AppRepo.delete_all()
   end
 
   @doc """
@@ -350,7 +351,7 @@ defmodule Uptrack.Monitoring do
   def get_status_page_monitors(status_page) do
     StatusPageMonitor
     |> where([spm], spm.status_page_id == ^status_page.id)
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -373,7 +374,7 @@ defmodule Uptrack.Monitoring do
       order_by: [desc: i.started_at],
       preload: [:monitor, :incident_updates]
     )
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
@@ -387,13 +388,13 @@ defmodule Uptrack.Monitoring do
       order_by: [desc: i.started_at],
       preload: [:monitor, :incident_updates]
     )
-    |> Repo.all()
+    |> AppRepo.all()
   end
 
   @doc """
   Gets a single incident.
   """
-  def get_incident!(id), do: Repo.get!(Incident, id)
+  def get_incident!(id), do: AppRepo.get!(Incident, id)
 
   @doc """
   Gets a single incident with preloaded associations.
@@ -402,7 +403,7 @@ defmodule Uptrack.Monitoring do
     Incident
     |> where([i], i.id == ^id)
     |> preload([:monitor, incident_updates: [:user]])
-    |> Repo.one!()
+    |> AppRepo.one!()
   end
 
   @doc """
@@ -411,7 +412,7 @@ defmodule Uptrack.Monitoring do
   def create_incident_update(attrs) do
     %IncidentUpdate{}
     |> IncidentUpdate.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   @doc """
@@ -420,14 +421,14 @@ defmodule Uptrack.Monitoring do
   def update_incident_update(%IncidentUpdate{} = incident_update, attrs) do
     incident_update
     |> IncidentUpdate.changeset(attrs)
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
   Deletes an incident update.
   """
   def delete_incident_update(%IncidentUpdate{} = incident_update) do
-    Repo.delete(incident_update)
+    AppRepo.delete(incident_update)
   end
 
   @doc """
@@ -450,7 +451,7 @@ defmodule Uptrack.Monitoring do
       resolved_at: resolved_at,
       duration: duration
     })
-    |> Repo.update()
+    |> AppRepo.update()
   end
 
   @doc """
@@ -466,7 +467,7 @@ defmodule Uptrack.Monitoring do
 
     %Incident{}
     |> Incident.changeset(attrs)
-    |> Repo.insert()
+    |> AppRepo.insert()
   end
 
   # Dashboard functions
@@ -478,12 +479,12 @@ defmodule Uptrack.Monitoring do
     total_monitors =
       Monitor
       |> where([m], m.user_id == ^user_id)
-      |> Repo.aggregate(:count, :id)
+      |> AppRepo.aggregate(:count, :id)
 
     active_monitors =
       Monitor
       |> where([m], m.user_id == ^user_id and m.status == "active")
-      |> Repo.aggregate(:count, :id)
+      |> AppRepo.aggregate(:count, :id)
 
     ongoing_incidents =
       from(i in Incident,
@@ -491,7 +492,7 @@ defmodule Uptrack.Monitoring do
         on: i.monitor_id == m.id,
         where: m.user_id == ^user_id and i.status == "ongoing"
       )
-      |> Repo.aggregate(:count, :id)
+      |> AppRepo.aggregate(:count, :id)
 
     recent_incidents_count =
       from(i in Incident,
@@ -499,7 +500,7 @@ defmodule Uptrack.Monitoring do
         on: i.monitor_id == m.id,
         where: m.user_id == ^user_id and i.started_at >= ago(7, "day")
       )
-      |> Repo.aggregate(:count, :id)
+      |> AppRepo.aggregate(:count, :id)
 
     %{
       total_monitors: total_monitors,
@@ -517,7 +518,7 @@ defmodule Uptrack.Monitoring do
       Monitor
       |> where([m], m.user_id == ^user_id)
       |> order_by([m], desc: m.inserted_at)
-      |> Repo.all()
+      |> AppRepo.all()
 
     # Manually preload the latest check for each monitor
     monitor_ids = Enum.map(monitors, & &1.id)
@@ -531,7 +532,7 @@ defmodule Uptrack.Monitoring do
             distinct: mc.monitor_id,
             select: mc
 
-        Repo.all(subquery)
+        AppRepo.all(subquery)
         |> Enum.group_by(& &1.monitor_id)
       else
         %{}
@@ -562,7 +563,7 @@ defmodule Uptrack.Monitoring do
         group_by: fragment("DATE(?)", mc.checked_at),
         order_by: [asc: fragment("DATE(?)", mc.checked_at)]
 
-    daily_stats = Repo.all(query)
+    daily_stats = AppRepo.all(query)
 
     # Fill in missing dates with 100% uptime
     start_date = Date.add(Date.utc_today(), -days)
@@ -606,7 +607,7 @@ defmodule Uptrack.Monitoring do
         group_by: fragment("DATE(?)", mc.checked_at),
         order_by: [asc: fragment("DATE(?)", mc.checked_at)]
 
-    Repo.all(query)
+    AppRepo.all(query)
     |> Enum.map(fn stat ->
       %{
         date: stat.date,
@@ -628,17 +629,17 @@ defmodule Uptrack.Monitoring do
       from i in Incident,
         where: i.monitor_id == ^monitor_id and i.started_at >= ^cutoff_date
 
-    total_incidents = incidents_query |> Repo.aggregate(:count, :id)
+    total_incidents = incidents_query |> AppRepo.aggregate(:count, :id)
 
     ongoing_incidents =
       incidents_query
       |> where([i], i.status == "ongoing")
-      |> Repo.aggregate(:count, :id)
+      |> AppRepo.aggregate(:count, :id)
 
     resolved_incidents =
       incidents_query
       |> where([i], i.status == "resolved")
-      |> Repo.aggregate(:count, :id)
+      |> AppRepo.aggregate(:count, :id)
 
     # Average incident duration for resolved incidents
     avg_duration_query =
@@ -646,7 +647,7 @@ defmodule Uptrack.Monitoring do
         where: i.monitor_id == ^monitor_id and i.status == "resolved" and not is_nil(i.duration),
         select: avg(i.duration)
 
-    avg_duration = Repo.one(avg_duration_query) || 0
+    avg_duration = AppRepo.one(avg_duration_query) || 0
 
     # MTTR (Mean Time To Recovery) in minutes
     mttr_minutes = if avg_duration > 0, do: Float.round(avg_duration / 60, 2), else: 0
@@ -675,7 +676,7 @@ defmodule Uptrack.Monitoring do
           up: count(mc.id) |> filter(mc.status == "up")
         }
 
-    case Repo.one(query) do
+    case AppRepo.one(query) do
       %{total: 0} -> 100.0
       %{total: total, up: up} -> (up / total * 100) |> Float.round(2)
     end

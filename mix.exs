@@ -70,7 +70,8 @@ defmodule Uptrack.MixProject do
       {:ueberauth_github, "~> 0.8"},
       {:ueberauth_google, "~> 0.11"},
       {:bcrypt_elixir, "~> 3.1"},
-      {:tidewave, "~> 0.1.0"}
+      {:oban, "~> 2.20"},
+      {:tidewave, "~> 0.5.0", only: :dev}
     ]
   end
 
@@ -83,9 +84,20 @@ defmodule Uptrack.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
+      "ecto.setup": [
+        "ecto.create",
+        "ecto.migrate -r Uptrack.AppRepo",
+        "ecto.migrate -r Uptrack.ObanRepo",
+        "ecto.migrate -r Uptrack.ResultsRepo",
+        "run priv/repo/seeds.exs"
+      ],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "ecto.migrate.all": [
+        "ecto.migrate -r Uptrack.AppRepo",
+        "ecto.migrate -r Uptrack.ObanRepo",
+        "ecto.migrate -r Uptrack.ResultsRepo"
+      ],
+      test: ["ecto.create --quiet", "ecto.migrate.all --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind uptrack", "esbuild uptrack"],
       "assets.deploy": [
@@ -93,7 +105,10 @@ defmodule Uptrack.MixProject do
         "esbuild uptrack --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"],
+      # Production release commands
+      "release.migrate": ["cmd ./bin/uptrack eval \"Uptrack.Release.migrate()\""],
+      "release.verify": ["cmd ./bin/uptrack eval \"Uptrack.Release.verify_schemas()\""]
     ]
   end
 end

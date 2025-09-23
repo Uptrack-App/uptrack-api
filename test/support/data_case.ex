@@ -18,7 +18,7 @@ defmodule Uptrack.DataCase do
 
   using do
     quote do
-      alias Uptrack.Repo
+      alias Uptrack.AppRepo
 
       import Ecto
       import Ecto.Changeset
@@ -36,7 +36,7 @@ defmodule Uptrack.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Uptrack.Repo, shared: not tags[:async])
+    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Uptrack.AppRepo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
   end
 

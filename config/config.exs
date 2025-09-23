@@ -8,8 +8,21 @@
 import Config
 
 config :uptrack,
-  ecto_repos: [Uptrack.Repo],
+  ecto_repos: [Uptrack.AppRepo, Uptrack.ObanRepo, Uptrack.ResultsRepo],
   generators: [timestamp_type: :utc_datetime]
+
+# Separate migration sources to eliminate shared schema_migrations conflicts
+config :uptrack, Uptrack.AppRepo,
+  migration_source: "app_schema_migrations",
+  migration_lock: :pg_advisory_lock
+
+config :uptrack, Uptrack.ObanRepo,
+  migration_source: "oban_schema_migrations",
+  migration_lock: :pg_advisory_lock
+
+config :uptrack, Uptrack.ResultsRepo,
+  migration_source: "results_schema_migrations",
+  migration_lock: :pg_advisory_lock
 
 # Configures the endpoint
 config :uptrack, UptrackWeb.Endpoint,
@@ -78,6 +91,22 @@ config :ueberauth, Ueberauth.Strategy.Google.OAuth,
 # Configure Tidewave for real-time updates
 config :tidewave,
   pubsub: Uptrack.PubSub
+
+# Configure Oban for background jobs
+config :uptrack, Oban,
+  repo: Uptrack.ObanRepo,
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 300},
+    {Oban.Plugins.Cron, crontab: [
+      # Run monitor checks every 30 seconds
+      {"*/30 * * * * *", Uptrack.Monitoring.SchedulerWorker}
+    ]}
+  ],
+  queues: [
+    default: 10,
+    monitor_checks: 25,
+    alerts: 5
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
