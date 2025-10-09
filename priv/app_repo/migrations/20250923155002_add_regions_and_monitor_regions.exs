@@ -2,6 +2,9 @@ defmodule Uptrack.AppRepo.Migrations.AddRegionsAndMonitorRegions do
   use Ecto.Migration
 
   def up do
+    # Create app schema if it doesn't exist
+    execute("CREATE SCHEMA IF NOT EXISTS app")
+
     # Create regions table
     create table(:regions, prefix: :app) do
       add :code, :string, null: false

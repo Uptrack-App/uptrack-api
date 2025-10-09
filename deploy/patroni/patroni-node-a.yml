@@ -1,0 +1,111 @@
+# patroni-node-a.yml
+# Patroni configuration for Node A (Primary candidate)
+# Deploy to: /etc/patroni/patroni.yml on Node A
+
+scope: uptrack-pg-cluster
+namespace: /service/
+name: node-a
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: 100.A.A.A:8008  # Replace with Node A's Tailscale IP
+
+etcd3:
+  hosts:
+    - 100.A.A.A:2379  # Node A
+    - 100.B.B.B:2379  # Node B
+    - 100.C.C.C:2379  # Node C
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576  # 1MB
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        max_connections: 100
+        shared_buffers: 256MB
+        effective_cache_size: 1GB
+        maintenance_work_mem: 64MB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 16MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 2621kB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        max_worker_processes: 4
+        max_parallel_workers_per_gather: 2
+        max_parallel_workers: 4
+        max_parallel_maintenance_workers: 2
+        # Replication settings
+        wal_level: replica
+        wal_log_hints: on
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby: on
+        # TimescaleDB
+        shared_preload_libraries: timescaledb
+        # Logging
+        log_destination: stderr
+        logging_collector: on
+        log_directory: /var/log/postgresql
+        log_filename: postgresql-%Y-%m-%d.log
+        log_rotation_age: 1d
+        log_rotation_size: 100MB
+        log_line_prefix: '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+        log_timezone: UTC
+
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  pg_hba:
+    - host replication replicator 127.0.0.1/32 md5
+    - host replication replicator 100.A.A.A/32 md5  # Node A
+    - host replication replicator 100.B.B.B/32 md5  # Node B
+    - host replication replicator 100.C.C.C/32 md5  # Node C
+    - host all all 127.0.0.1/32 md5
+    - host all all 100.A.A.A/32 md5
+    - host all all 100.B.B.B/32 md5
+    - host all all 100.C.C.C/32 md5
+
+  users:
+    replicator:
+      password: CHANGE_ME_REPLICATOR_PASSWORD
+      options:
+        - replication
+    uptrack:
+      password: CHANGE_ME_UPTRACK_PASSWORD
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: 100.A.A.A:5432  # Replace with Node A's Tailscale IP
+  data_dir: /var/lib/postgresql/16/main
+  bin_dir: /usr/lib/postgresql/16/bin  # Adjust for your distro
+  pgpass: /tmp/pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: CHANGE_ME_REPLICATOR_PASSWORD
+    superuser:
+      username: postgres
+      password: CHANGE_ME_POSTGRES_PASSWORD
+    rewind:
+      username: replicator
+      password: CHANGE_ME_REPLICATOR_PASSWORD
+  parameters:
+    unix_socket_directories: /var/run/postgresql
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

@@ -21,22 +21,67 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
-  database_url =
+  # Multi-repo configuration
+  app_database_url =
     System.get_env("DATABASE_URL") ||
       raise """
       environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
+      For example: postgresql://USER:PASS@HOST/DATABASE?search_path=app,public
+      """
+
+  oban_database_url =
+    System.get_env("OBAN_DATABASE_URL") ||
+      raise """
+      environment variable OBAN_DATABASE_URL is missing.
+      For example: postgresql://USER:PASS@HOST/DATABASE?search_path=oban,public
+      """
+
+  results_database_url =
+    System.get_env("RESULTS_DATABASE_URL") ||
+      raise """
+      environment variable RESULTS_DATABASE_URL is missing.
+      For example: postgresql://USER:PASS@HOST/DATABASE?search_path=results,public
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  pool_size = String.to_integer(System.get_env("POOL_SIZE") || "10")
 
-  config :uptrack, Uptrack.Repo,
-    # ssl: true,
-    url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
+  # AppRepo configuration
+  config :uptrack, Uptrack.AppRepo,
+    url: app_database_url,
+    pool_size: pool_size,
     socket_options: maybe_ipv6
+
+  # ObanRepo configuration
+  config :uptrack, Uptrack.ObanRepo,
+    url: oban_database_url,
+    pool_size: pool_size,
+    socket_options: maybe_ipv6
+
+  # ResultsRepo configuration
+  config :uptrack, Uptrack.ResultsRepo,
+    url: results_database_url,
+    pool_size: pool_size,
+    socket_options: maybe_ipv6
+
+  # Oban configuration with node identification
+  config :uptrack, Oban,
+    repo: Uptrack.ObanRepo,
+    node: System.get_env("OBAN_NODE_NAME", "unknown-node"),
+    queues: [
+      checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "50")),
+      webhooks: String.to_integer(System.get_env("OBAN_WEBHOOKS_CONCURRENCY", "10")),
+      incidents: String.to_integer(System.get_env("OBAN_INCIDENTS_CONCURRENCY", "5"))
+    ],
+    plugins: [
+      {Oban.Plugins.Pruner, max_age: 604_800},  # 7 days
+      Oban.Plugins.Repeater,
+      {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(10)},
+      {Oban.Plugins.Cron, crontab: [
+        # Run monitor scheduling every 30 seconds
+        {"*/30 * * * * *", Uptrack.Monitoring.SchedulerWorker}
+      ]}
+    ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

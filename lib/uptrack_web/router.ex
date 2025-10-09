@@ -14,6 +14,10 @@ defmodule UptrackWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :health do
+    plug :accepts, ["json"]
+  end
+
   pipeline :auth do
     plug :browser
     plug Ueberauth
@@ -65,6 +69,13 @@ defmodule UptrackWeb.Router do
     get "/:provider/callback", AuthController, :callback
     post "/:provider/callback", AuthController, :callback
     delete "/logout", AuthController, :logout
+  end
+
+  # Health check endpoint (for load balancers)
+  scope "/", UptrackWeb do
+    pipe_through :health
+
+    get "/healthz", HealthController, :show
   end
 
   # Other scopes may use custom stacks.

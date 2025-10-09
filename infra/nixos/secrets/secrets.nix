@@ -13,7 +13,7 @@ let
     # Add after installing Node A: ssh root@167.235.243.206 cat /etc/ssh/ssh_host_ed25519_key.pub
   ];
 
-  nodeB Key = [
+  nodeBKey = [
     # Add after installing Node B: ssh root@185.237.12.64 cat /etc/ssh/ssh_host_ed25519_key.pub
   ];
 

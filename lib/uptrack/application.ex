@@ -15,10 +15,12 @@ defmodule Uptrack.Application do
       Uptrack.ResultsRepo,
       {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Uptrack.PubSub},
+      # Oban job processing
+      {Oban, Application.fetch_env!(:uptrack, Oban)},
       # Task supervisor for monitoring checks
       {Task.Supervisor, name: Uptrack.TaskSupervisor},
-      # Monitoring scheduler
-      Uptrack.Monitoring.Scheduler,
+      # ClickHouse resilient writer
+      Uptrack.ClickHouse.ResilientWriter,
       # Start to serve requests, typically the last entry
       UptrackWeb.Endpoint
     ]
