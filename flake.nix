@@ -55,15 +55,18 @@
           };
         };
 
-        # Node A - Primary (Hetzner)
+        # Node A - Primary (Hetzner ARM64)
         node-a = {
           deployment = {
             targetHost = "91.98.89.119";
             targetUser = "root";
-            tags = [ "primary" "hetzner" "app" "postgres" ];
+            tags = [ "primary" "hetzner" "app" "postgres" "arm64" ];
             buildOnTarget = true;  # Build on server to save bandwidth
             allowLocalDeployment = false;
           };
+
+          # Override nixpkgs for ARM64
+          nixpkgs.system = "aarch64-linux";
 
           imports = commonModules ++ [
             ./infra/nixos/node-a.nix
@@ -120,7 +123,7 @@
       # NixOS configurations for nixos-anywhere
       nixosConfigurations = {
         node-a = nixpkgs.lib.nixosSystem {
-          system = linuxSystem;
+          system = "aarch64-linux";  # Hetzner ARM64 server
           modules = commonModules ++ [
             ./infra/nixos/node-a.nix
             ./infra/nixos/services/uptrack-app.nix
