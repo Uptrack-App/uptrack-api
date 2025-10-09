@@ -10,7 +10,7 @@ let
   # Server SSH host keys (add after initial deployment)
   # Get these by running: ssh root@<ip> cat /etc/ssh/ssh_host_ed25519_key.pub
   nodeAKey = [
-    # Add after installing Node A: ssh root@91.98.89.119 cat /etc/ssh/ssh_host_ed25519_key.pub
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEun58BHKtRxbZ0OXMD/gdsL5gfnuiDI+dCw5KgKCT1V root@uptrack-node-a"
   ];
 
   nodeBKey = [
