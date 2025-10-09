@@ -75,7 +75,7 @@ check_nix() {
 
 # Installation commands
 install_node_a() {
-    log_warn "This will WIPE Node A (167.235.243.206) and install NixOS!"
+    log_warn "This will WIPE Node A (91.98.89.119) and install NixOS!"
     read -p "Are you sure? Type 'yes' to continue: " confirm
     if [[ "$confirm" != "yes" ]]; then
         log_info "Aborted."
@@ -162,7 +162,7 @@ rekey_secrets() {
 # Node management commands
 ssh_node_a() {
     log_info "Connecting to Node A..."
-    ssh root@167.235.243.206
+    ssh root@91.98.89.119
 }
 
 ssh_node_b() {
@@ -177,7 +177,7 @@ ssh_node_c() {
 
 logs_node_a() {
     log_info "Viewing logs from Node A (Ctrl+C to exit)..."
-    ssh root@167.235.243.206 'journalctl -f -u uptrack-app -u postgresql -u timescaledb -u clickhouse-server -u haproxy'
+    ssh root@91.98.89.119 'journalctl -f -u uptrack-app -u postgresql -u timescaledb -u clickhouse-server -u haproxy'
 }
 
 logs_node_b() {
@@ -192,7 +192,7 @@ logs_node_c() {
 
 status_node_a() {
     log_info "Checking service status on Node A..."
-    ssh root@167.235.243.206 << 'SSHEOF'
+    ssh root@91.98.89.119 << 'SSHEOF'
         echo "=== Uptrack App ==="
         systemctl status uptrack-app --no-pager | head -10
         echo ""

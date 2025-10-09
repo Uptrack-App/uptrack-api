@@ -58,7 +58,7 @@
         # Node A - Primary (Hetzner)
         node-a = {
           deployment = {
-            targetHost = "167.235.243.206";
+            targetHost = "91.98.89.119";
             targetUser = "root";
             tags = [ "primary" "hetzner" "app" "postgres" ];
             buildOnTarget = true;  # Build on server to save bandwidth
@@ -231,7 +231,7 @@
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
                 --flake .#node-a \
-                root@167.235.243.206
+                root@91.98.89.119
             '');
           };
           install-node-b = {
