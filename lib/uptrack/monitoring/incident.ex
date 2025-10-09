@@ -17,8 +17,8 @@ defmodule Uptrack.Monitoring.Incident do
     field :cause, :string
 
     belongs_to :monitor, Monitor
-    belongs_to :first_check, MonitorCheck, type: :id
-    belongs_to :last_check, MonitorCheck, type: :id
+    belongs_to :first_check, MonitorCheck, type: :integer
+    belongs_to :last_check, MonitorCheck, type: :integer
     has_many :incident_updates, IncidentUpdate, on_delete: :delete_all
 
     timestamps(type: :utc_datetime)

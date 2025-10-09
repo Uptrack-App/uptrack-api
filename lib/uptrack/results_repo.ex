@@ -4,18 +4,17 @@ defmodule Uptrack.ResultsRepo do
     adapter: Ecto.Adapters.Postgres
 
   @doc """
-  ResultsRepo handles time-series monitoring data:
-  - Monitor check results (hypertables by user tier)
-  - TimescaleDB continuous aggregates (rollups)
-  - Compression and retention policies
-  - High-volume monitoring metrics
+  ResultsRepo handles time-series monitoring metadata.
 
-  This repo points to the 'results' schema with TimescaleDB
-  enabled for efficient time-series data management.
+  NOTE: Actual check results are stored in ClickHouse (Node C) for better
+  time-series performance and cost efficiency.
 
-  Hypertables:
-  - monitor_results_free (120d retention)
-  - monitor_results_solo (455d retention)
-  - monitor_results_team (455d retention)
+  This repo is reserved for:
+  - Future app-level result metadata (e.g., result annotations, bookmarks)
+  - Postgres-backed features that complement ClickHouse analytics
+  - Relational data that doesn't fit ClickHouse's columnar model
+
+  For writing check results, see: Uptrack.ClickHouse.ResilientWriter
+  For ClickHouse schema, see: infra/nixos/services/clickhouse.nix
   """
 end

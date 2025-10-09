@@ -2,6 +2,9 @@ defmodule Uptrack.AppRepo.Migrations.UpdateTablesWithUuidStrategy do
   use Ecto.Migration
 
   def up do
+    # Create app schema if it doesn't exist
+    execute("CREATE SCHEMA IF NOT EXISTS app")
+
     # Drop existing tables in reverse dependency order
     drop_if_exists table(:monitor_checks, prefix: :app)
     drop_if_exists table(:monitor_regions, prefix: :app)
