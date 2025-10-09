@@ -10,7 +10,7 @@ let
   # Server SSH host keys (add after initial deployment)
   # Get these by running: ssh root@<ip> cat /etc/ssh/ssh_host_ed25519_key.pub
   nodeAKey = [
-    # Add after installing Node A: ssh root@167.235.243.206 cat /etc/ssh/ssh_host_ed25519_key.pub
+    # Add after installing Node A: ssh root@91.98.89.119 cat /etc/ssh/ssh_host_ed25519_key.pub
   ];
 
   nodeBKey = [
@@ -18,7 +18,7 @@ let
   ];
 
   nodeCKey = [
-    # Add after installing Node C: ssh root@147.93.146.35 cat /etc/ssh/ssh_host_ed25519_key.pub
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID4Cq2eVhte57p1hanUNMT2C98YW2pOABIb/zny+iPns root@uptrack-node-c"
   ];
 
   # Who can decrypt secrets for each node
