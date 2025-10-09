@@ -229,6 +229,7 @@
             type = "app";
             program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-a" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
+                --build-on-remote \
                 --flake .#node-a \
                 root@167.235.243.206
             '');
@@ -237,6 +238,7 @@
             type = "app";
             program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-b" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
+                --build-on-remote \
                 --flake .#node-b \
                 root@185.237.12.64
             '');
@@ -245,6 +247,7 @@
             type = "app";
             program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-c" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
+                --build-on-remote \
                 --flake .#node-c \
                 root@147.93.146.35
             '');
