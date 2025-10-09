@@ -6,14 +6,16 @@
   imports = [ ./disko.nix ];
 
   # Agenix secrets configuration
-  age.secrets = {
-    uptrack-env = {
-      file = ./secrets/uptrack-env.age;
-    };
-  };
+  # Temporarily disabled until we have the server SSH host key
+  # After installation, add the host key to secrets.nix and create uptrack-env.age
+  # age.secrets = {
+  #   uptrack-env = {
+  #     file = ./secrets/uptrack-env.age;
+  #   };
+  # };
 
   # Agenix will look for SSH host keys here
-  age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  # age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
   # Allow unfree packages (needed for some tools)
   nixpkgs.config.allowUnfree = true;
