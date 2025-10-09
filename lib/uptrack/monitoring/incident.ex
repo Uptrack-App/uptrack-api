@@ -6,6 +6,9 @@ defmodule Uptrack.Monitoring.Incident do
 
   @statuses ~w(ongoing resolved)
 
+  @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "incidents" do
     field :started_at, :utc_datetime
     field :resolved_at, :utc_datetime
@@ -14,8 +17,8 @@ defmodule Uptrack.Monitoring.Incident do
     field :cause, :string
 
     belongs_to :monitor, Monitor
-    belongs_to :first_check, MonitorCheck
-    belongs_to :last_check, MonitorCheck
+    belongs_to :first_check, MonitorCheck, type: :id
+    belongs_to :last_check, MonitorCheck, type: :id
     has_many :incident_updates, IncidentUpdate, on_delete: :delete_all
 
     timestamps(type: :utc_datetime)

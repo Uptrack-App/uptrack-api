@@ -9,7 +9,10 @@ defmodule Uptrack.Application do
   def start(_type, _args) do
     children = [
       UptrackWeb.Telemetry,
-      Uptrack.Repo,
+      # Multi-repo setup
+      Uptrack.AppRepo,
+      Uptrack.ObanRepo,
+      Uptrack.ResultsRepo,
       {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Uptrack.PubSub},
       # Task supervisor for monitoring checks

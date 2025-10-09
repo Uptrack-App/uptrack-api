@@ -5,6 +5,9 @@ defmodule Uptrack.Monitoring.StatusPage do
   alias Uptrack.Accounts.User
   alias Uptrack.Monitoring.{StatusPageMonitor}
 
+  @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "status_pages" do
     field :name, :string
     field :slug, :string

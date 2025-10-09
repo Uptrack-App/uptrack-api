@@ -4,6 +4,9 @@ defmodule Uptrack.Accounts.User do
 
   alias Uptrack.Monitoring.{Monitor, AlertChannel, StatusPage}
 
+  @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "users" do
     field :email, :string
     field :provider, :string

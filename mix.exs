@@ -71,6 +71,7 @@ defmodule Uptrack.MixProject do
       {:ueberauth_google, "~> 0.11"},
       {:bcrypt_elixir, "~> 3.1"},
       {:oban, "~> 2.20"},
+      {:uniq, "~> 0.6"},
       {:tidewave, "~> 0.5.0", only: :dev},
       {:wallaby, "~> 0.30", only: :test},
       {:bypass, "~> 2.1", only: :test}

@@ -7,6 +7,8 @@ defmodule Uptrack.Monitoring.IncidentUpdate do
 
   @valid_statuses ~w[investigating identified monitoring resolved]
 
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "incident_updates" do
     field :status, :string, default: "investigating"
     field :title, :string

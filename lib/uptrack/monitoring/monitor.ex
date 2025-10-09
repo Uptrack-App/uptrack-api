@@ -8,6 +8,9 @@ defmodule Uptrack.Monitoring.Monitor do
   @monitor_types ~w(http https tcp ping keyword)
   @statuses ~w(active paused disabled)
 
+  @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "monitors" do
     field :name, :string
     field :url, :string
