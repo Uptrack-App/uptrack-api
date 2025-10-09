@@ -6,6 +6,9 @@ defmodule Uptrack.Monitoring.AlertChannel do
 
   @types ~w(email slack webhook sms)
 
+  @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "alert_channels" do
     field :type, :string
     field :name, :string

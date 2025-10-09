@@ -4,6 +4,8 @@ defmodule Uptrack.Monitoring.StatusPageMonitor do
 
   alias Uptrack.Monitoring.{StatusPage, Monitor}
 
+  @foreign_key_type Uniq.UUID
+  @schema_prefix "app"
   schema "status_page_monitors" do
     field :display_name, :string
     field :sort_order, :integer, default: 0
