@@ -4,10 +4,10 @@
 {
   # TimescaleDB is included in PostgreSQL 16 package
   services.postgresql = {
-    extraPlugins = with pkgs.postgresql_16.pkgs; [
+    extensions = with pkgs.postgresql_16.pkgs; [
       timescaledb
     ];
-    
+
     settings = {
       shared_preload_libraries = "timescaledb";
     };
