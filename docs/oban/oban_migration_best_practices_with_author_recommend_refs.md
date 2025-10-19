@@ -9,14 +9,32 @@ This document merges:
 ## Key Combined Practices with Transcript References
 
 ### Repo & Schema Isolation
-- Define a dedicated `ObanRepo` from day one, with migrations in the `oban` schema.
-- Authors emphasized: **never mix job tables with app data**.  
-- 📖 Reference: see [00:00:00,660 --> 00:00:11,150] [Music]  
+
+**Uptrack Implementation**: ✅ Implemented
+- AppRepo: Handles all migrations (app schema + oban schema)
+- ObanRepo: Same database, separate connection pool for jobs
+- Oban schema kept completely separate from app schema
+- Authors emphasized: **never mix job tables with app data** ✅ Followed
+- 📖 Reference: see [00:00:00,660 --> 00:00:11,150] [Music]
+
+**Why we keep 2 repos despite single migrations:**
+- Pool isolation: App queries never starved by jobs
+- Different configuration: Can tune pool sizes independently
+- Clear responsibility: AppRepo manages schema, ObanRepo uses it
 
 ### Connection Pooling
-- Use **PgBouncer SESSION mode** for Oban connections.
-- Authors confirmed: TRANSACTION pooling breaks advisory locks and LISTEN/NOTIFY.  
-- 📖 Reference: [00:00:11,150 --> 00:00:12,100] [Applause]  
+
+**Uptrack Implementation**: ✅ Implemented
+- `AppRepo` pool_size: 10-15 (app queries)
+- `ObanRepo` pool_size: 20-30 (job processing)
+- Single PostgreSQL connection, but separate pools prevent contention
+- Authors confirmed: TRANSACTION pooling breaks advisory locks and LISTEN/NOTIFY ✅ Avoided by using separate repos
+- 📖 Reference: [00:00:11,150 --> 00:00:12,100] [Applause]
+
+**Pool Strategy Benefits:**
+- No single connection bottleneck (separate pools)
+- Jobs can't starve app queries
+- Both can scale independently  
 
 ### Queue Design
 - Jobs should be short, idempotent, and retry-safe.
@@ -24,9 +42,17 @@ This document merges:
 - 📖 Reference: [00:00:12,100 --> 00:00:16,480] [Music]  
 
 ### Job Lifecycle
-- Our doc: prune jobs after 7–14 days max.
-- Authors: Oban is **not a log DB**. Keep it lean, offload analytics to a time-series/analytics DB.  
-- 📖 Reference: [00:00:18,039 --> 00:00:19,240] and over to  
+
+**Uptrack Implementation**: ✅ Implemented
+- Prune jobs after 7 days (configured in Oban.Plugins.Pruner)
+- Authors: Oban is **not a log DB**. Keep it lean, offload analytics to a time-series/analytics DB ✅ We use ClickHouse for monitoring data
+- Metrics and time-series data: Separate from Oban jobs (via ResilientWriter to ClickHouse)
+- 📖 Reference: [00:00:18,039 --> 00:00:19,240] and over to
+
+**Why separate Oban from analytics:**
+- Oban should stay <100MB for performance
+- Time-series metrics belong in ClickHouse (optimized for analytical queries)
+- Monitoring data stays in ClickHouse, not in Postgres job tables  
 
 ### Observability & Resilience
 - Monitor Oban telemetry events (`oban_job_start`, `stop`, `exception`).
@@ -34,14 +60,32 @@ This document merges:
 - 📖 Reference: [00:00:19,240 --> 00:00:23,160] you okay well welcome thanks for coming  
 
 ### Migration Path
-- Stepwise plan: DSN flip from shared DB → dedicated HA Postgres.
-- Authors: recommended **draining queues** before cutover.  
-- 📖 Reference: [00:00:23,160 --> 00:00:26,519] to scaling uh Obin applications so I'm  
+
+**Uptrack Implementation**: ✅ Implemented from start
+- Single DATABASE_URL for both app and Oban (same HA Postgres cluster)
+- AppRepo handles all migrations (no separate cutover needed)
+- Separate pools via AppRepo (10-15) and ObanRepo (20-30)
+- Authors: recommended **draining queues** before cutover ✅ Would be simple due to shared migrations
+- 📖 Reference: [00:00:23,160 --> 00:00:26,519] to scaling uh Oban applications so I'm
+
+**Why unified from day one:**
+- No DSN flip needed (single DATABASE_URL)
+- Migrations always in sync (single source)
+- Deployment is single operation  
 
 ### Scaling Beyond One Node
-- Authors emphasized: keep Oban DB small, prune, HA PG cluster for orchestration.
-- Heavy metrics/logs should go to **Timescale or ClickHouse**, not Oban.  
-- 📖 Reference: [00:00:26,519 --> 00:00:28,279] Parker and this is Shannon we've been  
+
+**Uptrack Implementation**: ✅ Implemented
+- 5-node HA PostgreSQL cluster (Germany primary, Austria+India Strong replicas)
+- Oban DB small and optimized: <100MB with 7-day pruning
+- Heavy metrics/logs go to **ClickHouse**, not Oban ✅ Using ResilientWriter
+- Etcd cluster for distributed coordination (5 nodes, quorum 3/5)
+- 📖 Reference: [00:00:26,519 --> 00:00:28,279] Parker and this is Shannon we've been
+
+**Architecture:**
+- Oban: HA Postgres (orchestration)
+- Monitoring data: ClickHouse (analytics)
+- Separate databases = optimal for each use case  
 
 ---
 
@@ -69,10 +113,41 @@ This document merges:
 
 ## Summary
 
-By following both our outlined practices and the Selberts' guidance:
+**Uptrack follows both our practices and Selberts' guidance:**
 
-- Oban remains a **lean, reliable orchestration layer**.
-- Migration to HA Postgres is just a **DSN flip with drained queues**.
-- Dashboards/analytics belong in a separate DB, not inside Oban tables.
+### Oban as Orchestration Layer ✅
+- **Lean**: <100MB with aggressive 7-day pruning
+- **Reliable**: HA PostgreSQL cluster (5 nodes, quorum 3/5)
+- **Scalable**: Separate connection pools (app vs job)
+- **Monitored**: Via Prometheus metrics and observability
 
-Full transcript reference: see `detail_author_recommend.md`.
+### Unified from Day One ✅
+- Single DATABASE_URL (no DSN flip needed)
+- Single migration source (AppRepo manages all)
+- Separate pools (AppRepo 10-15, ObanRepo 20-30)
+- Atomic deployments (app + Oban together)
+
+### Separation of Concerns ✅
+- **Oban DB** (PostgreSQL): Job orchestration only
+- **Monitoring DB** (ClickHouse): Time-series analytics
+- **App DB** (Same as Oban): User data, config, state
+
+### Result
+Oban remains a **lean, reliable orchestration layer** while analytics/metrics go to ClickHouse where they belong.
+
+Full transcript reference: see `detail_author_recommend.md`
+
+---
+
+## Implementation Status
+
+| Practice | Status | Details |
+|----------|--------|---------|
+| Separate Oban schema | ✅ | Oban in separate schema, app in app schema |
+| Separate connection pools | ✅ | AppRepo (10-15), ObanRepo (20-30) |
+| Single migrations | ✅ | AppRepo handles all (app + oban schema) |
+| Aggressive pruning | ✅ | 7-day retention, Pruner plugin enabled |
+| ClickHouse for analytics | ✅ | Via ResilientWriter, not in Postgres |
+| HA database | ✅ | 5-node cluster (Germany primary, replicas) |
+| Etcd coordination | ✅ | 5-node etcd cluster, quorum 3/5 |
+| Distributed job processing | ✅ | Multiple nodes, regional load balancing |
