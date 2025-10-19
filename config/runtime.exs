@@ -44,6 +44,7 @@ if config_env() == :prod do
     socket_options: maybe_ipv6
 
   # ObanRepo - same database, separate pool for job queue
+  # Separate pool isolates Oban from app queries (prevents job starvation)
   config :uptrack, Uptrack.ObanRepo,
     url: database_url,
     pool_size: oban_pool_size,
