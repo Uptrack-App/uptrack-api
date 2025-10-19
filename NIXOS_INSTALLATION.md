@@ -111,7 +111,7 @@ ssh -i ~/.ssh/ssh-key-2025-10-18.key root@144.24.133.171
 
 # Check NixOS version
 nixos-rebuild --version
-# Should show: NixOS 24.11
+# Should show: NixOS 25.05
 
 # Check hostname
 hostname

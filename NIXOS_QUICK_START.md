@@ -19,7 +19,7 @@ Done! The script will:
 
 ## What Gets Installed
 
-✅ **NixOS 24.11** ARM64 - Declarative Linux OS
+✅ **NixOS 25.05** ARM64 - Declarative Linux OS (matches terra project)
 ✅ **PostgreSQL** - Database (replica mode)
 ✅ **Patroni** - PostgreSQL High Availability
 ✅ **etcd** - Distributed consensus (cluster coordination)
@@ -126,7 +126,7 @@ NixOS Installation Complete! ✅
 Installation Summary:
   Server:  144.24.133.171
   Region:  ap-south-1 (India Hyderabad)
-  OS:      NixOS 24.11
+  OS:      NixOS 25.05
   Arch:    ARM64 (aarch64)
 
 Next Steps:
