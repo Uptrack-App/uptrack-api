@@ -1,30 +1,31 @@
 # Oban Multi-Repo Pool Strategy
 
-**Topic**: Separate repos for connection pool isolation while sharing migrations
+**Topic**: Separate repos for connection pool isolation (performance), shared migrations (simplicity)
 **Date**: 2025-10-19
 **Status**: Implemented ✅
+**Key Point**: Two repos = better performance, NOT code organization
 
 ---
 
-## Problem Statement
+## Problem: Connection Pool Starvation
 
 In a monitoring SaaS with high job throughput:
 - Oban processes 1000+ checks per second
-- App queries need to respond instantly
-- Single connection pool = jobs can starve app requests
+- App queries need instant response
+- Single shared pool = jobs starve app requests ❌
 
-**Without separation**:
+**Example - Single Pool (BAD)**:
 ```
 Connection Pool (10 connections)
 ├─ 8 connections → Oban job processing (monitor checks)
-└─ 2 connections → App queries (user dashboard)
+└─ 2 connections → App queries (user dashboard stuck!)
 
-Result: Dashboard slow! 😱
+Result: Dashboard slow, users frustrated 😱
 ```
 
 ---
 
-## Solution: Two Repos, One Database
+## Solution: Separate Connection Pools (Same Database)
 
 ### Architecture
 
@@ -72,61 +73,46 @@ config :uptrack, Uptrack.ObanRepo,
 
 ## Design Decisions
 
-### ✅ Two Separate Repos
+### ✅ Two Separate Repos (Performance)
 
 **Why keep two repos?**
 
-1. **Connection Pool Isolation**
-   - App queries get dedicated pool (10 connections)
-   - Job processing gets separate pool (20 connections)
-   - No competition for resources
+**ONLY reason: Connection Pool Isolation = Better Performance**
 
-2. **Different Load Profiles**
-   - App queries: short, frequent, must be fast
-   - Job processing: bulk, long-running, can be slower
-   - Different queue targets make sense
+1. **App queries get dedicated pool** (10-15 connections)
+   - User-facing, must be responsive
+   - Fast response time critical
 
-3. **Independent Configuration**
-   - Can tune pool sizes per environment
-   - Production: app=15, oban=30
-   - Staging: app=5, oban=10
+2. **Job processing gets separate pool** (20-30 connections)
+   - Background processing, tolerates latency
+   - Can consume many connections without hurting users
 
-### ✅ Single Migration Source
+3. **No resource competition**
+   - High Oban load doesn't block app queries
+   - App peak load doesn't starve job processing
+   - Both can scale independently
+
+**NOT for code organization:**
+- Both connect to same database
+- Schema separation has no performance benefit
+- It's just code clarity
+
+### ✅ Single Migration Source (Simplicity)
 
 **Why share migrations in AppRepo?**
 
-1. **Single Source of Truth**
-   - All schema changes go through AppRepo migrations
-   - No coordination between migration tables
-   - Clear ownership
-
-2. **App + Oban Deploy Together**
-   - Single release cycle
-   - No separate Oban deployment timing
-   - Migrations run atomically
-
-3. **Simpler Tooling**
-   - One `mix ecto.migrate` command
-   - One migration table `app_schema_migrations`
-   - Easier debugging
-
-4. **Clear Dependency**
-   - Oban tables are infrastructure for app
-   - Part of app schema, not separate system
+1. **One migration command**: `mix ecto.migrate`
+2. **One migration table**: `app_schema_migrations`
+3. **App + Oban deploy together** (atomic)
+4. **No coordination needed**
 
 ### ❌ Not Three Repos
 
 Why remove ResultsRepo?
 
-1. **ClickHouse replaces monitoring data**
-   - Using `ch` HTTP library (not Postgres)
-   - ResilientWriter handles ingestion
-   - No need for PostgreSQL time-series tables
-
-2. **Reduces complexity**
-   - One less repo to manage
-   - One less pool to tune
-   - One less migration table
+1. **ClickHouse replaces time-series data** (via `ch` library + ResilientWriter)
+2. **Reduces configuration** (no third pool to tune)
+3. **Keeps Oban lean** (no bloated results tables)
 
 ---
 
