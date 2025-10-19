@@ -2,7 +2,7 @@
   description = "Uptrack - Multi-region uptime monitoring with NixOS deployment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
     # For deploying with Colmena
     colmena = {
