@@ -9,10 +9,9 @@ defmodule Uptrack.Application do
   def start(_type, _args) do
     children = [
       UptrackWeb.Telemetry,
-      # Multi-repo setup
+      # Database repos - AppRepo handles migrations, ObanRepo has separate pool
       Uptrack.AppRepo,
       Uptrack.ObanRepo,
-      Uptrack.ResultsRepo,
       {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Uptrack.PubSub},
       # Oban job processing

@@ -36,15 +36,13 @@ defmodule Uptrack.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
-    # Set up sandbox for all three repos
+    # Set up sandbox for both repos (separate pools)
     app_pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Uptrack.AppRepo, shared: not tags[:async])
     oban_pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Uptrack.ObanRepo, shared: not tags[:async])
-    results_pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Uptrack.ResultsRepo, shared: not tags[:async])
 
     on_exit(fn ->
       Ecto.Adapters.SQL.Sandbox.stop_owner(app_pid)
       Ecto.Adapters.SQL.Sandbox.stop_owner(oban_pid)
-      Ecto.Adapters.SQL.Sandbox.stop_owner(results_pid)
     end)
   end
 

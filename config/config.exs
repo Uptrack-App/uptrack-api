@@ -8,20 +8,13 @@
 import Config
 
 config :uptrack,
-  ecto_repos: [Uptrack.AppRepo, Uptrack.ObanRepo, Uptrack.ResultsRepo],
+  ecto_repos: [Uptrack.AppRepo, Uptrack.ObanRepo],
   generators: [timestamp_type: :utc_datetime]
 
-# Separate migration sources to eliminate shared schema_migrations conflicts
+# AppRepo handles all migrations (app schema + oban schema)
+# ObanRepo uses same database but separate connection pool
+# This prevents job queue from starving app queries
 config :uptrack, Uptrack.AppRepo,
-  migration_source: "app_schema_migrations",
-  migration_lock: :pg_advisory_lock
-
-config :uptrack, Uptrack.ObanRepo,
-  migration_source: "oban_schema_migrations",
-  migration_lock: :pg_advisory_lock
-
-config :uptrack, Uptrack.ResultsRepo,
-  migration_source: "results_schema_migrations",
   migration_lock: :pg_advisory_lock
 
 # Configures the endpoint

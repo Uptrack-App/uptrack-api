@@ -90,15 +90,11 @@ defmodule Uptrack.MixProject do
       "ecto.setup": [
         "ecto.create",
         "ecto.migrate -r Uptrack.AppRepo",
-        "ecto.migrate -r Uptrack.ObanRepo",
-        "ecto.migrate -r Uptrack.ResultsRepo",
         "run priv/repo/seeds.exs"
       ],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       "ecto.migrate.all": [
-        "ecto.migrate -r Uptrack.AppRepo",
-        "ecto.migrate -r Uptrack.ObanRepo",
-        "ecto.migrate -r Uptrack.ResultsRepo"
+        "ecto.migrate -r Uptrack.AppRepo"
       ],
       test: ["ecto.create --quiet", "ecto.migrate.all --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
