@@ -1,112 +1,72 @@
 # ClickHouse Auto-Start Setup on macOS
 
-**Goal**: Auto-start ClickHouse when your Mac boots
+**Goal**: Auto-start ClickHouse when your Mac boots (available to all users)
 **Date**: 2025-10-19
-**Approach**: LaunchAgent (standard macOS method)
+**Approach**: LaunchDaemon (system-wide, all users)
 
 ---
 
-## Step 1: Find ClickHouse Installation Location
+## Step 1: Verify ClickHouse Installation
 
 ```bash
-# Find where clickhouse-server is installed
-which clickhouse-server
+# Find where clickhouse is installed
 which clickhouse
 
 # Should return something like:
-# /Users/le/.local/bin/clickhouse-server
-# or
-# /usr/local/bin/clickhouse-server
+# /Users/le/.local/bin/clickhouse
+
+# Test that it works
+/Users/le/.local/bin/clickhouse --version
 ```
 
-Note your path (we'll use it in step 2).
+Note your installation path (we'll use it in the setup script).
 
 ---
 
-## Step 2: Create LaunchAgent Plist File
+## Step 2: Run the Setup Script
 
-Create the file: `~/Library/LaunchAgents/com.uptrack.ch.plist`
+We provide an automated setup script that creates and installs the LaunchDaemon for you:
 
 ```bash
-mkdir -p ~/Library/LaunchAgents
-
-cat > ~/Library/LaunchAgents/com.uptrack.ch.plist <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.uptrack.ch</string>
-
-    <key>Program</key>
-    <string>/Users/le/.local/bin/clickhouse-server</string>
-
-    <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <true/>
-    </dict>
-
-    <key>StandardOutPath</key>
-    <string>/var/log/clickhouse.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>/var/log/clickhouse.error.log</string>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/le</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    </dict>
-</dict>
-</plist>
-EOF
-
-# Verify file was created
-cat ~/Library/LaunchAgents/com.uptrack.ch.plist
+bash /Users/le/setup-clickhouse-launchd.sh
 ```
+
+This script will:
+- Create the LaunchDaemon plist
+- Copy it to `/Library/LaunchDaemons/` (requires sudo)
+- Set proper permissions
+- Load the daemon
+- Validate everything is working
+
+**What is LaunchDaemon?**
+
+A LaunchDaemon is a system-wide service that:
+- Runs as root (accessible to all users)
+- Auto-starts on system boot
+- Restarts automatically if it crashes
+- Is available to any user connecting to localhost:8123
 
 ---
 
-## Step 3: Load the LaunchAgent
+## Step 3: Verify Installation
+
+After running the setup script, verify ClickHouse is running:
 
 ```bash
-# Load the agent
-launchctl load ~/Library/LaunchAgents/com.uptrack.ch.plist
+# Check daemon status
+launchctl list | grep com.uptrack.clickhouse
 
-# Check if it loaded successfully
-launchctl list | grep com.uptrack.ch
-
-# Output should show something like:
-# "com.uptrack.ch"
-```
-
----
-
-## Step 4: Verify ClickHouse is Running
-
-```bash
-# Check if it's responding
+# Test connectivity
 curl http://localhost:8123/ping
 
 # Should return: Ok.
-
-# Check logs
-tail -20 /var/log/clickhouse.log
-
-# Check process
-ps aux | grep clickhouse
 ```
 
 ---
 
-## Step 5: Test Auto-Start (Restart Your Mac)
+## Step 4: Test Auto-Start (Restart Your Mac)
+
+To verify that ClickHouse auto-starts on boot:
 
 ```bash
 # Restart your Mac
@@ -117,7 +77,7 @@ curl http://localhost:8123/ping
 # Should return: Ok.
 
 # Check logs to confirm it started
-tail /var/log/clickhouse.log
+tail -20 /var/log/clickhouse.log
 ```
 
 ---
@@ -128,33 +88,30 @@ tail /var/log/clickhouse.log
 
 ```bash
 # Start manually
-launchctl start com.uptrack.ch
+sudo launchctl start com.uptrack.clickhouse
 
 # Stop
-launchctl stop com.uptrack.ch
+sudo launchctl stop com.uptrack.clickhouse
 
 # Restart
-launchctl stop com.uptrack.ch && sleep 1 && launchctl start com.uptrack.ch
+sudo launchctl stop com.uptrack.clickhouse && sleep 1 && sudo launchctl start com.uptrack.clickhouse
 
 # Check if running
-launchctl list com.uptrack.ch
-
-# View last exit code (0 = success)
-# launchctl list com.uptrack.ch | awk '{print $1}'
+launchctl list | grep com.uptrack.clickhouse
 ```
 
-### Manage LaunchAgent
+### Manage LaunchDaemon
 
 ```bash
 # Unload (disable auto-start, but keep it)
-launchctl unload ~/Library/LaunchAgents/com.uptrack.ch.plist
+sudo launchctl unload /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 
 # Load (enable auto-start again)
-launchctl load ~/Library/LaunchAgents/com.uptrack.ch.plist
+sudo launchctl load /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 
 # Remove completely
-launchctl unload ~/Library/LaunchAgents/com.uptrack.ch.plist
-rm ~/Library/LaunchAgents/com.uptrack.ch.plist
+sudo launchctl unload /Library/LaunchDaemons/com.uptrack.clickhouse.plist
+sudo rm /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 ```
 
 ---
@@ -165,12 +122,12 @@ rm ~/Library/LaunchAgents/com.uptrack.ch.plist
 
 ```bash
 # Check plist syntax
-plutil -lint ~/Library/LaunchAgents/com.uptrack.ch.plist
+plutil -lint /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 
 # Output should be: OK
 
 # If not OK, check the file content
-cat ~/Library/LaunchAgents/com.uptrack.ch.plist
+cat /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 ```
 
 ### Check Logs
@@ -196,26 +153,31 @@ lsof -i :8123
 kill -9 <PID>
 
 # Restart ClickHouse
-launchctl stop com.uptrack.ch && sleep 1 && launchctl start com.uptrack.ch
+sudo launchctl stop com.uptrack.clickhouse && sleep 1 && sudo launchctl start com.uptrack.clickhouse
 ```
 
 ### Wrong ClickHouse Path
 
-If ClickHouse path is different:
+If you installed ClickHouse to a different location:
 
 ```bash
 # Find correct path
-which clickhouse-server
+which clickhouse
 
-# Edit plist file
-nano ~/Library/LaunchAgents/com.uptrack.ch.plist
+# Edit the LaunchDaemon plist
+sudo nano /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 
-# Change the <string>/Users/le/.local/bin/clickhouse-server</string> line
-# to your actual path
+# Update the <string> value in ProgramArguments to your actual path
+# Look for this section and update the path:
+# <key>ProgramArguments</key>
+# <array>
+#     <string>/YOUR/ACTUAL/PATH/clickhouse</string>
+#     <string>server</string>
+# </array>
 
 # Save and reload
-launchctl unload ~/Library/LaunchAgents/com.uptrack.ch.plist
-launchctl load ~/Library/LaunchAgents/com.uptrack.ch.plist
+sudo launchctl unload /Library/LaunchDaemons/com.uptrack.clickhouse.plist
+sudo launchctl load /Library/LaunchDaemons/com.uptrack.clickhouse.plist
 ```
 
 ---
@@ -223,14 +185,14 @@ launchctl load ~/Library/LaunchAgents/com.uptrack.ch.plist
 ## Verify Setup
 
 ```bash
-# 1. Check LaunchAgent is loaded
-launchctl list | grep com.uptrack.ch
+# 1. Check LaunchDaemon is loaded
+launchctl list | grep com.uptrack.clickhouse
 
 # 2. Check ClickHouse is running
 curl http://localhost:8123/ping
 
 # 3. Check logs
-tail /var/log/clickhouse.log
+tail -20 /var/log/clickhouse.log
 
 # 4. Test from Elixir
 # iex -S mix
@@ -244,13 +206,14 @@ tail /var/log/clickhouse.log
 
 | Command | Purpose |
 |---------|---------|
-| `launchctl load ~/Library/LaunchAgents/com.uptrack.ch.plist` | Enable auto-start |
-| `launchctl unload ~/Library/LaunchAgents/com.uptrack.ch.plist` | Disable auto-start |
-| `launchctl start com.uptrack.ch` | Start manually |
-| `launchctl stop com.uptrack.ch` | Stop |
-| `launchctl list com.uptrack.ch` | Check status |
+| `bash /Users/le/setup-clickhouse-launchd.sh` | Install LaunchDaemon (first time) |
+| `sudo launchctl start com.uptrack.clickhouse` | Start manually |
+| `sudo launchctl stop com.uptrack.clickhouse` | Stop |
+| `launchctl list \| grep com.uptrack.clickhouse` | Check status |
 | `curl http://localhost:8123/ping` | Test connection |
-| `tail /var/log/clickhouse.log` | View logs |
+| `tail -20 /var/log/clickhouse.log` | View logs |
+| `sudo launchctl unload /Library/LaunchDaemons/com.uptrack.clickhouse.plist` | Disable auto-start |
+| `sudo launchctl load /Library/LaunchDaemons/com.uptrack.clickhouse.plist` | Re-enable auto-start |
 
 ---
 
@@ -281,10 +244,16 @@ config :uptrack, :clickhouse,
 
 ✅ **Done!** Your setup:
 
-1. ✅ LaunchAgent plist created at `~/Library/LaunchAgents/com.uptrack.ch.plist`
-2. ✅ Auto-starts on Mac boot
-3. ✅ Logs to `/var/log/clickhouse.log`
-4. ✅ Can control with `launchctl` commands
-5. ✅ Test with `curl http://localhost:8123/ping`
+1. ✅ LaunchDaemon plist installed at `/Library/LaunchDaemons/com.uptrack.clickhouse.plist`
+2. ✅ Runs as system service (accessible to all users)
+3. ✅ Auto-starts on Mac boot
+4. ✅ Auto-restarts if ClickHouse crashes
+5. ✅ Logs to `/var/log/clickhouse.log`
+6. ✅ Available on `http://localhost:8123` for any user
+7. ✅ Control with `sudo launchctl` commands
+
+**Key Differences from LaunchAgent:**
+- **LaunchAgent** = user context only (user must be logged in)
+- **LaunchDaemon** = system context (runs all the time, available to all users)
 
 **Next**: Start your app and use ResilientWriter to send data to ClickHouse!
