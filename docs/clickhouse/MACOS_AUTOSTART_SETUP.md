@@ -8,22 +8,49 @@
 
 ## Step 1: Verify ClickHouse Installation
 
+ClickHouse binary should be in a system-wide location accessible to all users:
+
 ```bash
-# Find where clickhouse is installed
+# Verify binary location
 which clickhouse
 
-# Should return something like:
-# /Users/le/.local/bin/clickhouse
+# Should return:
+# /usr/local/bin/clickhouse
 
 # Test that it works
-/Users/le/.local/bin/clickhouse --version
+clickhouse --version
+
+# Should return something like:
+# ClickHouse local version 25.3.7.194 (official build).
 ```
 
-Note your installation path (we'll use it in the setup script).
+**Important**: If your ClickHouse binary is in a user-specific location (like `/Users/le/.local/bin/clickhouse`), move it to `/usr/local/bin/` first using the `move-clickhouse-to-system.sh` script.
 
 ---
 
-## Step 2: Run the Setup Script
+## Step 2: Move ClickHouse to System-Wide Location (if needed)
+
+If your ClickHouse binary is in `/Users/le/.local/bin/`, move it to `/usr/local/bin/`:
+
+```bash
+# Run the move script
+bash /Users/le/move-clickhouse-to-system.sh
+```
+
+This script will:
+- Copy ClickHouse from `/Users/le/.local/bin/clickhouse` to `/usr/local/bin/clickhouse`
+- Set proper permissions (755)
+- Verify the new location
+
+After this, verify the binary is accessible:
+```bash
+which clickhouse
+# Should return: /usr/local/bin/clickhouse
+```
+
+---
+
+## Step 3: Run the Setup Script
 
 We provide an automated setup script that creates and installs the LaunchDaemon for you:
 
@@ -48,7 +75,7 @@ A LaunchDaemon is a system-wide service that:
 
 ---
 
-## Step 3: Verify Installation
+## Step 4: Verify Installation
 
 After running the setup script, verify ClickHouse is running:
 
@@ -64,7 +91,7 @@ curl http://localhost:8123/ping
 
 ---
 
-## Step 4: Test Auto-Start (Restart Your Mac)
+## Step 5: Test Auto-Start (Restart Your Mac)
 
 To verify that ClickHouse auto-starts on boot:
 
