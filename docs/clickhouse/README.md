@@ -6,6 +6,14 @@ Complete guide for integrating ClickHouse as a time-series analytics database fo
 
 ## 📚 Documentation Index
 
+### Quick Start
+
+- **[macOS Auto-Start Setup](./MACOS_AUTOSTART_SETUP.md)** ⭐ **LOCAL DEVELOPMENT**
+  - Set up ClickHouse to auto-start on Mac boot
+  - Using LaunchAgent (standard macOS method)
+  - Control commands and troubleshooting
+  - For local development only
+
 ### Decision & Architecture
 
 - **[ch vs ecto_ch](./ch_vs_ecto_ch.md)** ⭐ **START HERE**
