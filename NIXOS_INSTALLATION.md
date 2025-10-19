@@ -57,7 +57,7 @@ nix run github:nix-community/nixos-anywhere -- \
   --flake .#node-india-strong \
   --extra-files ./infra/nixos/secrets \
   -i $SSH_KEY \
-  root@$INDIA_STRONG_IP
+  ubuntu@$INDIA_STRONG_IP
 ```
 
 ### What You'll See
@@ -285,7 +285,7 @@ nix run github:nix-community/nixos-anywhere -- \
   --flake .#node-india-strong \
   --extra-files ./infra/nixos/secrets \
   -i $SSH_KEY \
-  root@$INDIA_STRONG_IP
+  ubuntu@$INDIA_STRONG_IP
 
 echo ""
 echo "3️⃣  Installation complete!"

@@ -150,7 +150,7 @@ run_installation() {
         --flake .#node-india-strong \
         --extra-files ./infra/nixos/secrets \
         -i "$SSH_KEY" \
-        root@"$INDIA_STRONG_IP"
+        ubuntu@"$INDIA_STRONG_IP"
 
     echo ""
     print_info "✓ Installation script completed"
