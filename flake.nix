@@ -72,7 +72,6 @@
             ./infra/nixos/node-a.nix
             ./infra/nixos/services/uptrack-app.nix
             ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/timescaledb.nix
             ./infra/nixos/services/clickhouse.nix
             ./infra/nixos/services/haproxy.nix
           ];
@@ -92,7 +91,6 @@
             ./infra/nixos/node-b.nix
             ./infra/nixos/services/uptrack-app.nix
             ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/timescaledb.nix
             ./infra/nixos/services/clickhouse.nix
           ];
         };
@@ -111,8 +109,47 @@
             ./infra/nixos/node-c.nix
             ./infra/nixos/services/uptrack-app.nix
             ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/timescaledb.nix
             ./infra/nixos/services/clickhouse.nix
+          ];
+        };
+
+        # Node India Strong - PostgreSQL Replica + etcd (Oracle Free Tier ARM64)
+        node-india-strong = {
+          deployment = {
+            targetHost = "144.24.133.171";
+            targetUser = "root";
+            tags = [ "replica" "oracle" "app" "postgres" "etcd" "arm64" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          # Override nixpkgs for ARM64
+          nixpkgs.system = "aarch64-linux";
+
+          imports = commonModules ++ [
+            ./infra/nixos/node-india-strong.nix
+            ./infra/nixos/services/uptrack-app.nix
+            ./infra/nixos/services/postgres.nix
+            ./infra/nixos/services/clickhouse.nix
+          ];
+        };
+
+        # Node India Weak - App-only + etcd (Oracle Free Tier ARM64)
+        node-india-weak = {
+          deployment = {
+            targetHost = "INDIA_WEAK_IP";  # Update with actual IP
+            targetUser = "root";
+            tags = [ "app" "etcd" "oracle" "arm64" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          # Override nixpkgs for ARM64
+          nixpkgs.system = "aarch64-linux";
+
+          imports = commonModules ++ [
+            ./infra/nixos/node-india-weak.nix
+            ./infra/nixos/services/uptrack-app.nix
           ];
         };
       };
@@ -128,7 +165,6 @@
             ./infra/nixos/node-a.nix
             ./infra/nixos/services/uptrack-app.nix
             ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/timescaledb.nix
             ./infra/nixos/services/clickhouse.nix
             ./infra/nixos/services/haproxy.nix
           ];
@@ -141,7 +177,6 @@
             ./infra/nixos/node-b.nix
             ./infra/nixos/services/uptrack-app.nix
             ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/timescaledb.nix
             ./infra/nixos/services/clickhouse.nix
           ];
           specialArgs = { inherit self; };
@@ -153,8 +188,27 @@
             ./infra/nixos/node-c.nix
             ./infra/nixos/services/uptrack-app.nix
             ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/timescaledb.nix
             ./infra/nixos/services/clickhouse.nix
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        node-india-strong = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";  # Oracle Free ARM64
+          modules = commonModules ++ [
+            ./infra/nixos/node-india-strong.nix
+            ./infra/nixos/services/uptrack-app.nix
+            ./infra/nixos/services/postgres.nix
+            ./infra/nixos/services/clickhouse.nix
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        node-india-weak = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";  # Oracle Free ARM64
+          modules = commonModules ++ [
+            ./infra/nixos/node-india-weak.nix
+            ./infra/nixos/services/uptrack-app.nix
           ];
           specialArgs = { inherit self; };
         };
@@ -253,6 +307,36 @@
                 --build-on-remote \
                 --flake .#node-c \
                 root@147.93.146.35
+            '');
+          };
+          deploy-node-india-strong = {
+            type = "app";
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-india-strong" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-india-strong
+            '');
+          };
+          deploy-node-india-weak = {
+            type = "app";
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-india-weak" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-india-weak
+            '');
+          };
+          install-node-india-strong = {
+            type = "app";
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-india-strong" ''
+              ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
+                --build-on-remote \
+                --flake .#node-india-strong \
+                root@144.24.133.171
+            '');
+          };
+          install-node-india-weak = {
+            type = "app";
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-india-weak" ''
+              ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
+                --build-on-remote \
+                --flake .#node-india-weak \
+                root@INDIA_WEAK_IP
             '');
           };
         };

@@ -17,10 +17,10 @@ let
   isPostgresNode = nodeName == "uptrack-node-a" || nodeName == "uptrack-node-b";
 
 in lib.mkIf isPostgresNode {
-  # PostgreSQL 16 with TimescaleDB
+  # PostgreSQL 16 (TimescaleDB removed - using ClickHouse for time-series)
   services.postgresql = {
     enable = true;
-    package = pkgs.postgresql_16.withPackages (ps: [ ps.timescaledb ]);
+    package = pkgs.postgresql_16;
 
     # Patroni will manage the cluster, so don't auto-start
     enableTCPIP = true;
@@ -33,9 +33,6 @@ in lib.mkIf isPostgresNode {
       maintenance_work_mem = "64MB";
       work_mem = "4MB";
       max_connections = 100;
-
-      # Required for TimescaleDB
-      shared_preload_libraries = "timescaledb";
     };
   };
 

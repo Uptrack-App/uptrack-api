@@ -44,24 +44,38 @@ if config_env() == :prod do
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
-  pool_size = String.to_integer(System.get_env("POOL_SIZE") || "10")
 
-  # AppRepo configuration
+  # Per-repo pool sizes for optimized resource allocation
+  # Each repo handles different workloads:
+  # - AppRepo: Light OLTP (users, configs, incidents)
+  # - ObanRepo: High job throughput (monitor checks)
+  # - ResultsRepo: Batch inserts (monitoring data)
+  app_pool_size = String.to_integer(System.get_env("APP_POOL_SIZE") || "10")
+  oban_pool_size = String.to_integer(System.get_env("OBAN_POOL_SIZE") || "20")
+  results_pool_size = String.to_integer(System.get_env("RESULTS_POOL_SIZE") || "15")
+
+  # AppRepo configuration - Light OLTP workload
   config :uptrack, Uptrack.AppRepo,
     url: app_database_url,
-    pool_size: pool_size,
+    pool_size: app_pool_size,
+    queue_target: 50,
+    queue_interval: 5000,
     socket_options: maybe_ipv6
 
-  # ObanRepo configuration
+  # ObanRepo configuration - High job throughput
   config :uptrack, Uptrack.ObanRepo,
     url: oban_database_url,
-    pool_size: pool_size,
+    pool_size: oban_pool_size,
+    queue_target: 100,
+    queue_interval: 1000,
     socket_options: maybe_ipv6
 
-  # ResultsRepo configuration
+  # ResultsRepo configuration - Batch inserts
   config :uptrack, Uptrack.ResultsRepo,
     url: results_database_url,
-    pool_size: pool_size,
+    pool_size: results_pool_size,
+    queue_target: 75,
+    queue_interval: 2000,
     socket_options: maybe_ipv6
 
   # Oban configuration with node identification
