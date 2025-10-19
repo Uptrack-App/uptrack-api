@@ -21,66 +21,39 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
-  # Multi-repo configuration
-  app_database_url =
+  # Single database URL (same for app and oban)
+  database_url =
     System.get_env("DATABASE_URL") ||
       raise """
       environment variable DATABASE_URL is missing.
-      For example: postgresql://USER:PASS@HOST/DATABASE?search_path=app,public
-      """
-
-  oban_database_url =
-    System.get_env("OBAN_DATABASE_URL") ||
-      raise """
-      environment variable OBAN_DATABASE_URL is missing.
-      For example: postgresql://USER:PASS@HOST/DATABASE?search_path=oban,public
-      """
-
-  results_database_url =
-    System.get_env("RESULTS_DATABASE_URL") ||
-      raise """
-      environment variable RESULTS_DATABASE_URL is missing.
-      For example: postgresql://USER:PASS@HOST/DATABASE?search_path=results,public
+      For example: postgresql://USER:PASS@HOST/DATABASE
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  # Per-repo pool sizes for optimized resource allocation
-  # Each repo handles different workloads:
-  # - AppRepo: Light OLTP (users, configs, incidents)
-  # - ObanRepo: High job throughput (monitor checks)
-  # - ResultsRepo: Batch inserts (monitoring data)
+  # Separate connection pools to prevent job queue from starving app queries
   app_pool_size = String.to_integer(System.get_env("APP_POOL_SIZE") || "10")
   oban_pool_size = String.to_integer(System.get_env("OBAN_POOL_SIZE") || "20")
-  results_pool_size = String.to_integer(System.get_env("RESULTS_POOL_SIZE") || "15")
 
-  # AppRepo configuration - Light OLTP workload
+  # AppRepo - app schema + migrations
   config :uptrack, Uptrack.AppRepo,
-    url: app_database_url,
+    url: database_url,
     pool_size: app_pool_size,
     queue_target: 50,
     queue_interval: 5000,
     socket_options: maybe_ipv6
 
-  # ObanRepo configuration - High job throughput
+  # ObanRepo - same database, separate pool for job queue
   config :uptrack, Uptrack.ObanRepo,
-    url: oban_database_url,
+    url: database_url,
     pool_size: oban_pool_size,
     queue_target: 100,
     queue_interval: 1000,
     socket_options: maybe_ipv6
 
-  # ResultsRepo configuration - Batch inserts
-  config :uptrack, Uptrack.ResultsRepo,
-    url: results_database_url,
-    pool_size: results_pool_size,
-    queue_target: 75,
-    queue_interval: 2000,
-    socket_options: maybe_ipv6
-
   # Oban configuration with node identification
   config :uptrack, Oban,
-    repo: Uptrack.ObanRepo,
+    repo: Uptrack.AppRepo,
     node: System.get_env("OBAN_NODE_NAME", "unknown-node"),
     queues: [
       checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "50")),

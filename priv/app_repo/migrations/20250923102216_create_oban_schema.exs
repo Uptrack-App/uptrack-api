@@ -1,4 +1,4 @@
-defmodule Uptrack.ObanRepo.Migrations.InitialSetup do
+defmodule Uptrack.Repo.Migrations.CreateObanSchema do
   use Ecto.Migration
 
   def up do
