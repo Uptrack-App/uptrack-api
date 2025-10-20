@@ -149,10 +149,14 @@ defmodule Uptrack.Monitoring.IdlePreventionWorker do
 
   defp make_network_requests do
     # Try to connect to local health endpoint
-    case HTTPoison.get("http://localhost:4000/api/health", [], recv_timeout: 20000) do
-      {:ok, response} ->
-        Logger.debug("[IdlePreventionWorker] Network request successful: #{response.status_code}")
+    case Req.get("http://localhost:4000/api/health", receive_timeout: 20000) do
+      {:ok, %Req.Response{status: status}} when status >= 200 and status < 300 ->
+        Logger.debug("[IdlePreventionWorker] Network request successful: #{status}")
         :ok
+
+      {:ok, %Req.Response{status: status}} ->
+        Logger.warning("[IdlePreventionWorker] Network request failed with HTTP #{status}")
+        :error
 
       {:error, reason} ->
         Logger.warning("[IdlePreventionWorker] Network request failed: #{inspect(reason)}")

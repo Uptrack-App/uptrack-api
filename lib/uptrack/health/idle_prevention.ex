@@ -163,12 +163,15 @@ defmodule Uptrack.Health.IdlePrevention do
   end
 
   defp fetch_health_data do
-    case HTTPoison.get("http://localhost:4000/api/health", [], recv_timeout: 25000) do
-      {:ok, _response} ->
+    case Req.get("http://localhost:4000/api/health", receive_timeout: 25000) do
+      {:ok, %Req.Response{status: status}} when status >= 200 and status < 300 ->
         {:ok, "health_check"}
 
+      {:ok, %Req.Response{status: status}} ->
+        {:error, "HTTP #{status}"}
+
       {:error, reason} ->
-        {:error, reason}
+        {:error, inspect(reason)}
     end
   rescue
     e -> {:error, inspect(e)}

@@ -55,21 +55,6 @@ defmodule Uptrack.AppRepo.Migrations.UpdateTablesWithUuidStrategy do
     create index(:monitors, [:user_id], prefix: :app)
     create index(:monitors, [:status], prefix: :app)
 
-    # Monitor regions join table - aligns region distribution with UUID monitors
-    create table(:monitor_regions, prefix: :app) do
-      add :monitor_id, references(:monitors, type: :uuid, on_delete: :delete_all, prefix: :app), null: false
-      add :region_id, references(:regions, on_delete: :delete_all, prefix: :app), null: false
-      add :is_enabled, :boolean, default: true
-      add :priority, :integer, default: 0
-
-      timestamps(type: :utc_datetime)
-    end
-
-    create unique_index(:monitor_regions, [:monitor_id, :region_id], prefix: :app)
-    create index(:monitor_regions, [:monitor_id], prefix: :app)
-    create index(:monitor_regions, [:region_id], prefix: :app)
-    create index(:monitor_regions, [:is_enabled], prefix: :app)
-
     # Alert channels table - UUID
     create table(:alert_channels, prefix: :app, primary_key: false) do
       add :id, :uuid, primary_key: true
@@ -151,14 +136,11 @@ defmodule Uptrack.AppRepo.Migrations.UpdateTablesWithUuidStrategy do
       add :error_message, :text
       add :status_code, :integer
       add :monitor_id, references(:monitors, type: :uuid, on_delete: :delete_all, prefix: :app), null: false
-      add :region_id, references(:regions, on_delete: :restrict, prefix: :app)
-
       timestamps(type: :utc_datetime)
     end
 
     create index(:monitor_checks, [:monitor_id, :checked_at], prefix: :app)
     create index(:monitor_checks, [:status], prefix: :app)
-    create index(:monitor_checks, [:region_id], prefix: :app)
   end
 
   def down do
@@ -169,7 +151,6 @@ defmodule Uptrack.AppRepo.Migrations.UpdateTablesWithUuidStrategy do
     drop table(:incident_updates, prefix: :app)
     drop table(:incidents, prefix: :app)
     drop table(:alert_channels, prefix: :app)
-    drop table(:monitor_regions, prefix: :app)
     drop table(:monitors, prefix: :app)
     drop table(:users, prefix: :app)
   end
