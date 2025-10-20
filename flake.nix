@@ -116,8 +116,8 @@
         # Node India Strong - PostgreSQL Replica + etcd (Oracle Free Tier ARM64)
         node-india-strong = {
           deployment = {
-            targetHost = "144.24.133.171";
-            targetUser = "root";
+            targetHost = "152.67.179.42";
+            targetUser = "le";
             tags = [ "replica" "oracle" "app" "postgres" "etcd" "arm64" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
