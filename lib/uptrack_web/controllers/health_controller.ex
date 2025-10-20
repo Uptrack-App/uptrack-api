@@ -23,6 +23,7 @@ defmodule UptrackWeb.HealthController do
     checks = %{
       database: check_database(),
       oban: check_oban(),
+      idle_prevention: check_idle_prevention(),
       node_region: System.get_env("NODE_REGION", "unknown"),
       node_name: System.get_env("OBAN_NODE_NAME", "unknown")
     }
@@ -30,6 +31,7 @@ defmodule UptrackWeb.HealthController do
     all_healthy? = Enum.all?(checks, fn
       {:node_region, _} -> true
       {:node_name, _} -> true
+      {:idle_prevention, %{} } -> true
       {_key, :ok} -> true
       {_key, _} -> false
     end)
@@ -62,5 +64,14 @@ defmodule UptrackWeb.HealthController do
     end
   rescue
     exception -> {:error, Exception.message(exception)}
+  end
+
+  defp check_idle_prevention do
+    case Uptrack.Health.IdlePrevention.get_stats() do
+      %{} = stats -> stats
+      {:error, _} -> %{error: "IdlePrevention not running"}
+    end
+  rescue
+    _exception -> %{error: "IdlePrevention not available"}
   end
 end
