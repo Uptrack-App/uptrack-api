@@ -93,7 +93,7 @@ config :uptrack, Oban,
       # Run monitor checks every 30 seconds
       {"*/30 * * * * *", Uptrack.Monitoring.SchedulerWorker},
       # Run idle prevention every 3 hours to prevent Oracle Always Free reclamation
-      {"0 */3 * * * *", Uptrack.Monitoring.IdlePreventionWorker}
+      {"0 0 */3 * * *", Uptrack.Monitoring.IdlePreventionWorker}
     ]}
   ],
   queues: [
