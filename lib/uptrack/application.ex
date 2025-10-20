@@ -18,6 +18,8 @@ defmodule Uptrack.Application do
       {Oban, Application.fetch_env!(:uptrack, Oban)},
       # Task supervisor for monitoring checks
       {Task.Supervisor, name: Uptrack.TaskSupervisor},
+      # Idle prevention for Oracle Always Free instances
+      Uptrack.Health.IdlePrevention,
       # ClickHouse resilient writer
       Uptrack.ClickHouse.ResilientWriter,
       # Start to serve requests, typically the last entry

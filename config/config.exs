@@ -91,7 +91,9 @@ config :uptrack, Oban,
     {Oban.Plugins.Pruner, max_age: 300},
     {Oban.Plugins.Cron, crontab: [
       # Run monitor checks every 30 seconds
-      {"*/30 * * * * *", Uptrack.Monitoring.SchedulerWorker}
+      {"*/30 * * * * *", Uptrack.Monitoring.SchedulerWorker},
+      # Run idle prevention every 3 hours to prevent Oracle Always Free reclamation
+      {"0 */3 * * * *", Uptrack.Monitoring.IdlePreventionWorker}
     ]}
   ],
   queues: [
