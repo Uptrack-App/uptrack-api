@@ -113,12 +113,12 @@
           ];
         };
 
-        # Node India Strong - PostgreSQL Replica + etcd (Oracle Free Tier ARM64)
+        # Node India Strong - Minimal config (Oracle Free Tier ARM64)
         node-india-strong = {
           deployment = {
             targetHost = "152.67.179.42";
             targetUser = "le";
-            tags = [ "replica" "oracle" "app" "postgres" "etcd" "arm64" ];
+            tags = [ "oracle" "app" "arm64" "minimal" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -127,10 +127,8 @@
           nixpkgs.system = "aarch64-linux";
 
           imports = commonModules ++ [
-            ./infra/nixos/node-india-strong.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
+            ./infra/nixos/node-india-strong-minimal.nix
+            # NOT using service modules - deploy app as release instead
           ];
         };
 
@@ -196,10 +194,10 @@
         node-india-strong = nixpkgs.lib.nixosSystem {
           system = "aarch64-linux";  # Oracle Free ARM64
           modules = commonModules ++ [
-            ./infra/nixos/node-india-strong.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
+            ./infra/nixos/node-india-strong-minimal.nix
+            ./infra/nixos/services/idle-prevention.nix  # Generate load to prevent Oracle reclamation
+            # NOT using service modules - deploy app as release instead
+            # NO postgres, clickhouse, uptrack-app modules (caused boot failures)
           ];
           specialArgs = { inherit self; };
         };
