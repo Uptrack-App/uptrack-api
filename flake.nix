@@ -195,7 +195,7 @@
           system = "aarch64-linux";  # Oracle Free ARM64
           modules = commonModules ++ [
             ./infra/nixos/node-india-strong-minimal.nix
-            ./infra/nixos/services/idle-prevention.nix  # Generate load to prevent Oracle reclamation
+            ./infra/nixos/services/idle-prevention-simple.nix  # Cron-based load generation
             # NOT using service modules - deploy app as release instead
             # NO postgres, clickhouse, uptrack-app modules (caused boot failures)
           ];
