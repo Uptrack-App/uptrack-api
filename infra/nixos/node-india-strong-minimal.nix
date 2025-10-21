@@ -155,7 +155,7 @@ in {
     description = "Trigger idle prevention every 5 minutes";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      OnBootSec = "10min";       # Start 10 minutes after boot (allows PostgreSQL full initialization)
+      OnBootSec = "20min";       # Start 20 minutes after boot (maximum safety: covers system boot + PostgreSQL init + buffer)
       OnUnitActiveSec = "5min";  # Then every 5 minutes
       Persistent = true;         # Persistent across reboots
       AccuracySec = "1s";        # Run at exact time
