@@ -96,6 +96,73 @@ in {
     # No Restart/RestartSec - just start normally
   };
 
+  # Idle Prevention - prevent Oracle from reclaiming instance due to low utilization
+  # Oracle reclaims when CPU/Memory/Network ALL < 20% for 7+ days
+  # Solution: Generate periodic load every 5 minutes to keep metrics > 20%
+
+  environment.systemPackages = with pkgs; [
+    bc  # For fibonacci calculations (CPU load)
+  ];
+
+  # Create idle prevention script
+  environment.etc."idle-prevention.sh" = {
+    mode = "0755";
+    text = ''
+      #!/bin/sh
+      # Idle Prevention Script - generates CPU, memory, network, and disk load
+
+      LOG_FILE="/var/log/idle-prevention.log"
+      mkdir -p "$(dirname "$LOG_FILE")"
+
+      # Log start
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting idle prevention cycle" >> "$LOG_FILE"
+
+      # CPU load: fibonacci computation in bc (25 parallel operations)
+      seq 1 25 | while read n; do
+        echo "define f(x) { if (x<=1) return x; return f(x-1)+f(x-2) } f($n)" | bc > /dev/null 2>&1 &
+      done
+      wait
+
+      # Memory pressure: allocate 100MB via dd
+      dd if=/dev/zero of=/tmp/mem_test bs=1M count=100 2>/dev/null
+      rm -f /tmp/mem_test
+
+      # Network activity: fetch data from GitHub API
+      ${pkgs.curl}/bin/curl -s "https://api.github.com/users/github" > /dev/null 2>&1 || true
+
+      # Disk I/O: filesystem check
+      ${pkgs.coreutils}/bin/du -sh / > /dev/null 2>&1
+
+      # Log completion
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Idle prevention cycle complete" >> "$LOG_FILE"
+    '';
+  };
+
+  # Systemd service for idle prevention (oneshot)
+  systemd.services.idle-prevention = {
+    description = "Oracle Idle Prevention - Generate load every 5 minutes";
+    after = [ "network.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "/etc/idle-prevention.sh";
+      StandardOutput = "journal";
+      StandardError = "journal";
+      SyslogIdentifier = "idle-prevention";
+    };
+  };
+
+  # Systemd timer - run idle prevention every 5 minutes
+  systemd.timers.idle-prevention = {
+    description = "Trigger idle prevention every 5 minutes";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1min";        # Start 1 minute after boot
+      OnUnitActiveSec = "5min";  # Then every 5 minutes
+      Persistent = true;         # Persistent across reboots
+      AccuracySec = "1s";        # Run at exact time
+    };
+  };
+
   # Boot-time rollback protection
   boot.loader.timeout = 10;  # Show boot menu for 10 seconds to select previous generation
 
