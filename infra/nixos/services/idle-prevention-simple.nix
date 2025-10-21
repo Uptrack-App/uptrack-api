@@ -8,12 +8,13 @@
   environment.systemPackages = with pkgs; [
     curl
     coreutils
+    bc
   ];
 
   # Setup cron job for idle prevention
   services.cron.enable = true;
 
-  # Create idle prevention script in /usr/local/bin
+  # Create idle prevention script in /etc
   environment.etc."idle-prevention.sh" = {
     mode = "0755";
     text = ''
@@ -45,13 +46,6 @@
       echo "[$(date)] Idle prevention cycle complete" >> /var/log/idle-prevention.log
     '';
   };
-
-  # Symlink to bin
-  environment.systemPackages = with pkgs; [
-    coreutils
-    curl
-    bc
-  ];
 
   # Create cron job - every 5 minutes
   environment.etc."cron.d/idle-prevention" = {
