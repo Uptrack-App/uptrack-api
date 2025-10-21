@@ -24,6 +24,7 @@ in {
     wget
     htop
     tmux
+    bc  # For idle prevention fibonacci calculations
   ];
 
   # User configuration
@@ -99,10 +100,6 @@ in {
   # Idle Prevention - prevent Oracle from reclaiming instance due to low utilization
   # Oracle reclaims when CPU/Memory/Network ALL < 20% for 7+ days
   # Solution: Generate periodic load every 5 minutes to keep metrics > 20%
-
-  environment.systemPackages = with pkgs; [
-    bc  # For fibonacci calculations (CPU load)
-  ];
 
   # Create idle prevention script
   environment.etc."idle-prevention.sh" = {
