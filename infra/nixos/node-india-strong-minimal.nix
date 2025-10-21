@@ -101,12 +101,14 @@ in {
   # Oracle reclaims when CPU/Memory/Network ALL < 20% for 7+ days
   # Solution: Generate periodic load every 5 minutes to keep metrics > 20%
 
-  # Create idle prevention script
+  # Create idle prevention script - LIGHTWEIGHT VERSION
+  # Uses gentle load to avoid conflicts with PostgreSQL
   environment.etc."idle-prevention.sh" = {
     mode = "0755";
     text = ''
       #!/bin/sh
-      # Idle Prevention Script - generates CPU, memory, network, and disk load
+      # Idle Prevention Script - lightweight load generation
+      # Designed to work alongside PostgreSQL on resource-constrained systems
 
       LOG_FILE="/var/log/idle-prevention.log"
       mkdir -p "$(dirname "$LOG_FILE")"
@@ -114,20 +116,20 @@ in {
       # Log start
       echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting idle prevention cycle" >> "$LOG_FILE"
 
-      # CPU load: fibonacci computation in bc (25 parallel operations)
-      seq 1 25 | while read n; do
+      # Gentle CPU load: only 10 fibonacci ops (not 25)
+      seq 1 10 | while read n; do
         echo "define f(x) { if (x<=1) return x; return f(x-1)+f(x-2) } f($n)" | bc > /dev/null 2>&1 &
       done
       wait
 
-      # Memory pressure: allocate 100MB via dd
-      dd if=/dev/zero of=/tmp/mem_test bs=1M count=100 2>/dev/null
+      # Light memory pressure: 50MB instead of 100MB
+      dd if=/dev/zero of=/tmp/mem_test bs=1M count=50 2>/dev/null
       rm -f /tmp/mem_test
 
-      # Network activity: fetch data from GitHub API
-      ${pkgs.curl}/bin/curl -s "https://api.github.com/users/github" > /dev/null 2>&1 || true
+      # Network activity: single request (not multiple)
+      ${pkgs.curl}/bin/curl -s "https://api.github.com/repos/github/gitignore" > /dev/null 2>&1 || true
 
-      # Disk I/O: filesystem check
+      # Disk I/O: lightweight check
       ${pkgs.coreutils}/bin/du -sh / > /dev/null 2>&1
 
       # Log completion
