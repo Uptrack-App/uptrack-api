@@ -126,7 +126,10 @@
           # Override nixpkgs for ARM64
           nixpkgs.system = "aarch64-linux";
 
-          imports = commonModules ++ [
+          imports = [
+            # Use Oracle-specific common config (no disko)
+            agenix.nixosModules.default
+            ./infra/nixos/common-oracle.nix
             ./infra/nixos/node-india-strong-minimal.nix
             # NOT using service modules - deploy app as release instead
           ];
@@ -193,11 +196,13 @@
 
         node-india-strong = nixpkgs.lib.nixosSystem {
           system = "aarch64-linux";  # Oracle Free ARM64
-          modules = commonModules ++ [
+          modules = [
+            # Use Oracle-specific common config (no disko)
+            agenix.nixosModules.default
+            ./infra/nixos/common-oracle.nix
             ./infra/nixos/node-india-strong-minimal.nix
             # Idle prevention is now inline in node-india-strong-minimal.nix
             # NOT using service modules - deploy app as release instead
-            # NO postgres, clickhouse, uptrack-app modules (caused boot failures)
           ];
           specialArgs = { inherit self; };
         };
