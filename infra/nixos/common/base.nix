@@ -1,46 +1,12 @@
-# Common NixOS configuration for Oracle Cloud servers
-# Same as common.nix but WITHOUT disko (Oracle doesn't use disko partitioning)
+# Base NixOS configuration shared across ALL servers
+# This is the foundation that all nodes inherit from
 { config, pkgs, lib, ... }:
 
 {
-  # NO disko import for Oracle Cloud - partitions already exist
-
-  # Filesystem configuration for Oracle Cloud
-  fileSystems."/" = {
-    device = "/dev/disk/by-partlabel/disk-main-root";
-    fsType = "ext4";
-    options = [ "x-initrd.mount" "defaults" ];
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-partlabel/disk-main-boot";
-    fsType = "vfat";
-    options = [ "defaults" ];
-  };
-
-  # Agenix secrets configuration
-  # Temporarily disabled until we have the server SSH host key
-  # After installation, add the host key to secrets.nix and create uptrack-env.age
-  # age.secrets = {
-  #   uptrack-env = {
-  #     file = ./secrets/uptrack-env.age;
-  #   };
-  # };
-
-  # Agenix will look for SSH host keys here
-  # age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-
   # Allow unfree packages (needed for some tools)
   nixpkgs.config.allowUnfree = true;
 
-  # Boot loader configuration for Oracle Cloud
-  boot.loader.grub = {
-    enable = true;
-    device = "/dev/sda";  # Oracle uses MBR GRUB on /dev/sda
-    efiSupport = false;   # No EFI on Oracle Free Tier
-  };
-
-  # Ensure initrd includes necessary kernel modules
+  # Ensure initrd includes necessary kernel modules for all providers
   boot.initrd.availableKernelModules = [
     "ahci" "xhci_pci" "virtio_pci" "virtio_blk" "virtio_scsi"
     "sd_mod" "sr_mod" "ata_piix" "nvme"
@@ -112,12 +78,10 @@
   };
 
   # User configuration
-  users.users.root = {
-    openssh.authorizedKeys.keys = [
-      # Your SSH public key
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXfwtx9sZyrufYfJ1NvYIJSn3WG36jhY/j4gzyHGoMs giahoangth@gmail.com"
-    ];
-  };
+  users.users.root.openssh.authorizedKeys.keys = [
+    # Your SSH public key
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXfwtx9sZyrufYfJ1NvYIJSn3WG36jhY/j4gzyHGoMs giahoangth@gmail.com"
+  ];
 
   # Automatic garbage collection
   nix = {
