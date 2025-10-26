@@ -1,11 +1,11 @@
-# Declarative disk partitioning for nixos-anywhere
-# Works with both Hetzner and Contabo servers
+# Declarative disk partitioning for Contabo VPS servers
+# Used with nixos-anywhere for automated installation
 { lib, ... }:
 {
   disko.devices = {
     disk = {
       main = {
-        device = lib.mkDefault "/dev/sda";  # Default to /dev/sda, override per-node if needed
+        device = lib.mkDefault "/dev/sda";
         type = "disk";
         content = {
           type = "gpt";

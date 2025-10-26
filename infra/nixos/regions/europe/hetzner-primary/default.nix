@@ -1,14 +1,23 @@
-# Node A - Primary server (Hetzner)
+# Hetzner Primary Node - Europe
+# node-a: 91.98.89.119
+# Full stack with HAProxy
 { config, pkgs, lib, ... }:
 
 {
+  imports = [
+    ../../../common/base.nix
+    ../../../common/hetzner.nix
+    ../../../modules/profiles/primary.nix
+  ];
+
   # Hostname
-  networking.hostName = "uptrack-node-a";
+  networking.hostName = "uptrack-hetzner-primary";
 
   # Node-specific environment variables
   environment.variables = {
-    NODE_NAME = "node-a";
-    NODE_REGION = "hetzner";
+    NODE_NAME = "hetzner-primary";
+    NODE_REGION = "europe";
+    NODE_PROVIDER = "hetzner";
   };
 
   # Open ports for services

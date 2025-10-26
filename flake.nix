@@ -34,12 +34,11 @@
       # System for NixOS servers
       linuxSystem = "x86_64-linux";
 
-      # Common modules shared across all machines
-      commonModules = [
-        disko.nixosModules.disko
-        agenix.nixosModules.default
-        ./infra/nixos/common.nix
-      ];
+      # Disko module (for providers that need it)
+      diskoModule = disko.nixosModules.disko;
+
+      # Agenix module (for all nodes)
+      agenixModule = agenix.nixosModules.default;
 
     in {
       # Colmena deployment configuration
@@ -55,102 +54,155 @@
           };
         };
 
-        # Node A - Primary (Hetzner ARM64)
-        node-a = {
+        # ========================================
+        # PRODUCTION ARCHITECTURE (5 Nodes)
+        # ========================================
+
+        # Europe - Netcup Germany (PG Primary + CH Replica)
+        germany = {
           deployment = {
-            targetHost = "91.98.89.119";
+            targetHost = "TBD";  # Update when server is provisioned
             targetUser = "root";
-            tags = [ "primary" "hetzner" "app" "postgres" "arm64" ];
-            buildOnTarget = true;  # Build on server to save bandwidth
-            allowLocalDeployment = false;
-          };
-
-          # Override nixpkgs for ARM64
-          nixpkgs.system = "aarch64-linux";
-
-          imports = commonModules ++ [
-            ./infra/nixos/node-a.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
-            ./infra/nixos/services/haproxy.nix
-          ];
-        };
-
-        # Node B - Secondary (Contabo)
-        node-b = {
-          deployment = {
-            targetHost = "185.237.12.64";
-            targetUser = "root";
-            tags = [ "secondary" "contabo" "app" "postgres" ];
+            tags = [ "primary" "netcup" "europe" "germany" "postgres-primary" "clickhouse-replica" "arm64" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
 
-          imports = commonModules ++ [
-            ./infra/nixos/node-b.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
-          ];
-        };
-
-        # Node C - Tertiary (Contabo)
-        node-c = {
-          deployment = {
-            targetHost = "147.93.146.35";
-            targetUser = "root";
-            tags = [ "tertiary" "contabo" "app" "clickhouse" ];
-            buildOnTarget = true;
-            allowLocalDeployment = false;
-          };
-
-          imports = commonModules ++ [
-            ./infra/nixos/node-c.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
-          ];
-        };
-
-        # Node India Strong - Minimal config (Oracle Free Tier ARM64)
-        node-india-strong = {
-          deployment = {
-            targetHost = "152.67.179.42";
-            targetUser = "le";
-            tags = [ "oracle" "app" "arm64" "minimal" ];
-            buildOnTarget = true;
-            allowLocalDeployment = false;
-          };
-
-          # Override nixpkgs for ARM64
           nixpkgs.system = "aarch64-linux";
 
           imports = [
-            # Use Oracle-specific common config (no disko)
-            agenix.nixosModules.default
-            ./infra/nixos/common-oracle.nix
-            ./infra/nixos/node-india-strong-minimal.nix
-            # NOT using service modules - deploy app as release instead
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/netcup-germany
           ];
         };
 
-        # Node India Weak - App-only + etcd (Oracle Free Tier ARM64)
-        node-india-weak = {
+        # Europe - Netcup Austria (CH Primary + PG Replica)
+        austria = {
           deployment = {
-            targetHost = "INDIA_WEAK_IP";  # Update with actual IP
+            targetHost = "TBD";  # Update when server is provisioned
             targetUser = "root";
-            tags = [ "app" "etcd" "oracle" "arm64" ];
+            tags = [ "primary" "netcup" "europe" "austria" "clickhouse-primary" "postgres-replica" "arm64" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
 
-          # Override nixpkgs for ARM64
           nixpkgs.system = "aarch64-linux";
 
-          imports = commonModules ++ [
-            ./infra/nixos/node-india-weak.nix
-            ./infra/nixos/services/uptrack-app.nix
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/netcup-austria
+          ];
+        };
+
+        # Americas - OVH Canada (App-only)
+        canada = {
+          deployment = {
+            targetHost = "TBD";  # Update when server is provisioned
+            targetUser = "root";
+            tags = [ "app-only" "ovh" "americas" "canada" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/americas/ovh-canada
+          ];
+        };
+
+        # ========================================
+        # LEGACY NODES (Deprecated - to be removed)
+        # ========================================
+
+        # Europe - Hetzner Primary (node-a) - DEPRECATED
+        hetzner-primary = {
+          deployment = {
+            targetHost = "91.98.89.119";
+            targetUser = "root";
+            tags = [ "primary" "hetzner" "europe" "app" "postgres" "clickhouse" "haproxy" "arm64" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          nixpkgs.system = "aarch64-linux";
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/hetzner-primary
+          ];
+        };
+
+        # Europe - Contabo Secondary (node-b)
+        contabo-secondary = {
+          deployment = {
+            targetHost = "185.237.12.64";
+            targetUser = "root";
+            tags = [ "worker" "contabo" "europe" "app" "postgres" "clickhouse" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/contabo-secondary
+          ];
+        };
+
+        # Europe - Contabo Tertiary (node-c)
+        contabo-tertiary = {
+          deployment = {
+            targetHost = "147.93.146.35";
+            targetUser = "root";
+            tags = [ "worker" "contabo" "europe" "app" "postgres" "clickhouse" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/contabo-tertiary
+          ];
+        };
+
+        # Asia - India Hyderabad Worker 1 (Oracle Free Tier ARM64)
+        india-hyderabad-1 = {
+          deployment = {
+            targetHost = "152.67.179.42";
+            targetUser = "le";
+            tags = [ "worker" "oracle" "asia" "india-hyderabad" "postgres" "minimal" "arm64" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          nixpkgs.system = "aarch64-linux";
+
+          imports = [
+            agenixModule
+            ./infra/nixos/regions/asia/india-hyderabad/worker-1
+          ];
+        };
+
+        # Asia - India Hyderabad Worker 2 (Oracle Free Tier ARM64)
+        india-hyderabad-2 = {
+          deployment = {
+            targetHost = "144.24.150.48";
+            targetUser = "root";
+            tags = [ "worker" "oracle" "asia" "india-hyderabad" "minimal" "arm64" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          nixpkgs.system = "aarch64-linux";
+
+          imports = [
+            agenixModule
+            ./infra/nixos/regions/asia/india-hyderabad/worker-2
           ];
         };
       };
@@ -160,58 +212,88 @@
 
       # NixOS configurations for nixos-anywhere
       nixosConfigurations = {
-        node-a = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";  # Hetzner ARM64 server
-          modules = commonModules ++ [
-            ./infra/nixos/node-a.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
-            ./infra/nixos/services/haproxy.nix
-          ];
-          specialArgs = { inherit self; };
-        };
+        # ========================================
+        # PRODUCTION ARCHITECTURE
+        # ========================================
 
-        node-b = nixpkgs.lib.nixosSystem {
-          system = linuxSystem;
-          modules = commonModules ++ [
-            ./infra/nixos/node-b.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
-          ];
-          specialArgs = { inherit self; };
-        };
-
-        node-c = nixpkgs.lib.nixosSystem {
-          system = linuxSystem;
-          modules = commonModules ++ [
-            ./infra/nixos/node-c.nix
-            ./infra/nixos/services/uptrack-app.nix
-            ./infra/nixos/services/postgres.nix
-            ./infra/nixos/services/clickhouse.nix
-          ];
-          specialArgs = { inherit self; };
-        };
-
-        node-india-strong = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";  # Oracle Free ARM64
+        germany = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
           modules = [
-            # Use Oracle-specific common config (no disko)
-            agenix.nixosModules.default
-            ./infra/nixos/common-oracle.nix
-            ./infra/nixos/node-india-strong-minimal.nix
-            # Idle prevention is now inline in node-india-strong-minimal.nix
-            # NOT using service modules - deploy app as release instead
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/netcup-germany
           ];
           specialArgs = { inherit self; };
         };
 
-        node-india-weak = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";  # Oracle Free ARM64
-          modules = commonModules ++ [
-            ./infra/nixos/node-india-weak.nix
-            ./infra/nixos/services/uptrack-app.nix
+        austria = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/netcup-austria
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        canada = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/americas/ovh-canada
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        # ========================================
+        # LEGACY NODES
+        # ========================================
+
+        hetzner-primary = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/hetzner-primary
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        contabo-secondary = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/contabo-secondary
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        contabo-tertiary = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/contabo-tertiary
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        india-hyderabad-1 = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          modules = [
+            agenixModule
+            ./infra/nixos/regions/asia/india-hyderabad/worker-1
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        india-hyderabad-2 = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          modules = [
+            agenixModule
+            ./infra/nixos/regions/asia/india-hyderabad/worker-2
           ];
           specialArgs = { inherit self; };
         };
@@ -267,79 +349,79 @@
               ${colmena.packages.${system}.colmena}/bin/colmena apply
             '');
           };
-          deploy-node-a = {
+          deploy-hetzner-primary = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-a" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-a
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-hetzner-primary" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on hetzner-primary
             '');
           };
-          deploy-node-b = {
+          deploy-contabo-secondary = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-b" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-b
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-contabo-secondary" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on contabo-secondary
             '');
           };
-          deploy-node-c = {
+          deploy-contabo-tertiary = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-c" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-c
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-contabo-tertiary" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on contabo-tertiary
             '');
           };
-          install-node-a = {
+          deploy-india-hyderabad-1 = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-a" ''
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-india-hyderabad-1" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on india-hyderabad-1
+            '');
+          };
+          deploy-india-hyderabad-2 = {
+            type = "app";
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-india-hyderabad-2" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on india-hyderabad-2
+            '');
+          };
+          install-hetzner-primary = {
+            type = "app";
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-hetzner-primary" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
-                --flake .#node-a \
+                --flake .#hetzner-primary \
                 root@91.98.89.119
             '');
           };
-          install-node-b = {
+          install-contabo-secondary = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-b" ''
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-contabo-secondary" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
-                --flake .#node-b \
+                --flake .#contabo-secondary \
                 root@185.237.12.64
             '');
           };
-          install-node-c = {
+          install-contabo-tertiary = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-c" ''
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-contabo-tertiary" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
-                --flake .#node-c \
+                --flake .#contabo-tertiary \
                 root@147.93.146.35
             '');
           };
-          deploy-node-india-strong = {
+          install-india-hyderabad-1 = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-india-strong" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-india-strong
-            '');
-          };
-          deploy-node-india-weak = {
-            type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-node-india-weak" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on node-india-weak
-            '');
-          };
-          install-node-india-strong = {
-            type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-india-strong" ''
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-india-hyderabad-1" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
-                --flake .#node-india-strong \
-                root@144.24.133.171
+                --flake .#india-hyderabad-1 \
+                le@152.67.179.42
             '');
           };
-          install-node-india-weak = {
+          install-india-hyderabad-2 = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-node-india-weak" ''
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-india-hyderabad-2" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
-                --flake .#node-india-weak \
-                root@INDIA_WEAK_IP
+                --flake .#india-hyderabad-2 \
+                root@144.24.150.48
             '');
           };
         };

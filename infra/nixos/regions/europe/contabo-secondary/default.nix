@@ -1,14 +1,23 @@
-# Node C - Tertiary server (Contabo)
+# Contabo Secondary Node - Europe
+# node-b: 185.237.12.64
+# Worker profile (no HAProxy)
 { config, pkgs, lib, ... }:
 
 {
+  imports = [
+    ../../../common/base.nix
+    ../../../common/contabo.nix
+    ../../../modules/profiles/worker.nix
+  ];
+
   # Hostname
-  networking.hostName = "uptrack-node-c";
+  networking.hostName = "uptrack-contabo-secondary";
 
   # Node-specific environment variables
   environment.variables = {
-    NODE_NAME = "node-c";
-    NODE_REGION = "contabo";
+    NODE_NAME = "contabo-secondary";
+    NODE_REGION = "europe";
+    NODE_PROVIDER = "contabo";
   };
 
   # Open ports for services
