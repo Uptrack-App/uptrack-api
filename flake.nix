@@ -58,12 +58,12 @@
         # PRODUCTION ARCHITECTURE (5 Nodes)
         # ========================================
 
-        # Europe - Netcup Germany (PG Primary + CH Replica)
+        # Europe - Netcup Germany (PG Primary + VictoriaMetrics)
         germany = {
           deployment = {
             targetHost = "TBD";  # Update when server is provisioned
             targetUser = "root";
-            tags = [ "primary" "netcup" "europe" "germany" "postgres-primary" "clickhouse-replica" "arm64" ];
+            tags = [ "primary" "netcup" "europe" "germany" "postgres-primary" "victoriametrics" "arm64" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -77,12 +77,12 @@
           ];
         };
 
-        # Europe - Netcup Austria (CH Primary + PG Replica)
+        # Europe - Netcup Austria (PG Replica + VictoriaMetrics)
         austria = {
           deployment = {
             targetHost = "TBD";  # Update when server is provisioned
             targetUser = "root";
-            tags = [ "primary" "netcup" "europe" "austria" "clickhouse-primary" "postgres-replica" "arm64" ];
+            tags = [ "primary" "netcup" "europe" "austria" "postgres-replica" "victoriametrics" "arm64" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -122,7 +122,7 @@
           deployment = {
             targetHost = "91.98.89.119";
             targetUser = "root";
-            tags = [ "primary" "hetzner" "europe" "app" "postgres" "clickhouse" "haproxy" "arm64" ];
+            tags = [ "primary" "hetzner" "europe" "app" "postgres" "victoriametrics" "haproxy" "arm64" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -141,7 +141,7 @@
           deployment = {
             targetHost = "185.237.12.64";
             targetUser = "root";
-            tags = [ "worker" "contabo" "europe" "app" "postgres" "clickhouse" ];
+            tags = [ "worker" "contabo" "europe" "app" "postgres" "victoriametrics" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -158,7 +158,7 @@
           deployment = {
             targetHost = "147.93.146.35";
             targetUser = "root";
-            tags = [ "worker" "contabo" "europe" "app" "postgres" "clickhouse" ];
+            tags = [ "worker" "contabo" "europe" "app" "postgres" "victoriametrics" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };

@@ -25,8 +25,8 @@
     22    # SSH
     4000  # Phoenix app (internal)
     5432  # PostgreSQL
-    8123  # ClickHouse HTTP
-    9000  # ClickHouse native
+    # TODO: Add VictoriaMetrics ports
+    
   ];
 
   # Journald configuration

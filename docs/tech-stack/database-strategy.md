@@ -40,15 +40,24 @@
 - Pros: simpler time-series management, retention, compression.
 - Cons: added dependency and ops; some features are license-restricted in newer versions.
 
-## ClickHouse Path (High-Throughput Analytics)
+## ClickHouse Path (Not Recommended for This Use Case)
 - Columnar, excellent compression and ingest; great for analytics queries and long retention.
 - Use MergeTree with partition by day and order by `(monitor_id, checked_at)`.
 - Pros: cheap storage, very fast scans.
 - Cons: eventual consistency patterns, different SQL, joins less friendly; pair with Postgres for relational data.
+- **Why not for Uptrack**: Higher operational complexity, requires ZooKeeper/ClickHouse Keeper, not metrics-specific, overkill for time-series workload.
 
-## VictoriaMetrics (Metrics-Oriented)
-- Very simple ops, great write throughput and retention; ideal if you store just status/latency as time series.
+## VictoriaMetrics (Chosen Solution - Metrics-Oriented)
+- **Purpose-built for time-series**: Optimized specifically for metrics workloads.
+- **Simple operations**: No external dependencies (unlike ClickHouse requiring ZooKeeper/Keeper).
+- **Excellent write throughput**: Handles high-volume metric ingestion efficiently.
+- **Great compression and retention**: Cost-effective long-term storage.
+- **Cluster mode**: Horizontal scalability with vmstorage, vminsert, and vmselect components.
+- **PromQL/MetricsQL**: Native Prometheus ecosystem compatibility.
+- **Low resource usage**: Runs efficiently on ARM64 with minimal memory footprint.
+- **Proven at scale**: Handles billions of time-series data points.
 - Cons: limited ad-hoc relational queries; pair with Postgres for metadata.
+- **Why chosen for Uptrack**: Perfect fit for uptime monitoring metrics, simpler ops than ClickHouse, native Prometheus compatibility for Grafana dashboards.
 
 ## Write Path Recommendations
 - Prefer HEAD for simple uptime; small GET if keyword/content checks needed.

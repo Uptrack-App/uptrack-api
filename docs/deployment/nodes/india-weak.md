@@ -27,7 +27,7 @@ colmena apply --on node-india-weak
 **NO DATABASES**
 - App-only node
 - No PostgreSQL
-- No ClickHouse
+- No VictoriaMetrics
 - Connects remotely via Tailscale
 
 ---

@@ -4,7 +4,7 @@
 **Provider**: Netcup
 **Specs**: 6 vCore ARM64, 8 GB RAM, 256 GB NVMe
 **Cost**: $7.11/month
-**Role**: ClickHouse PRIMARY + PostgreSQL REPLICA
+**Role**: PostgreSQL REPLICA + VictoriaMetrics Node
 
 ---
 
@@ -24,10 +24,10 @@ colmena apply --on node-austria
 
 ## Database Role
 
-**ClickHouse PRIMARY**
-- Accepts all monitoring data writes
-- Replicates to: Germany, India Strong
-- 14-month retention (~120 GB)
+**VictoriaMetrics Node**
+- Part of VM cluster
+- Handles time-series metrics
+- TODO: Define specific role (vmstorage/vminsert/vmselect)
 
 **PostgreSQL REPLICA**
 - Read-only replica from Germany primary
@@ -38,7 +38,7 @@ colmena apply --on node-austria
 ## Key Services
 
 - ✅ PostgreSQL 16 + Patroni
-- ✅ ClickHouse
+- ✅ VictoriaMetrics (TODO: configure cluster component)
 - ✅ etcd member (2/5)
 - ✅ Phoenix app
 - ✅ Oban workers
@@ -51,17 +51,14 @@ colmena apply --on node-austria
 ```bash
 ssh root@AUSTRIA_IP
 
-# Check ClickHouse (should be primary)
-clickhouse-client -q "SELECT version()"
+# Check VictoriaMetrics
+# TODO: Add VM health check commands
 
 # Check Patroni (should be replica)
 patronictl list uptrack-pg-cluster
 
 # Check etcd
 etcdctl endpoint health --cluster
-
-# Check replication lag
-clickhouse-client -q "SELECT * FROM system.replicas"
 ```
 
 ---

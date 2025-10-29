@@ -5,9 +5,6 @@ Systemd units for managing Uptrack services on production nodes.
 ## Files
 
 - `uptrack.service` - Main Phoenix application
-- `clickhouse-spool-flush.service` - Flushes spooled ClickHouse writes
-- `clickhouse-spool-flush.timer` - Runs flush service every minute
-- `clickhouse-flush-spool.sh` - Shell script for flushing (called by service)
 
 ## Installation
 
@@ -46,30 +43,6 @@ systemctl status uptrack
 journalctl -u uptrack -f
 ```
 
-### 3. Deploy ClickHouse Flush (Node C Only)
-
-```bash
-# Copy files
-cp clickhouse-spool-flush.service /etc/systemd/system/
-cp clickhouse-spool-flush.timer /etc/systemd/system/
-cp clickhouse-flush-spool.sh /usr/local/bin/
-chmod +x /usr/local/bin/clickhouse-flush-spool.sh
-
-# Reload systemd
-systemctl daemon-reload
-
-# Enable and start timer
-systemctl enable clickhouse-spool-flush.timer
-systemctl start clickhouse-spool-flush.timer
-
-# Verify timer is active
-systemctl list-timers --all | grep clickhouse
-
-# Manual test
-systemctl start clickhouse-spool-flush.service
-journalctl -u clickhouse-spool-flush -f
-```
-
 ## Environment Variables
 
 Create `/opt/uptrack/.env` on each node:
@@ -91,10 +64,9 @@ POOL_SIZE=10
 OBAN_NODE_NAME=node-a  # Change per node: node-a, node-b, node-c
 NODE_REGION=us-east    # Change per node: us-east, eu-central, ap-southeast
 
-# ClickHouse (all nodes need this for writes)
-CLICKHOUSE_HOST=100.C.C.C
-CLICKHOUSE_PORT=8123
-CLICKHOUSE_DATABASE=default
+# VictoriaMetrics (all nodes need this for writes)
+VICTORIAMETRICS_VMINSERT_URL=http://vminsert.internal:8480
+VICTORIAMETRICS_VMSELECT_URL=http://vmselect.internal:8481
 
 # OAuth
 GITHUB_CLIENT_ID=your_github_client_id
@@ -258,21 +230,6 @@ systemctl daemon-reload
 systemctl restart uptrack
 ```
 
-### ClickHouse spool keeps growing
-
-```bash
-# Check if ClickHouse is reachable
-echo "SELECT 1" | clickhouse-client --host=100.C.C.C
-
-# Check spool flush logs
-journalctl -u clickhouse-spool-flush -f
-
-# Manual flush
-systemctl start clickhouse-spool-flush.service
-
-# If ClickHouse is down, spool will accumulate (this is expected)
-# Once ClickHouse is back, flush will catch up
-```
 
 ## Monitoring
 
@@ -390,20 +347,17 @@ systemctl daemon-reload
 
 # Restart affected services
 systemctl restart uptrack
-systemctl restart clickhouse-spool-flush.timer
 ```
 
 ## Uninstall
 
 ```bash
 # Stop and disable services
-systemctl stop uptrack clickhouse-spool-flush.timer
-systemctl disable uptrack clickhouse-spool-flush.timer
+systemctl stop uptrack
+systemctl disable uptrack
 
 # Remove service files
 rm /etc/systemd/system/uptrack.service
-rm /etc/systemd/system/clickhouse-spool-flush.{service,timer}
-rm /usr/local/bin/clickhouse-flush-spool.sh
 
 # Reload systemd
 systemctl daemon-reload

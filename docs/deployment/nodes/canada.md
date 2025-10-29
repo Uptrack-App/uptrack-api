@@ -26,7 +26,7 @@ colmena apply --on node-canada
 
 **NO LOCAL DATABASES**
 - Connects to Germany (Postgres primary)
-- Connects to Austria (ClickHouse primary)
+- Connects to VictoriaMetrics cluster
 - Read-only replicas accessible locally via Tailscale
 
 ---
@@ -54,7 +54,7 @@ etcdctl endpoint health --cluster
 
 # Test database connectivity
 psql -U postgres -h 100.64.0.1 -l  # Germany Postgres
-clickhouse-client -q "SELECT version()"  # Via Tailscale to Austria
+# TODO: Add VictoriaMetrics health check
 ```
 
 ---

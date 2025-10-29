@@ -1,5 +1,5 @@
 # Worker Node Profile
-# App + PostgreSQL + ClickHouse (no HAProxy)
+# App + PostgreSQL + VictoriaMetrics (no HAProxy)
 # Used for: node-b, node-c (Contabo workers)
 { config, pkgs, lib, ... }:
 
@@ -7,6 +7,6 @@
   imports = [
     ../services/uptrack-app.nix
     ../services/postgres.nix
-    ../services/clickhouse.nix
+    # TODO: Add VictoriaMetrics service module
   ];
 }
