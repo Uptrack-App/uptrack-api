@@ -1,4 +1,4 @@
-# Netcup Germany - PostgreSQL Primary + ClickHouse Replica
+# Netcup Germany - PostgreSQL Primary + VictoriaMetrics Node
 # Tailscale IP: 100.64.0.1
 # 6 vCPU, 8 GB RAM, 256 GB Storage
 { config, pkgs, lib, ... }:
@@ -7,7 +7,7 @@
   imports = [
     ../../../common/base.nix
     ../../../common/netcup.nix
-    ../../../modules/profiles/pg-primary-ch-replica.nix
+    ../../../modules/profiles/primary.nix
   ];
 
   # Hostname
@@ -22,7 +22,7 @@
 
     # Database roles
     POSTGRES_ROLE = "primary";
-    CLICKHOUSE_ROLE = "replica";
+    # TODO: Add VictoriaMetrics role
 
     # Tailscale
     TAILSCALE_IP = "100.64.0.1";
@@ -36,8 +36,7 @@
     4000  # Phoenix app
     5432  # PostgreSQL
     8008  # Patroni REST API
-    8123  # ClickHouse HTTP
-    9000  # ClickHouse native
+    # TODO: Add VictoriaMetrics ports
     2379  # etcd client
     2380  # etcd peer
   ];

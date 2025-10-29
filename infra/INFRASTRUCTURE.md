@@ -4,9 +4,9 @@
 
 | Node Name | Location | Region | Provider | vCPU | RAM | Storage | Role | Tailscale IP | Cost/Month |
 |-----------|----------|--------|----------|------|-----|---------|------|--------------|------------|
-| **germany** | Germany | Europe | Netcup ARM G11 | 6 | 8 GB | 256 GB | PG Primary + CH Replica | 100.64.0.1 | $7.11 |
-| **austria** | Austria | Europe | Netcup ARM G11 | 6 | 8 GB | 256 GB | CH Primary + PG Replica | 100.64.0.2 | $7.11 |
-| **canada** | Canada | Americas | OVH VPS-1 | 4 | 8 GB | 75 GB | App-only + etcd | 100.64.0.3 | $4.20 |
+| **germany** | Germany | Europe | Netcup ARM G11 | 6 | 8 GB | 256 GB | PG Primary + VM Node | 100.64.0.1 | $7.11 |
+| **austria** | Austria | Europe | Netcup ARM G11 | 6 | 8 GB | 256 GB | PG Replica + VM Node | 100.64.0.2 | $7.11 |
+| **canada** | Canada | Americas | OVH VPS-1 | 4 | 8 GB | 75 GB | App-only + VM Node | 100.64.0.3 | $4.20 |
 | **india-hyderabad-1** | India | APAC | Oracle Free ARM64 | ? | ? | 145 GB | PG Replica | 100.64.0.4 | Free |
 | **india-hyderabad-2** | India | APAC | Oracle Free ARM64 | 1 | ? | ? | App-only + etcd | 100.64.0.5 | Free |
 
@@ -25,7 +25,7 @@
 ### Full Stack Nodes
 - Uptrack App
 - PostgreSQL Primary/Replica
-- ClickHouse Primary/Replica
+- VictoriaMetrics Node
 - HAProxy (load balancer)
 
 **Current**: hetzner-primary (node-a)
@@ -34,7 +34,7 @@
 ### Worker Nodes
 - Uptrack App
 - PostgreSQL Replica
-- ClickHouse Replica
+- VictoriaMetrics Node
 
 **Current**: contabo-secondary (node-b), contabo-tertiary (node-c)
 **Planned**: Austria (Netcup)
@@ -89,10 +89,11 @@ infra/nixos/regions/
   - Austria (Netcup) - planned
   - India Strong (Oracle) - current
 
-### ClickHouse (Primary/Replica Setup)
-- **Primary**: Austria (Netcup) - planned
-- **Replicas**:
+### VictoriaMetrics Cluster (Time-Series Database)
+- **Cluster Nodes**: TBD
   - Germany (Netcup) - planned
+  - Austria (Netcup) - planned
+  - Canada (OVH) - planned
 
 ### etcd (Distributed Coordination)
 - India Weak (Oracle) - current
@@ -106,8 +107,8 @@ infra/nixos/regions/
 - ✅ Oracle India (both workers)
 
 ### Phase 2: Netcup Migration (Planned)
-1. Deploy Germany (Netcup) as new PG Primary
-2. Deploy Austria (Netcup) as CH Primary
+1. Deploy Germany (Netcup) as new PG Primary + VM Node
+2. Deploy Austria (Netcup) as PG Replica + VM Node
 3. Migrate traffic from Hetzner/Contabo to Netcup
 4. Decommission Hetzner/Contabo nodes
 
@@ -161,6 +162,6 @@ colmena apply --on leaseweb-washington
 1. **Add Netcup nodes** to NixOS config
 2. **Add Leaseweb Washington** to NixOS config
 3. **Test deployments** to new providers
-4. **Set up replication** (PostgreSQL + ClickHouse)
+4. **Set up replication** (PostgreSQL only - VictoriaMetrics cluster handles time-series)
 5. **Migrate traffic** from old to new infrastructure
 6. **Decommission** Hetzner/Contabo nodes

@@ -20,10 +20,10 @@ psql -U postgres -d uptrack_prod -f 00-init-schemas.sql
 
 ### 2. (Deprecated) TimescaleDB Setup
 
-**NOTE:** Uptrack now uses **ClickHouse** for time-series data instead of TimescaleDB.
+**NOTE:** Uptrack now uses **VictoriaMetrics cluster** for time-series data instead of TimescaleDB.
 
-- ClickHouse is configured on Node C (see: `infra/nixos/services/clickhouse.nix`)
-- Data is written via `Uptrack.ClickHouse.ResilientWriter`
+- VictoriaMetrics cluster configuration: TODO
+- Data is written via VictoriaMetrics client (TODO)
 - The `01-timescaledb-setup.sql` file is kept for reference only
 
 ### 3. Run Ecto Migrations

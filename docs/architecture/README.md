@@ -24,13 +24,6 @@ This directory contains all architecture-related documentation for Uptrack's inf
 
 ### Design Principles
 
-**[why-separate-database-primaries.md](./why-separate-database-primaries.md)** - Core Principle
-- Why separate PostgreSQL and ClickHouse primaries
-- 10 critical reasons with examples
-- Real-world failure scenarios
-- The golden rules
-- **Read this** to understand the fundamental design decision
-
 **[oracle-netcup-ovh-architecture.md](./oracle-netcup-ovh-architecture.md)** - Provider Analysis
 - 3-node Oracle + Netcup architecture (legacy)
 - Cost breakdown
@@ -39,14 +32,14 @@ This directory contains all architecture-related documentation for Uptrack's inf
 
 ---
 
-## 🎯 Current Architecture (2025-10-19)
+## 🎯 Current Architecture (2025-10-29)
 
 ### Final 5-Node Setup
 
 ```
-Germany (Netcup 256GB) - PostgreSQL PRIMARY + ClickHouse replica
-Austria (Netcup 256GB) - ClickHouse PRIMARY + PostgreSQL replica
-Canada (OVH 75GB) - App-only
+Germany (Netcup 256GB) - PostgreSQL PRIMARY + VictoriaMetrics node
+Austria (Netcup 256GB) - PostgreSQL replica + VictoriaMetrics node
+Canada (OVH 75GB) - App-only + VictoriaMetrics node
 India Strong (Oracle Free 145GB) - PostgreSQL replica
 India Weak (Oracle Free) - App-only + etcd
 
@@ -54,8 +47,8 @@ Total Cost: ~$23/month
 ```
 
 ### Key Features
-- ✅ Separates database primaries (Germany PG ≠ Austria CH)
-- ✅ 14-month ClickHouse retention
+- ✅ PostgreSQL with Patroni HA
+- ✅ VictoriaMetrics cluster for time-series data
 - ✅ Supports 10K monitors
 - ✅ 5-node etcd cluster (optimal HA)
 - ✅ 3 continents coverage
@@ -107,8 +100,8 @@ Outside this directory:
 ### Why 5 nodes instead of 6?
 **Answer**: Removed Poland to save $50/year. India Weak provides the 5th etcd member (keeps odd number for optimal consensus). See ARCHITECTURE-SUMMARY.md → "Why NOT Poland Node?"
 
-### Can we run both database primaries on the same node?
-**Answer**: **NO**. But running PRIMARY + replica is fine. See why-separate-database-primaries.md for detailed explanation.
+### Why VictoriaMetrics instead of ClickHouse?
+**Answer**: VictoriaMetrics is purpose-built for time-series metrics with lower operational complexity, better Prometheus ecosystem integration, and lower resource requirements. See docs/tech-stack/database-strategy.md
 
 ### How do we scale to 20K monitors?
 **Answer**: Upgrade Netcup nodes to 512 GB (VPS 2000 ARM G11). See final-5-node-architecture.md → "Scaling Strategy"
@@ -126,7 +119,6 @@ Outside this directory:
 ### Diagrams & Visualizations
 - Network topology: [final-5-node-architecture.md#network-topology](./final-5-node-architecture.md#network-topology)
 - Database distribution: [ARCHITECTURE-SUMMARY.md#database-distribution](./ARCHITECTURE-SUMMARY.md#database-distribution)
-- Failover scenarios: [why-separate-database-primaries.md#real-world-failure-scenarios](./why-separate-database-primaries.md#real-world-failure-scenarios)
 
 ### Cost Breakdowns
 - Current setup: [ARCHITECTURE-SUMMARY.md#quick-reference](./ARCHITECTURE-SUMMARY.md#quick-reference)

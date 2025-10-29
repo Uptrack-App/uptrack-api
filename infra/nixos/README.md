@@ -15,15 +15,15 @@ infra/nixos/
 ├── modules/             # Reusable modules
 │   ├── services/       # Service definitions
 │   │   ├── postgres.nix
-│   │   ├── clickhouse.nix
+│   │   ├── victoriametrics.nix
 │   │   ├── uptrack-app.nix
 │   │   ├── haproxy.nix
 │   │   └── etcd.nix
 │   ├── packages/       # Custom packages
 │   │   └── uptrack-app.nix
 │   └── profiles/       # Service bundles
-│       ├── primary.nix  # Full stack (app + postgres + clickhouse + haproxy)
-│       ├── worker.nix   # App + postgres + clickhouse
+│       ├── primary.nix  # Full stack (app + postgres + victoriametrics + haproxy)
+│       ├── worker.nix   # App + postgres + victoriametrics
 │       └── minimal.nix  # Postgres only (Oracle free tier)
 │
 ├── regions/            # Region-specific configurations
@@ -93,7 +93,7 @@ colmena apply --on @asia                # Asia region only
 
 # Database roles
 colmena apply --on @postgres-primary    # PostgreSQL primary (Germany)
-colmena apply --on @clickhouse-primary  # ClickHouse primary (Austria)
+colmena apply --on @victoriametrics-primary  # VictoriaMetrics primary (Austria)
 colmena apply --on @app-only            # App-only nodes (Canada, India-2)
 
 # Legacy nodes (deprecated)
@@ -189,12 +189,12 @@ colmena apply --on singapore-1
 
 ### Primary Profile
 - Full stack deployment
-- Services: Uptrack app, PostgreSQL, ClickHouse, HAProxy
+- Services: Uptrack app, PostgreSQL, VictoriaMetrics, HAProxy
 - Used by: `hetzner-primary`
 
 ### Worker Profile
 - Worker node deployment
-- Services: Uptrack app, PostgreSQL, ClickHouse
+- Services: Uptrack app, PostgreSQL, VictoriaMetrics
 - Used by: `contabo-secondary`, `contabo-tertiary`
 
 ### Minimal Profile

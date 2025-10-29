@@ -20,8 +20,7 @@ defmodule Uptrack.Application do
       {Task.Supervisor, name: Uptrack.TaskSupervisor},
       # Idle prevention for Oracle Always Free instances
       Uptrack.Health.IdlePrevention,
-      # ClickHouse resilient writer
-      Uptrack.ClickHouse.ResilientWriter,
+      # TODO: Add VictoriaMetrics client
       # Start to serve requests, typically the last entry
       UptrackWeb.Endpoint
     ]
