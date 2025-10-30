@@ -1,136 +1,189 @@
 # Uptrack Architecture Documentation
 
-This directory contains all architecture-related documentation for Uptrack's infrastructure and design decisions.
+This directory contains architecture-related documentation for Uptrack's infrastructure and design decisions.
 
 ---
 
-## 📚 Documentation Index
+## 📚 Primary Documentation (OpenSpec)
 
-### Core Architecture
+**All new architecture is documented in OpenSpec proposals** at `/openspec/changes/`
 
-**[ARCHITECTURE-SUMMARY.md](./ARCHITECTURE-SUMMARY.md)** - Quick Reference ⭐
-- Node specifications and costs
-- Database distribution
-- Network topology
-- Scaling roadmap
-- **Start here** for a quick overview
+### Active OpenSpec Proposals
 
-**[final-5-node-architecture.md](./final-5-node-architecture.md)** - Complete Specification
-- Detailed 5-node setup
-- Storage allocation
-- Failover scenarios
-- Deployment checklist
-- Troubleshooting guide
+**[establish-multi-region-monitoring-infrastructure](../../openspec/changes/establish-multi-region-monitoring-infrastructure/)** ⭐
+- **Purpose**: 5-node infrastructure with PostgreSQL HA, VictoriaMetrics cluster, and Tailscale networking
+- **Status**: Validated, ready to apply
+- **Key docs**:
+  - `proposal.md` - Why and what (high-level overview)
+  - `design.md` - Architecture decisions and trade-offs
+  - `tasks.md` - 124 implementation tasks across 8 phases
+  - `specs/` - 21 requirements across 6 capabilities
 
-### Design Principles
+**[add-regional-monitoring-workers](../../openspec/changes/add-regional-monitoring-workers/)** ⭐
+- **Purpose**: Distributed Oban workers for multi-region monitoring checks
+- **Status**: Validated, ready to apply
+- **Depends on**: `establish-multi-region-monitoring-infrastructure`
+- **Key docs**:
+  - `proposal.md` - Why and what (worker architecture)
+  - `design.md` - 6 key design decisions, data flow, scaling strategy
+  - `tasks.md` - 60+ tasks across 8 phases
+  - `specs/` - 14 requirements across 3 capabilities
 
-**[oracle-netcup-ovh-architecture.md](./oracle-netcup-ovh-architecture.md)** - Provider Analysis
-- 3-node Oracle + Netcup architecture (legacy)
-- Cost breakdown
-- Regional coverage
-- Alternative to current 5-node setup
+### How to Use OpenSpec Proposals
+
+```bash
+# View proposal summary
+cat openspec/changes/establish-multi-region-monitoring-infrastructure/proposal.md
+
+# List all changes
+openspec list
+
+# Start implementing a change
+/openspec:apply establish-multi-region-monitoring-infrastructure
+
+# Validate a proposal
+openspec validate add-regional-monitoring-workers --strict
+```
 
 ---
 
-## 🎯 Current Architecture (2025-10-29)
+## 📖 Legacy Documentation (Archived)
 
-### Final 5-Node Setup
+**Historical docs moved to** `/docs/archive/2025-10-30-pre-openspec/`
+
+These docs capture the thought process that led to the current OpenSpec proposals:
+- `region_check_worker.md` - Early worker design (superseded by workers OpenSpec)
+- `scale-plan.md` - VictoriaMetrics scaling ideas (now in infrastructure OpenSpec)
+- `oracle-netcup-ovh-architecture.md` - Provider comparison (now in infrastructure design.md)
+- `final-5-node-architecture.md` - Initial 5-node design (now in infrastructure proposal)
+
+**Why archived?** OpenSpec provides:
+- ✅ Structured requirements with scenarios (Given/When/Then)
+- ✅ Validation tooling (ensures completeness)
+- ✅ Implementation task tracking
+- ✅ Version control of architecture changes
+- ✅ Cross-referencing between related changes
+
+---
+
+## 🎯 Current Architecture (2025-10-30)
+
+### Infrastructure Status
+
+| Component | Status | OpenSpec Change |
+|-----------|--------|-----------------|
+| **5-node deployment** | Proposed | `establish-multi-region-monitoring-infrastructure` |
+| **PostgreSQL HA (Patroni + etcd)** | Proposed | Same as above |
+| **VictoriaMetrics cluster** | Proposed | Same as above |
+| **Tailscale mesh network** | Proposed | Same as above |
+| **WAL-G backups to B2** | Proposed | Same as above |
+| **Regional workers** | Proposed | `add-regional-monitoring-workers` |
+| **NixOS profiles** | Proposed | `add-regional-monitoring-workers` |
+
+### Planned Deployment
 
 ```
-Germany (Netcup 256GB) - PostgreSQL PRIMARY + VictoriaMetrics node
-Austria (Netcup 256GB) - PostgreSQL replica + VictoriaMetrics node
-Canada (OVH 75GB) - App-only + VictoriaMetrics node
-India Strong (Oracle Free 145GB) - PostgreSQL replica
-India Weak (Oracle Free) - App-only + etcd
+eu-a (Italy/Austria, Netcup) - PostgreSQL + VictoriaMetrics + Worker
+eu-b (Italy/Austria, Netcup) - PostgreSQL + VictoriaMetrics + Worker
+eu-c (Italy/Austria, Netcup) - PostgreSQL + VictoriaMetrics + Worker
+india-s (Oracle Free) - PostgreSQL replica + Worker
+india-w (Oracle Free) - Worker + etcd
 
-Total Cost: ~$23/month
+Total Cost: ~$23/month (initially Hostkey €15.69, migrate to Netcup €20.34)
 ```
 
 ### Key Features
-- ✅ PostgreSQL with Patroni HA
-- ✅ VictoriaMetrics cluster for time-series data
-- ✅ Supports 10K monitors
-- ✅ 5-node etcd cluster (optimal HA)
-- ✅ 3 continents coverage
+- ✅ PostgreSQL 17 with automatic failover (<30s RTO)
+- ✅ VictoriaMetrics cluster (3 vmstorage, 2 vminsert, 3 vmselect)
+- ✅ 15-month metrics retention (~35GB storage)
+- ✅ Supports 10K monitors (666 samples/sec)
+- ✅ 5-node etcd cluster (tolerates 2 failures)
+- ✅ Regional workers (EU + Asia initially, expandable)
+- ✅ Zero-downtime provider migration (Hostkey → Netcup)
 
 ---
 
-## 🗺️ Reading Order
+## 🗺️ Getting Started
 
 ### For New Team Members
-1. **ARCHITECTURE-SUMMARY.md** - Get the big picture
-2. **why-separate-database-primaries.md** - Understand why we made key decisions
-3. **final-5-node-architecture.md** - Deep dive into implementation
+1. Read `openspec/changes/establish-multi-region-monitoring-infrastructure/proposal.md` - Get the big picture
+2. Review `design.md` in same directory - Understand key decisions
+3. Scan `tasks.md` - See implementation roadmap
 
-### For Operations
-1. **final-5-node-architecture.md** - Deployment and troubleshooting
-2. **ARCHITECTURE-SUMMARY.md** - Quick reference for commands
+### For Operations (Deployment)
+1. Follow `/openspec:apply establish-multi-region-monitoring-infrastructure` workflow
+2. Check task completion in `tasks.md`
+3. Refer to `specs/` for requirement details and scenarios
 
-### For Future Changes
-1. **why-separate-database-primaries.md** - Understand the constraints
-2. **final-5-node-architecture.md** - See current implementation
-3. **ARCHITECTURE-SUMMARY.md** - Check scaling roadmap
-
----
-
-## 🔄 Document History
-
-| Date | Document | Change |
-|------|----------|--------|
-| 2025-10-19 | final-5-node-architecture.md | Removed Poland node, updated to 5 nodes |
-| 2025-10-19 | ARCHITECTURE-SUMMARY.md | Created quick reference guide |
-| 2025-10-10 | why-separate-database-primaries.md | Initial separation principle doc |
-| 2025-10-10 | oracle-netcup-ovh-architecture.md | Initial provider comparison |
-
----
-
-## 📋 Related Documentation
-
-Outside this directory:
-
-- **[../DEPLOYMENT.md](../DEPLOYMENT.md)** - Step-by-step deployment guide
-- **[../NIXOS-SETUP-COMPLETE.md](../NIXOS-SETUP-COMPLETE.md)** - NixOS configuration
-- **[../deployment-plan.md](../deployment-plan.md)** - High-level deployment strategy
-- **[../nixos-deployment-guide.md](../nixos-deployment-guide.md)** - NixOS-specific guide
+### For Architecture Changes
+1. Review existing OpenSpec changes: `openspec list --specs`
+2. Create new proposal: `/openspec:proposal <change-id>`
+3. Follow OpenSpec conventions in `/openspec/AGENTS.md`
 
 ---
 
 ## 🤔 Common Questions
 
-### Why 5 nodes instead of 6?
-**Answer**: Removed Poland to save $50/year. India Weak provides the 5th etcd member (keeps odd number for optimal consensus). See ARCHITECTURE-SUMMARY.md → "Why NOT Poland Node?"
+### Why OpenSpec instead of markdown docs?
+**Answer**: OpenSpec provides structured requirements with validation, task tracking, and ensures proposals are complete before implementation. Plain markdown docs often miss edge cases and become outdated.
+
+### Where's the old architecture documentation?
+**Answer**: Moved to `/docs/archive/2025-10-30-pre-openspec/`. OpenSpec proposals supersede these docs with more rigorous specifications.
 
 ### Why VictoriaMetrics instead of ClickHouse?
-**Answer**: VictoriaMetrics is purpose-built for time-series metrics with lower operational complexity, better Prometheus ecosystem integration, and lower resource requirements. See docs/tech-stack/database-strategy.md
+**Answer**: See `establish-multi-region-monitoring-infrastructure/design.md` → "Key Design Decision #4: Why VictoriaMetrics"
 
 ### How do we scale to 20K monitors?
-**Answer**: Upgrade Netcup nodes to 512 GB (VPS 2000 ARM G11). See final-5-node-architecture.md → "Scaling Strategy"
+**Answer**: See `establish-multi-region-monitoring-infrastructure/design.md` → "Capacity Planning" section
 
-### Do we need gRPC?
-**Answer**: **NO**. Current HTTP + native protocols are optimal for the monolith architecture. See ARCHITECTURE-SUMMARY.md → "Why Primary-Replica Model?"
+### How much does adding a region cost?
+**Answer**: See `add-regional-monitoring-workers/design.md` → "Cost Analysis" section
+- Phase 1 (co-located): $0
+- Phase 2 (dedicated worker): +$2.50/month per region
 
-### How much does it cost to add a region?
-**Answer**: ~$4-5/month for an app-only node (no databases needed). See final-5-node-architecture.md → "Scaling Options"
+### What's the deployment timeline?
+**Answer**:
+- Infrastructure: 2-3 weeks (Phase 1-8 in infrastructure tasks.md)
+- Workers: 5-8 days (depends on infrastructure being deployed)
+
+---
+
+## 📋 Related Documentation
+
+### OpenSpec
+- `/openspec/AGENTS.md` - How to create and apply proposals
+- `/openspec/project.md` - Project-wide context for AI assistants
+
+### Deployment
+- `/docs/deployment/` - Deployment guides and runbooks
+- `/CLAUDE.md` - NixOS deployment best practices
+
+### Operations
+- `/docs/oban/` - Oban worker configuration and scaling
+- `/docs/db/` - Database setup guides
 
 ---
 
 ## 🔍 Quick Links
 
-### Diagrams & Visualizations
-- Network topology: [final-5-node-architecture.md#network-topology](./final-5-node-architecture.md#network-topology)
-- Database distribution: [ARCHITECTURE-SUMMARY.md#database-distribution](./ARCHITECTURE-SUMMARY.md#database-distribution)
+### Architecture Decisions
+- [Why Tailscale mesh network?](../../openspec/changes/establish-multi-region-monitoring-infrastructure/design.md#1-why-tailscale-over-public-ips)
+- [Why etcd only in EU?](../../openspec/changes/establish-multi-region-monitoring-infrastructure/design.md#2-why-etcd-only-in-eu-not-india)
+- [Why Oban instead of NATS?](../../openspec/changes/add-regional-monitoring-workers/design.md#1-why-oban-not-nats-not-custom-queue)
+- [Why NixOS profiles?](../../openspec/changes/add-regional-monitoring-workers/design.md#2-why-nixos-profiles-not-per-node-configs)
 
-### Cost Breakdowns
-- Current setup: [ARCHITECTURE-SUMMARY.md#quick-reference](./ARCHITECTURE-SUMMARY.md#quick-reference)
-- Scaling projections: [final-5-node-architecture.md#cost-breakdown--projections](./final-5-node-architecture.md#cost-breakdown--projections)
-- Provider comparison: [oracle-netcup-ovh-architecture.md#cost-breakdown](./oracle-netcup-ovh-architecture.md#cost-breakdown)
+### Cost & Capacity
+- [Infrastructure costs](../../openspec/changes/establish-multi-region-monitoring-infrastructure/design.md#cost-analysis)
+- [Worker costs per region](../../openspec/changes/add-regional-monitoring-workers/design.md#migration-path)
+- [Storage capacity planning](../../openspec/changes/establish-multi-region-monitoring-infrastructure/specs/metrics-storage/spec.md)
 
 ### Technical Specs
-- Storage allocation: [final-5-node-architecture.md#storage-allocation](./final-5-node-architecture.md#storage-allocation)
-- Database configs: [final-5-node-architecture.md#database-distribution](./final-5-node-architecture.md#database-distribution)
-- Capacity limits: [ARCHITECTURE-SUMMARY.md#capacity--limits](./ARCHITECTURE-SUMMARY.md#capacity--limits)
+- [PostgreSQL HA requirements](../../openspec/changes/establish-multi-region-monitoring-infrastructure/specs/database-ha/spec.md)
+- [VictoriaMetrics cluster](../../openspec/changes/establish-multi-region-monitoring-infrastructure/specs/metrics-storage/spec.md)
+- [Worker resource limits](../../openspec/changes/add-regional-monitoring-workers/specs/workers/spec.md)
 
 ---
 
-**Last Updated**: 2025-10-19
+**Last Updated**: 2025-10-30
 **Maintained by**: Infrastructure Team
+**Documentation Format**: OpenSpec (structured proposals with validation)
