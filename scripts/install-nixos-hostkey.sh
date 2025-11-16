@@ -3,6 +3,12 @@ set -e
 
 echo "=== Step 0: Cleaning existing partitions ==="
 # Unmount any existing mounts
+# 1. insert nixos 
+# 2. mount iso and connect with virtual manager, 
+# 3. login then sudo -i then setpw: then systemctl enable service sshd
+# 4. ssh with setpw that created then using below command
+
+
 umount /dev/sda* 2>/dev/null || true
 
 # Remove LVM if exists
