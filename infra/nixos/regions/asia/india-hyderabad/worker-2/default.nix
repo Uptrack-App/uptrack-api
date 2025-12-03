@@ -9,7 +9,7 @@ in {
   imports = [
     ../../../../common/base.nix
     ../../../../common/oracle.nix
-    # NOT using service modules - this is minimal NixOS for app deployment
+    ../../../../modules/services/tailscale.nix
   ];
 
   # Basic system configuration (use lib.mkDefault to allow common.nix to override)
@@ -24,6 +24,16 @@ in {
     NODE_REGION = "asia";
     NODE_PROVIDER = "oracle";
     NODE_LOCATION = "india-hyderabad";
+  };
+
+  # Tailscale VPN configuration
+  # This node will be known as "india-w" (india-weak) in the Tailscale network
+  # Target static IP: 100.64.1.11 (assigned via Tailscale admin console)
+  services.uptrack.tailscale = {
+    enable = true;
+    hostname = "india-w";
+    acceptRoutes = true;
+    tags = [ "tag:infrastructure" ];
   };
 
   # Minimal packages - only essentials

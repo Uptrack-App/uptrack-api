@@ -15,13 +15,13 @@ This archive contains architecture documentation created before adopting OpenSpe
   - *Superseded by*: `/openspec/changes/add-regional-monitoring-workers/`
 
 - **scale-plan.md** - VictoriaMetrics cluster scaling strategies
-  - *Superseded by*: `/openspec/changes/establish-multi-region-monitoring-infrastructure/specs/metrics-storage/`
+  - *Superseded by*: `/openspec/changes/1-monitoring-infrastructure/specs/metrics-storage/`
 
 - **oracle-netcup-ovh-architecture.md** - 3-node provider comparison
-  - *Superseded by*: `/openspec/changes/establish-multi-region-monitoring-infrastructure/design.md`
+  - *Superseded by*: `/openspec/changes/1-monitoring-infrastructure/design.md`
 
 - **final-5-node-architecture.md** - Initial 5-node architecture design
-  - *Superseded by*: `/openspec/changes/establish-multi-region-monitoring-infrastructure/proposal.md`
+  - *Superseded by*: `/openspec/changes/1-monitoring-infrastructure/proposal.md`
 
 ---
 
@@ -55,7 +55,7 @@ These docs capture the **thought process** that led to current OpenSpec proposal
 | Date | Action |
 |------|--------|
 | 2025-10-19 | Created `final-5-node-architecture.md` (last markdown design doc) |
-| 2025-10-30 | Created OpenSpec proposals (`establish-multi-region-monitoring-infrastructure`, `add-regional-monitoring-workers`) |
+| 2025-10-30 | Created OpenSpec proposals (`1-monitoring-infrastructure`, `add-regional-monitoring-workers`) |
 | 2025-10-30 | Archived all pre-OpenSpec architecture docs to this directory |
 
 ---

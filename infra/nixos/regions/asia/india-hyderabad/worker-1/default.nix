@@ -13,6 +13,7 @@ in {
     ../../../../common/base.nix
     ../../../../common/oracle.nix
     ../../../../modules/profiles/minimal.nix
+    ../../../../modules/services/tailscale.nix
   ];
 
   # Hostname
@@ -24,6 +25,16 @@ in {
     NODE_REGION = "asia";
     NODE_PROVIDER = "oracle";
     NODE_LOCATION = "india-hyderabad";
+  };
+
+  # Tailscale VPN configuration
+  # This node will be known as "india-s" (india-strong) in the Tailscale network
+  # Target static IP: 100.64.1.10 (assigned via Tailscale admin console)
+  services.uptrack.tailscale = {
+    enable = true;
+    hostname = "india-s";
+    acceptRoutes = true;
+    tags = [ "tag:infrastructure" ];
   };
 
   # Minimal packages - only essentials (bc needed for idle prevention)

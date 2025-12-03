@@ -2,6 +2,16 @@
 
 This directory contains architecture-related documentation for Uptrack's infrastructure and design decisions.
 
+  Suggested OpenSpec Organization
+
+  openspec/changes/
+  ├── 1-monitoring-infrastructure/     # Tailscale, etcd, node inventory
+  ├── 2-postgres-architecture/         # Citus + Patroni + pgBackRest
+  ├── 3-victoriametrics-cluster/       # VM cluster architecture
+  ├── 4-oban-distributed-workers/      # Oban queues, regional workers
+  ├── 5-application-deployment/        # Phoenix app, releases, coordination
+  └── 6-frontend-architecture/         # (existing: frontend-application-architecture)
+
 ---
 
 ## 📚 Primary Documentation (OpenSpec)
@@ -10,7 +20,7 @@ This directory contains architecture-related documentation for Uptrack's infrast
 
 ### Active OpenSpec Proposals
 
-**[establish-multi-region-monitoring-infrastructure](../../openspec/changes/establish-multi-region-monitoring-infrastructure/)** ⭐
+**[1-monitoring-infrastructure](../../openspec/changes/1-monitoring-infrastructure/)** ⭐
 - **Purpose**: 5-node infrastructure with PostgreSQL HA, VictoriaMetrics cluster, and Tailscale networking
 - **Status**: Validated, ready to apply
 - **Key docs**:
@@ -22,7 +32,7 @@ This directory contains architecture-related documentation for Uptrack's infrast
 **[add-regional-monitoring-workers](../../openspec/changes/add-regional-monitoring-workers/)** ⭐
 - **Purpose**: Distributed Oban workers for multi-region monitoring checks
 - **Status**: Validated, ready to apply
-- **Depends on**: `establish-multi-region-monitoring-infrastructure`
+- **Depends on**: `1-monitoring-infrastructure`
 - **Key docs**:
   - `proposal.md` - Why and what (worker architecture)
   - `design.md` - 6 key design decisions, data flow, scaling strategy
@@ -33,13 +43,13 @@ This directory contains architecture-related documentation for Uptrack's infrast
 
 ```bash
 # View proposal summary
-cat openspec/changes/establish-multi-region-monitoring-infrastructure/proposal.md
+cat openspec/changes/1-monitoring-infrastructure/proposal.md
 
 # List all changes
 openspec list
 
 # Start implementing a change
-/openspec:apply establish-multi-region-monitoring-infrastructure
+/openspec:apply 1-monitoring-infrastructure
 
 # Validate a proposal
 openspec validate add-regional-monitoring-workers --strict
@@ -72,7 +82,7 @@ These docs capture the thought process that led to the current OpenSpec proposal
 
 | Component | Status | OpenSpec Change |
 |-----------|--------|-----------------|
-| **5-node deployment** | Proposed | `establish-multi-region-monitoring-infrastructure` |
+| **5-node deployment** | Proposed | `1-monitoring-infrastructure` |
 | **PostgreSQL HA (Patroni + etcd)** | Proposed | Same as above |
 | **VictoriaMetrics cluster** | Proposed | Same as above |
 | **Tailscale mesh network** | Proposed | Same as above |
@@ -106,12 +116,12 @@ Total Cost: ~$23/month (initially Hostkey €15.69, migrate to Netcup €20.34)
 ## 🗺️ Getting Started
 
 ### For New Team Members
-1. Read `openspec/changes/establish-multi-region-monitoring-infrastructure/proposal.md` - Get the big picture
+1. Read `openspec/changes/1-monitoring-infrastructure/proposal.md` - Get the big picture
 2. Review `design.md` in same directory - Understand key decisions
 3. Scan `tasks.md` - See implementation roadmap
 
 ### For Operations (Deployment)
-1. Follow `/openspec:apply establish-multi-region-monitoring-infrastructure` workflow
+1. Follow `/openspec:apply 1-monitoring-infrastructure` workflow
 2. Check task completion in `tasks.md`
 3. Refer to `specs/` for requirement details and scenarios
 
@@ -131,10 +141,10 @@ Total Cost: ~$23/month (initially Hostkey €15.69, migrate to Netcup €20.34)
 **Answer**: Moved to `/docs/archive/2025-10-30-pre-openspec/`. OpenSpec proposals supersede these docs with more rigorous specifications.
 
 ### Why VictoriaMetrics instead of ClickHouse?
-**Answer**: See `establish-multi-region-monitoring-infrastructure/design.md` → "Key Design Decision #4: Why VictoriaMetrics"
+**Answer**: See `1-monitoring-infrastructure/design.md` → "Key Design Decision #4: Why VictoriaMetrics"
 
 ### How do we scale to 20K monitors?
-**Answer**: See `establish-multi-region-monitoring-infrastructure/design.md` → "Capacity Planning" section
+**Answer**: See `1-monitoring-infrastructure/design.md` → "Capacity Planning" section
 
 ### How much does adding a region cost?
 **Answer**: See `add-regional-monitoring-workers/design.md` → "Cost Analysis" section
@@ -167,19 +177,19 @@ Total Cost: ~$23/month (initially Hostkey €15.69, migrate to Netcup €20.34)
 ## 🔍 Quick Links
 
 ### Architecture Decisions
-- [Why Tailscale mesh network?](../../openspec/changes/establish-multi-region-monitoring-infrastructure/design.md#1-why-tailscale-over-public-ips)
-- [Why etcd only in EU?](../../openspec/changes/establish-multi-region-monitoring-infrastructure/design.md#2-why-etcd-only-in-eu-not-india)
+- [Why Tailscale mesh network?](../../openspec/changes/1-monitoring-infrastructure/design.md#1-why-tailscale-over-public-ips)
+- [Why etcd only in EU?](../../openspec/changes/1-monitoring-infrastructure/design.md#2-why-etcd-only-in-eu-not-india)
 - [Why Oban instead of NATS?](../../openspec/changes/add-regional-monitoring-workers/design.md#1-why-oban-not-nats-not-custom-queue)
 - [Why NixOS profiles?](../../openspec/changes/add-regional-monitoring-workers/design.md#2-why-nixos-profiles-not-per-node-configs)
 
 ### Cost & Capacity
-- [Infrastructure costs](../../openspec/changes/establish-multi-region-monitoring-infrastructure/design.md#cost-analysis)
+- [Infrastructure costs](../../openspec/changes/1-monitoring-infrastructure/design.md#cost-analysis)
 - [Worker costs per region](../../openspec/changes/add-regional-monitoring-workers/design.md#migration-path)
-- [Storage capacity planning](../../openspec/changes/establish-multi-region-monitoring-infrastructure/specs/metrics-storage/spec.md)
+- [Storage capacity planning](../../openspec/changes/1-monitoring-infrastructure/specs/metrics-storage/spec.md)
 
 ### Technical Specs
-- [PostgreSQL HA requirements](../../openspec/changes/establish-multi-region-monitoring-infrastructure/specs/database-ha/spec.md)
-- [VictoriaMetrics cluster](../../openspec/changes/establish-multi-region-monitoring-infrastructure/specs/metrics-storage/spec.md)
+- [PostgreSQL HA requirements](../../openspec/changes/1-monitoring-infrastructure/specs/database-ha/spec.md)
+- [VictoriaMetrics cluster](../../openspec/changes/1-monitoring-infrastructure/specs/metrics-storage/spec.md)
 - [Worker resource limits](../../openspec/changes/add-regional-monitoring-workers/specs/workers/spec.md)
 
 ---

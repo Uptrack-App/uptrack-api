@@ -34,16 +34,16 @@ WAL-G provides point-in-time recovery with RPO <1 minute vs daily dumps (RPO: 24
 ---
 
 ### Requirement: VictoriaMetrics Backup Strategy
-The system SHALL perform weekly VictoriaMetrics backups to b2://uptrack/vm/ using vmbackup, and backups SHALL be retained per policy: PostgreSQL 30 days, VictoriaMetrics 12 weeks.
+The system SHALL perform daily VictoriaMetrics backups to b2://uptrack/vm/ using vmbackup, and backups SHALL be retained per policy: PostgreSQL 30 days, VictoriaMetrics 30 days.
 
 **ID:** infra-backup-002
 **Priority:** High
 
-Historical metrics are less critical than transactional database. Retention policy balances B2 storage costs with recovery needs.
+Daily backups provide RPO of 1 day vs 7 days with weekly backups. For paid monitoring service, losing 1 week of historical uptime data is unacceptable for SLA reporting and customer analytics. Cost increase ($0.75/mo) is justified by 7x better RPO.
 
-#### Scenario: Weekly vmbackup to B2
+#### Scenario: Daily vmbackup to B2
 **Given** vmstorage on eu-a has 15 months of metrics
-**When** weekly backup cron runs Sunday 03:00 UTC
+**When** daily backup cron runs at 03:00 UTC
 **Then** vmbackup exports data to b2://uptrack/vm/eu-a/
 **And** backup is incremental
 **And** first backup takes ~30 minutes, subsequent <10 minutes
@@ -55,10 +55,10 @@ Historical metrics are less critical than transactional database. Retention poli
 **And** B2 storage for PG remains <200GB (~$1/month)
 
 #### Scenario: VictoriaMetrics backup retention
-**Given** vmbackup has run for 16 weeks
+**Given** vmbackup has run for 45 days
 **When** retention cleanup runs
-**Then** backups older than 12 weeks are deleted
-**And** B2 storage for VM remains <150GB (~$0.75/month)
+**Then** backups older than 30 days are deleted
+**And** B2 storage for VM remains <200GB (~$1.50/month)
 
 ---
 
@@ -92,4 +92,4 @@ Untested backups are useless. Silent failures lead to data loss. DR procedures e
 **Given** all EU nodes are destroyed
 **When** operator opens DR runbook
 **Then** runbook provides steps to promote india-s, restore VM from B2, update DNS
-**And** runbook includes expected RTO: 4 hours, RPO: 1-2 seconds (PG), 7 days (VM)
+**And** runbook includes expected RTO: 4 hours, RPO: 1-2 seconds (PG), 1 day (VM)

@@ -114,6 +114,61 @@
         };
 
         # ========================================
+        # ZONE 1 NODES (Europe - Italy, future Germany)
+        # ========================================
+
+        # Zone 1-A - Primary Node
+        zone-1-a = {
+          deployment = {
+            targetHost = "194.180.207.223";
+            targetUser = "root";
+            tags = [ "zone-1" "europe" "italy" "primary" "tailscale" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/zone-1-a
+          ];
+        };
+
+        # Zone 1-B - Replica Node
+        zone-1-b = {
+          deployment = {
+            targetHost = "194.180.207.225";
+            targetUser = "root";
+            tags = [ "zone-1" "europe" "italy" "replica" "tailscale" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/zone-1-b
+          ];
+        };
+
+        # Zone 1-C - Witness Node
+        zone-1-c = {
+          deployment = {
+            targetHost = "194.180.207.226";
+            targetUser = "root";
+            tags = [ "zone-1" "europe" "italy" "witness" "tailscale" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/zone-1-c
+          ];
+        };
+
+        # ========================================
         # LEGACY NODES (Deprecated - to be removed)
         # ========================================
 
@@ -242,6 +297,43 @@
             diskoModule
             agenixModule
             ./infra/nixos/regions/americas/ovh-canada
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        # ========================================
+        # ZONE 1 NODES
+        # ========================================
+
+        zone-1-a = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/zone-1-a
+            ./infra/nixos/disko/hostkey-bios.nix  # BIOS boot
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        zone-1-b = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/zone-1-b
+            ./infra/nixos/disko/hostkey-bios.nix  # BIOS boot
+          ];
+          specialArgs = { inherit self; };
+        };
+
+        zone-1-c = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            diskoModule
+            agenixModule
+            ./infra/nixos/regions/europe/zone-1-c
+            ./infra/nixos/disko/hostkey-bios.nix  # BIOS boot
           ];
           specialArgs = { inherit self; };
         };

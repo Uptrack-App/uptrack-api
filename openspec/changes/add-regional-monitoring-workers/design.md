@@ -472,4 +472,4 @@ config :uptrack, Oban, queues: [checks_eu: 20]  # Was 10
 - [Oban Scaling Guide](https://getoban.pro/articles/scaling-oban)
 - [NixOS Profiles Pattern](https://nixos.wiki/wiki/NixOS:extend_NixOS)
 - [Uptrack Architecture Docs](/docs/architecture/region_check_worker.md)
-- [Infrastructure Proposal](../establish-multi-region-monitoring-infrastructure/design.md)
+- [Infrastructure Proposal](../1-monitoring-infrastructure/design.md)
