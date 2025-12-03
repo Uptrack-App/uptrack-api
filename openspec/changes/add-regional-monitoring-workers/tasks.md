@@ -2,7 +2,7 @@
 
 **Change ID**: `add-regional-monitoring-workers`
 **Estimated effort**: 5-8 days
-**Prerequisites**: `establish-multi-region-monitoring-infrastructure` must be deployed
+**Prerequisites**: `1-monitoring-infrastructure` must be deployed
 
 ---
 
@@ -340,7 +340,7 @@
 ## Dependencies
 
 **Prerequisite changes**:
-- `establish-multi-region-monitoring-infrastructure` (must be deployed first)
+- `1-monitoring-infrastructure` (must be deployed first)
 
 **Application code**:
 - `lib/uptrack/monitoring/check_worker.ex` (already exists)

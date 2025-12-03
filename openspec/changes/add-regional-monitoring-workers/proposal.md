@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Created**: 2025-10-30
-**Depends on**: `establish-multi-region-monitoring-infrastructure`
+**Depends on**: `1-monitoring-infrastructure`
 
 ---
 
@@ -85,7 +85,7 @@ Implement Oban-based regional monitoring workers with profile-driven NixOS confi
 
 ### Dependencies
 
-- **Prerequisite**: `establish-multi-region-monitoring-infrastructure` must be deployed
+- **Prerequisite**: `1-monitoring-infrastructure` must be deployed
   - Requires: PostgreSQL (Germany), VictoriaMetrics (Austria), Tailscale mesh
 - **Application code**: `CheckWorker` and `ObanCheckWorker` already exist in codebase
 - **NixOS refactor**: Requires restructuring `/infra/nixos/` to use profiles
@@ -102,6 +102,6 @@ Implement Oban-based regional monitoring workers with profile-driven NixOS confi
 
 ## Related
 
-- Infrastructure: `establish-multi-region-monitoring-infrastructure` (prerequisite)
+- Infrastructure: `1-monitoring-infrastructure` (prerequisite)
 - Application: `/lib/uptrack/monitoring/check_worker.ex` (existing code)
 - Documentation: `/docs/architecture/region_check_worker.md` (design rationale)
