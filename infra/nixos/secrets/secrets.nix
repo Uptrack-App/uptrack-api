@@ -10,7 +10,7 @@ let
   # SSH public keys for encryption
   # Your admin SSH public key (can decrypt all secrets)
   adminKeys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXfwtx9sZyrufYfJ1NvYIJSn3WG36jhY/j4gzyHGoMs giahoangth@gmail.com"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOlnOlGCkDNCBadzikbIMVBDe1jJQTDXeqZYc8e6SYIX le@le-arm64"
   ];
 
   # ========================================
