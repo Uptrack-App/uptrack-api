@@ -59,6 +59,7 @@
         # ========================================
 
         # nbg1 - Coordinator Primary + Phoenix API
+        # Note: No disko for existing systems - only used for nixos-anywhere fresh installs
         nbg1 = {
           deployment = {
             targetHost = "152.53.181.117";
@@ -69,7 +70,6 @@
           };
 
           imports = [
-            diskoModule
             agenixModule
             ./infra/nixos/regions/europe/netcup-nbg1
           ];
@@ -86,7 +86,6 @@
           };
 
           imports = [
-            diskoModule
             agenixModule
             ./infra/nixos/regions/europe/netcup-nbg2
           ];
@@ -103,7 +102,6 @@
           };
 
           imports = [
-            diskoModule
             agenixModule
             ./infra/nixos/regions/europe/netcup-nbg3
           ];
@@ -120,7 +118,6 @@
           };
 
           imports = [
-            diskoModule
             agenixModule
             ./infra/nixos/regions/europe/netcup-nbg4
           ];
