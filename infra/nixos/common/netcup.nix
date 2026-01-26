@@ -1,17 +1,18 @@
 # Netcup VPS-specific configuration
-# Handles Netcup ARM G11 server specifics
+# Handles Netcup VPS server specifics (BIOS boot, virtio disks)
 { config, pkgs, lib, ... }:
 
 {
   # Import disko for disk configuration
   imports = [ ../disko/netcup-arm-g11.nix ];
 
-  # Boot loader configuration for Netcup (EFI)
+  # Boot loader configuration for Netcup (BIOS, not EFI)
+  # Netcup VPS uses BIOS boot with virtio disks (/dev/vda)
   boot.loader.grub = {
     enable = true;
-    efiSupport = true;
-    efiInstallAsRemovable = true;
-    # Don't set 'device' when using EFI - disko handles it
+    efiSupport = false;  # BIOS mode, not EFI
+    # Device is set via disko.devices.disk.main.device in node configs
+    device = lib.mkDefault "/dev/vda";
   };
 
   # Agenix secrets configuration
