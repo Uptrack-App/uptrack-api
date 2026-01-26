@@ -2,7 +2,8 @@
 # For existing NixOS systems (not fresh installs via nixos-anywhere)
 #
 # Note: Disko is NOT imported here because it's only for fresh installations.
-# The disk is already partitioned; we just need to configure the bootloader.
+# The disk is already partitioned; we just need to configure the bootloader
+# and filesystem mounts.
 { config, pkgs, lib, ... }:
 
 {
@@ -12,6 +13,13 @@
     enable = true;
     efiSupport = false;  # BIOS mode, not EFI
     device = "/dev/vda";  # Install GRUB to MBR of virtio disk
+  };
+
+  # Filesystem configuration for existing Netcup VPS
+  # All nbg nodes have the same partition layout: vda4 = root (ext4)
+  fileSystems."/" = {
+    device = "/dev/vda4";
+    fsType = "ext4";
   };
 
   # Agenix secrets configuration
