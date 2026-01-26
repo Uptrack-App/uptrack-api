@@ -1,18 +1,17 @@
 # Netcup VPS-specific configuration
-# Handles Netcup VPS server specifics (BIOS boot, virtio disks)
+# For existing NixOS systems (not fresh installs via nixos-anywhere)
+#
+# Note: Disko is NOT imported here because it's only for fresh installations.
+# The disk is already partitioned; we just need to configure the bootloader.
 { config, pkgs, lib, ... }:
 
 {
-  # Import disko for disk configuration
-  imports = [ ../disko/netcup-arm-g11.nix ];
-
   # Boot loader configuration for Netcup (BIOS, not EFI)
   # Netcup VPS uses BIOS boot with virtio disks (/dev/vda)
   boot.loader.grub = {
     enable = true;
     efiSupport = false;  # BIOS mode, not EFI
-    # Device is set via disko.devices.disk.main.device in node configs
-    device = lib.mkDefault "/dev/vda";
+    device = "/dev/vda";  # Install GRUB to MBR of virtio disk
   };
 
   # Agenix secrets configuration

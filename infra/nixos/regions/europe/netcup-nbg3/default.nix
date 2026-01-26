@@ -13,9 +13,6 @@ in {
     ../../../modules/services/tailscale.nix
   ];
 
-  # Override disko device - Netcup VPS uses /dev/vda (virtio), not /dev/sda
-  disko.devices.disk.main.device = "/dev/vda";
-
   # Hostname
   networking.hostName = "nbg3";
 
