@@ -55,53 +55,49 @@
         };
 
         # ========================================
-        # PRODUCTION ARCHITECTURE (5 Nodes)
+        # NETCUP NUREMBERG NODES (Production)
         # ========================================
 
-        # Europe - Netcup Germany (PG Primary + VictoriaMetrics)
-        germany = {
+        # nbg1 - Coordinator Primary + Phoenix API
+        nbg1 = {
           deployment = {
-            targetHost = "TBD";  # Update when server is provisioned
+            targetHost = "152.53.181.117";
             targetUser = "root";
-            tags = [ "primary" "netcup" "europe" "germany" "postgres-primary" "victoriametrics" "arm64" ];
+            tags = [ "netcup" "nuremberg" "api" "coordinator" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
 
-          nixpkgs.system = "aarch64-linux";
-
           imports = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/europe/netcup-germany
+            ./infra/nixos/regions/europe/netcup-nbg1
           ];
         };
 
-        # Europe - Netcup Austria (PG Replica + VictoriaMetrics)
-        austria = {
+        # nbg2 - Citus Worker 1
+        nbg2 = {
           deployment = {
-            targetHost = "TBD";  # Update when server is provisioned
+            targetHost = "152.53.183.208";
             targetUser = "root";
-            tags = [ "primary" "netcup" "europe" "austria" "postgres-replica" "victoriametrics" "arm64" ];
+            tags = [ "netcup" "nuremberg" "worker" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
 
-          nixpkgs.system = "aarch64-linux";
-
           imports = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/europe/netcup-austria
+            ./infra/nixos/regions/europe/netcup-nbg2
           ];
         };
 
-        # Americas - OVH Canada (App-only)
-        canada = {
+        # nbg3 - Citus Worker 2
+        nbg3 = {
           deployment = {
-            targetHost = "TBD";  # Update when server is provisioned
+            targetHost = "152.53.180.51";
             targetUser = "root";
-            tags = [ "app-only" "ovh" "americas" "canada" ];
+            tags = [ "netcup" "nuremberg" "worker" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -109,20 +105,16 @@
           imports = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/americas/ovh-canada
+            ./infra/nixos/regions/europe/netcup-nbg3
           ];
         };
 
-        # ========================================
-        # ZONE 1 NODES (Europe - Italy, future Germany)
-        # ========================================
-
-        # Zone 1-A - Primary Node
-        zone-1-a = {
+        # nbg4 - Coordinator Standby + Phoenix API
+        nbg4 = {
           deployment = {
-            targetHost = "194.180.207.223";
+            targetHost = "159.195.56.242";
             targetUser = "root";
-            tags = [ "zone-1" "europe" "italy" "primary" "tailscale" ];
+            tags = [ "netcup" "nuremberg" "api" "coordinator" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -130,41 +122,7 @@
           imports = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/europe/zone-1-a
-          ];
-        };
-
-        # Zone 1-B - Replica Node
-        zone-1-b = {
-          deployment = {
-            targetHost = "194.180.207.225";
-            targetUser = "root";
-            tags = [ "zone-1" "europe" "italy" "replica" "tailscale" ];
-            buildOnTarget = true;
-            allowLocalDeployment = false;
-          };
-
-          imports = [
-            diskoModule
-            agenixModule
-            ./infra/nixos/regions/europe/zone-1-b
-          ];
-        };
-
-        # Zone 1-C - Witness Node
-        zone-1-c = {
-          deployment = {
-            targetHost = "194.180.207.226";
-            targetUser = "root";
-            tags = [ "zone-1" "europe" "italy" "witness" "tailscale" ];
-            buildOnTarget = true;
-            allowLocalDeployment = false;
-          };
-
-          imports = [
-            diskoModule
-            agenixModule
-            ./infra/nixos/regions/europe/zone-1-c
+            ./infra/nixos/regions/europe/netcup-nbg4
           ];
         };
 
@@ -268,72 +226,45 @@
       # NixOS configurations for nixos-anywhere
       nixosConfigurations = {
         # ========================================
-        # PRODUCTION ARCHITECTURE
+        # NETCUP NUREMBERG NODES
         # ========================================
 
-        germany = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";
-          modules = [
-            diskoModule
-            agenixModule
-            ./infra/nixos/regions/europe/netcup-germany
-          ];
-          specialArgs = { inherit self; };
-        };
-
-        austria = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";
-          modules = [
-            diskoModule
-            agenixModule
-            ./infra/nixos/regions/europe/netcup-austria
-          ];
-          specialArgs = { inherit self; };
-        };
-
-        canada = nixpkgs.lib.nixosSystem {
+        nbg1 = nixpkgs.lib.nixosSystem {
           system = linuxSystem;
           modules = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/americas/ovh-canada
+            ./infra/nixos/regions/europe/netcup-nbg1
           ];
           specialArgs = { inherit self; };
         };
 
-        # ========================================
-        # ZONE 1 NODES
-        # ========================================
-
-        zone-1-a = nixpkgs.lib.nixosSystem {
+        nbg2 = nixpkgs.lib.nixosSystem {
           system = linuxSystem;
           modules = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/europe/zone-1-a
-            ./infra/nixos/disko/hostkey-bios.nix  # BIOS boot
+            ./infra/nixos/regions/europe/netcup-nbg2
           ];
           specialArgs = { inherit self; };
         };
 
-        zone-1-b = nixpkgs.lib.nixosSystem {
+        nbg3 = nixpkgs.lib.nixosSystem {
           system = linuxSystem;
           modules = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/europe/zone-1-b
-            ./infra/nixos/disko/hostkey-bios.nix  # BIOS boot
+            ./infra/nixos/regions/europe/netcup-nbg3
           ];
           specialArgs = { inherit self; };
         };
 
-        zone-1-c = nixpkgs.lib.nixosSystem {
+        nbg4 = nixpkgs.lib.nixosSystem {
           system = linuxSystem;
           modules = [
             diskoModule
             agenixModule
-            ./infra/nixos/regions/europe/zone-1-c
-            ./infra/nixos/disko/hostkey-bios.nix  # BIOS boot
+            ./infra/nixos/regions/europe/netcup-nbg4
           ];
           specialArgs = { inherit self; };
         };
