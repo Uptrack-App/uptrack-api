@@ -138,11 +138,15 @@ in lib.mkIf isPatroniNode {
           };
         };
 
+        # Trust Tailscale IPs for inter-node Citus communication
+        # Tailscale provides authentication at the network level
         pg_hba = lib.flatten [
+          "local all all trust"
+          "local replication all trust"
           (map (ip: "host replication replicator ${ip}/32 md5") allNodeIPs)
           "host replication replicator 127.0.0.1/32 md5"
-          (map (ip: "host all all ${ip}/32 md5") allNodeIPs)
-          "host all all 127.0.0.1/32 md5"
+          (map (ip: "host all all ${ip}/32 trust") allNodeIPs)
+          "host all all 127.0.0.1/32 trust"
         ];
       };
 
