@@ -1,144 +1,158 @@
 # Patroni - PostgreSQL High Availability with automatic failover
-# Only runs on Node A and Node B
+# Two Patroni clusters sharing one etcd (nbg1-3):
+#   - "coordinator" cluster: nbg1 (primary) + nbg2 (standby) — Phoenix API, Oban jobs
+#   - "worker" cluster: nbg3 (primary) + nbg4 (standby) — Citus shards
+#
+# Both clusters use etcd at 100.64.1.{1,2,3}:2379 for DCS (leader election).
 { config, pkgs, lib, ... }:
 
 let
   nodeName = config.networking.hostName;
 
-  # Tailscale IPs (replace after setup)
-  nodeATailscaleIP = "100.64.0.1";
-  nodeBTailscaleIP = "100.64.0.2";
-  nodeCTailscaleIP = "100.64.0.3";
-
-  nodeIP = if nodeName == "uptrack-node-a" then nodeATailscaleIP
-           else nodeBTailscaleIP;
-
-  # Patroni only runs on Node A and B
-  isPostgresNode = nodeName == "uptrack-node-a" || nodeName == "uptrack-node-b";
-
-in lib.mkIf isPostgresNode {
-  # PostgreSQL 16 (TimescaleDB removed - using ClickHouse for time-series)
-  services.postgresql = {
-    enable = true;
-    package = pkgs.postgresql_16;
-
-    # Patroni will manage the cluster, so don't auto-start
-    enableTCPIP = true;
-    port = 5432;
-
-    # Basic performance settings
-    settings = {
-      shared_buffers = "256MB";
-      effective_cache_size = "1GB";
-      maintenance_work_mem = "64MB";
-      work_mem = "4MB";
-      max_connections = 100;
-    };
+  # Tailscale IPs (static, assigned via Tailscale admin console)
+  nodes = {
+    nbg1 = "100.64.1.1";
+    nbg2 = "100.64.1.2";
+    nbg3 = "100.64.1.3";
+    nbg4 = "100.64.1.4";
   };
 
-  # Patroni for HA
+  # Cluster membership
+  coordinatorNodes = [ "nbg1" "nbg2" ];
+  workerNodes = [ "nbg3" "nbg4" ];
+  allPatroniNodes = coordinatorNodes ++ workerNodes;
+
+  isPatroniNode = builtins.elem nodeName allPatroniNodes;
+  isCoordinator = builtins.elem nodeName coordinatorNodes;
+
+  nodeIP = if builtins.hasAttr nodeName nodes then nodes.${nodeName} else null;
+
+  # Cluster scope determines Patroni namespace in etcd
+  clusterScope = if isCoordinator then "coordinator" else "worker";
+
+  # Peer nodes within same cluster
+  clusterPeerNodes = if isCoordinator then coordinatorNodes else workerNodes;
+  otherNodes = builtins.filter (n: n != nodeName) clusterPeerNodes;
+  otherIPs = map (n: nodes.${n}) otherNodes;
+
+  # All Tailscale IPs for pg_hba
+  allNodeIPs = builtins.attrValues nodes;
+
+  # PostgreSQL 17 with Citus
+  pgPackage = pkgs.postgresql_17.withPackages (ps: [ ps.citus ]);
+
+in lib.mkIf isPatroniNode {
+  # Patroni HA manager
   services.patroni = {
     enable = true;
     name = nodeName;
+    scope = clusterScope;
+    namespace = "/service";
 
-    scope = "uptrack-pg-cluster";
-    namespace = "/service/";
+    nodeIp = nodeIP;
+    otherNodesIps = otherIPs;
+    restApiPort = 8008;
 
-    # Patroni REST API
-    restApi = {
-      listen = "0.0.0.0:8008";
-      connect = "${nodeIP}:8008";
-    };
+    postgresqlPackage = pgPackage;
+    postgresqlPort = 5432;
 
-    # etcd endpoints
-    etcd = {
-      hosts = [
-        "${nodeATailscaleIP}:2379"
-        "${nodeBTailscaleIP}:2379"
-        "${nodeCTailscaleIP}:2379"
-      ];
-    };
-
-    # PostgreSQL configuration
-    postgresql = {
-      listen = "${nodeIP}:5432,127.0.0.1:5432";
-      connect_address = "${nodeIP}:5432";
-      data_dir = "/var/lib/postgresql/16";
-      bin_dir = "${pkgs.postgresql_16}/bin";
-
-      authentication = {
-        replication = {
-          username = "replicator";
-          password = "CHANGE_ME_REPLICATOR_PASSWORD";
-        };
-        superuser = {
-          username = "postgres";
-          password = "CHANGE_ME_POSTGRES_PASSWORD";
-        };
+    # All Patroni config goes into settings as freeform YAML
+    settings = {
+      etcd3 = {
+        hosts = builtins.concatStringsSep "," [
+          "${nodes.nbg1}:2379"
+          "${nodes.nbg2}:2379"
+          "${nodes.nbg3}:2379"
+        ];
       };
 
-      parameters = {
-        unix_socket_directories = "/run/postgresql";
-        wal_level = "replica";
-        max_wal_senders = 10;
-        max_replication_slots = 10;
-        hot_standby = "on";
+      bootstrap = {
+        dcs = {
+          ttl = 30;
+          loop_wait = 10;
+          retry_timeout = 10;
+          maximum_lag_on_failover = 1048576;
+          synchronous_mode = true;
+
+          postgresql = {
+            use_pg_rewind = true;
+            use_slots = true;
+            parameters = {
+              shared_preload_libraries = "citus";
+              wal_level = "replica";
+              max_wal_senders = 10;
+              max_replication_slots = 10;
+              hot_standby = "on";
+
+              # Memory (8GB nodes, shared with other services)
+              shared_buffers = "1GB";
+              effective_cache_size = "3GB";
+              maintenance_work_mem = "256MB";
+              work_mem = "8MB";
+
+              max_connections = 200;
+              checkpoint_completion_target = 0.9;
+              min_wal_size = "256MB";
+              max_wal_size = "1GB";
+            };
+          };
+        };
+
+        initdb = [
+          { encoding = "UTF8"; }
+          { data-checksums = true; }
+          { locale = "en_US.UTF-8"; }
+        ];
+
+        users = {
+          replicator = {
+            password = "CHANGE_ME_REPLICATOR_PASSWORD";
+            options = [ "replication" ];
+          };
+          uptrack = {
+            password = "CHANGE_ME_UPTRACK_PASSWORD";
+            options = [ "createrole" "createdb" ];
+          };
+        };
+
+        pg_hba = lib.flatten [
+          (map (ip: "host replication replicator ${ip}/32 md5") allNodeIPs)
+          "host replication replicator 127.0.0.1/32 md5"
+          (map (ip: "host all all ${ip}/32 md5") allNodeIPs)
+          "host all all 127.0.0.1/32 md5"
+        ];
       };
-    };
 
-    # Bootstrap configuration
-    bootstrap = {
-      dcs = {
-        ttl = 30;
-        loop_wait = 10;
-        retry_timeout = 10;
-        maximum_lag_on_failover = 1048576;
-
-        postgresql = {
-          use_pg_rewind = true;
-          use_slots = true;
+      postgresql = {
+        authentication = {
+          replication = {
+            username = "replicator";
+            password = "CHANGE_ME_REPLICATOR_PASSWORD";
+          };
+          superuser = {
+            username = "postgres";
+            password = "CHANGE_ME_POSTGRES_PASSWORD";
+          };
+        };
+        parameters = {
+          unix_socket_directories = "/run/postgresql";
+          shared_preload_libraries = "citus";
         };
       };
-
-      initdb = [
-        { encoding = "UTF8"; }
-        { data-checksums = true; }
-      ];
-
-      # Create replication user
-      users = {
-        replicator = {
-          password = "CHANGE_ME_REPLICATOR_PASSWORD";
-          options = [ "replication" ];
-        };
-        uptrack = {
-          password = "CHANGE_ME_UPTRACK_PASSWORD";
-          options = [ "createrole" "createdb" ];
-        };
-      };
-
-      # pg_hba.conf
-      pg_hba = [
-        "host replication replicator 127.0.0.1/32 md5"
-        "host replication replicator ${nodeATailscaleIP}/32 md5"
-        "host replication replicator ${nodeBTailscaleIP}/32 md5"
-        "host replication replicator ${nodeCTailscaleIP}/32 md5"
-        "host all all 127.0.0.1/32 md5"
-        "host all all ${nodeATailscaleIP}/32 md5"
-        "host all all ${nodeBTailscaleIP}/32 md5"
-        "host all all ${nodeCTailscaleIP}/32 md5"
-      ];
     };
   };
 
-  # Ensure Patroni starts after etcd and PostgreSQL
+  # Systemd overrides: Patroni depends on etcd + Tailscale
   systemd.services.patroni = {
-    after = [ "etcd.service" "postgresql.service" "tailscaled.service" ];
-    requires = [ "etcd.service" "tailscaled.service" ];
+    after = [ "etcd.service" "tailscaled.service" "tailscale-autoconnect.service" ];
+    requires = [ "tailscaled.service" ];
 
-    # Stop PostgreSQL if it's running (Patroni will manage it)
-    preStart = ''
-      ${pkgs.systemd}/bin/systemctl stop postgresql || true
-    '';
+    serviceConfig = {
+      TimeoutSec = lib.mkForce 120;
+      RestartSec = 10;
+    };
   };
+
+  # Firewall: allow PostgreSQL + Patroni API on Tailscale interface
+  networking.firewall.allowedTCPPorts = [ 5432 8008 ];
 }
