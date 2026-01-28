@@ -12,8 +12,7 @@ docs/deployment/
     ├── germany.md (Node 1: PG Primary + CH Replica)
     ├── austria.md (Node 2: CH Primary + PG Replica)
     ├── canada.md (Node 3: App-only)
-    ├── india-strong.md (Node 4: PG Replica + etcd)
-    └── india-weak.md (Node 5: App-only + etcd)
+    └── india-rworker.md (Node 4: Backups & Logs)
 
 QUICK LINKS
 ===========
@@ -38,8 +37,7 @@ DEPLOYMENT ORDER
 1. Germany (Postgres PRIMARY)
 2. Austria (ClickHouse PRIMARY)
 3. Canada (App-only)
-4. India Strong (Postgres REPLICA + etcd)
-5. India Weak (App-only + etcd)
+4. India RWorker (Backups & Logs)
 
 Each deployment: ~15 minutes
 Total deployment time: ~60 minutes
@@ -64,14 +62,8 @@ Canada (OVH):
   ✅ etcd member (3/5)
   💰 $4.20/month
 
-India Strong (Oracle Free):
-  ✅ PostgreSQL REPLICA
-  ✅ etcd member (4/5)
-  💰 FREE
-
-India Weak (Oracle Free):
-  ✅ App-only
-  ✅ etcd member (5/5)
+India RWorker (Oracle Free):
+  ✅ Backups & Logs
   💰 FREE
 
 TOTAL COST: $18.42/month (BASE) + taxes

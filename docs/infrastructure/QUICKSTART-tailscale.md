@@ -9,37 +9,10 @@ Quick reference for deploying Tailscale. See `tailscale-deployment-guide.md` for
 vim docs/infrastructure/node-inventory.md
 
 # 2. Verify SSH access to all nodes
-ssh le@152.67.179.42  # india-s ✓
 ssh root@<eu-a-ip>    # eu-a (TODO: fill IP)
 ssh root@<eu-b-ip>    # eu-b (TODO: fill IP)
 ssh root@<eu-c-ip>    # eu-c (TODO: fill IP)
-ssh ubuntu@<india-w-ip>  # india-w (TODO: fill IP)
-```
-
-## Deploy to india-s (NixOS) - 152.67.179.42
-
-```bash
-# Set auth key environment variable
-export TAILSCALE_AUTHKEY="tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg"
-
-# SSH to node
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42
-
-# Deploy NixOS configuration (3 steps: validate, build, switch)
-cd ~/repos/uptrack/infra/nixos
-
-# Step 1: Validate config
-sudo nixos-rebuild dry-build --flake '.#node-india-strong'
-
-# Step 2: Build (15-20 min first time, 5-10 min subsequent)
-sudo nixos-rebuild build --flake '.#node-india-strong' --max-jobs 3
-
-# Step 3: Switch (activates Tailscale, installs on boot)
-sudo TAILSCALE_AUTHKEY="$TAILSCALE_AUTHKEY" nixos-rebuild switch --flake '.#node-india-strong'
-
-# Verify
-sudo tailscale status
-sudo tailscale ip -4
+ssh ubuntu@<india-rworker-ip>  # india-rworker (TODO: fill IP)
 ```
 
 ## Deploy to EU Nodes (Debian/Ubuntu)
@@ -64,12 +37,12 @@ cat scripts/install-tailscale-debian.sh | ssh root@<eu-b-ip> 'bash -s eu-b tskey
 cat scripts/install-tailscale-debian.sh | ssh root@<eu-c-ip> 'bash -s eu-c tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg'
 ```
 
-## Deploy to india-w (Oracle Ubuntu)
+## Deploy to india-rworker (Oracle Ubuntu)
 
-Replace `<india-w-ip>` with actual IP.
+Replace `<india-rworker-ip>` with actual IP.
 
 ```bash
-cat scripts/install-tailscale-debian.sh | ssh ubuntu@<india-w-ip> 'bash -s india-w tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg'
+cat scripts/install-tailscale-debian.sh | ssh ubuntu@<india-rworker-ip> 'bash -s india-rworker tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg'
 ```
 
 ## Assign Static IPs
@@ -80,8 +53,7 @@ cat scripts/install-tailscale-debian.sh | ssh ubuntu@<india-w-ip> 'bash -s india
    - Click ⚙️ (settings)
    - Click "Edit IP address"
    - Enter static IP:
-     - india-s → `100.64.1.10`
-     - india-w → `100.64.1.11`
+     - india-rworker → `100.64.1.11`
      - eu-a → `100.64.1.1`
      - eu-b → `100.64.1.2`
      - eu-c → `100.64.1.3`
@@ -92,13 +64,12 @@ cat scripts/install-tailscale-debian.sh | ssh ubuntu@<india-w-ip> 'bash -s india
 From any node, test ping all others:
 
 ```bash
-# From india-s
-ssh le@152.67.179.42
+# From india-rworker
+ssh root@144.24.150.48
 
 ping -c 3 100.64.1.1   # eu-a (~150ms)
 ping -c 3 100.64.1.2   # eu-b (~150ms)
 ping -c 3 100.64.1.3   # eu-c (~150ms)
-ping -c 3 100.64.1.11  # india-w (<10ms)
 ```
 
 ## Test SSH Over Tailscale
@@ -106,8 +77,7 @@ ping -c 3 100.64.1.11  # india-w (<10ms)
 From your local machine:
 
 ```bash
-ssh le@100.64.1.10     # india-s
-ssh ubuntu@100.64.1.11 # india-w (adjust user)
+ssh root@100.64.1.11   # india-rworker
 ssh root@100.64.1.1    # eu-a (adjust user)
 ssh root@100.64.1.2    # eu-b (adjust user)
 ssh root@100.64.1.3    # eu-c (adjust user)
@@ -131,8 +101,8 @@ ssh <user>@<ip> 'sudo journalctl -u tailscaled -n 50'
 
 ## Success Criteria
 
-✅ All 5 nodes visible in admin console
-✅ All nodes have correct static IPs (100.64.1.1-3, 100.64.1.10-11)
+✅ All 4 nodes visible in admin console
+✅ All nodes have correct static IPs (100.64.1.1-3, 100.64.1.11)
 ✅ All nodes show "Online" status
 ✅ Ping works between all nodes
 ✅ SSH works via Tailscale IPs
@@ -148,15 +118,13 @@ vim docs/infrastructure/node-inventory.md
 
 # Commit the infrastructure config
 git add infra/nixos/modules/services/tailscale.nix
-git add infra/nixos/regions/asia/india-hyderabad/worker-1/default.nix
 git add scripts/install-tailscale-debian.sh
 git add docs/infrastructure/
 git commit -m "feat(infra): add Tailscale mesh network
 
 - Created Tailscale module for NixOS
-- Deployed on india-s (100.64.1.10)
-- Installation scripts for EU nodes + india-w
-- Static IPs: 100.64.1.1-3 (EU), 100.64.1.10-11 (India)
+- Installation scripts for EU nodes + india-rworker
+- Static IPs: 100.64.1.1-3 (EU), 100.64.1.11 (India)
 - Tag: infrastructure"
 
 # Begin Phase 2: etcd cluster setup

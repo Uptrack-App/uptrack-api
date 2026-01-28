@@ -96,8 +96,7 @@ These docs capture the thought process that led to the current OpenSpec proposal
 eu-a (Italy/Austria, Netcup) - PostgreSQL + VictoriaMetrics + Worker
 eu-b (Italy/Austria, Netcup) - PostgreSQL + VictoriaMetrics + Worker
 eu-c (Italy/Austria, Netcup) - PostgreSQL + VictoriaMetrics + Worker
-india-s (Oracle Free) - PostgreSQL replica + Worker
-india-w (Oracle Free) - Worker + etcd
+india-rworker (Oracle Free) - Backups & Logs
 
 Total Cost: ~$23/month (initially Hostkey €15.69, migrate to Netcup €20.34)
 ```

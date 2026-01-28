@@ -1,10 +1,10 @@
-# Oracle India Hyderabad - Worker 2
-# node-india-weak: 144.24.150.48
+# Oracle India Hyderabad - Regional Worker
+# india-rworker: 144.24.150.48
 # App-only + etcd (no PostgreSQL)
 { config, pkgs, lib, ... }:
 
 let
-  sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXfwtx9sZyrufYfJ1NvYIJSn3WG36jhY/j4gzyHGoMs giahoangth@gmail.com";
+  sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOlnOlGCkDNCBadzikbIMVBDe1jJQTDXeqZYc8e6SYIX le@le-arm64";
 in {
   imports = [
     ../../../../common/base.nix
@@ -16,22 +16,22 @@ in {
   system.stateVersion = lib.mkDefault "24.11";
 
   # Hostname
-  networking.hostName = "uptrack-india-weak";
+  networking.hostName = "uptrack-india-rworker";
 
   # Node-specific environment variables
   environment.variables = {
-    NODE_NAME = "india-hyderabad-2";
+    NODE_NAME = "india-rworker";
     NODE_REGION = "asia";
     NODE_PROVIDER = "oracle";
     NODE_LOCATION = "india-hyderabad";
   };
 
   # Tailscale VPN configuration
-  # This node will be known as "india-w" (india-weak) in the Tailscale network
+  # This node will be known as "india-rworker" in the Tailscale network
   # Target static IP: 100.64.1.11 (assigned via Tailscale admin console)
   services.uptrack.tailscale = {
     enable = true;
-    hostname = "india-w";
+    hostname = "india-rworker";
     acceptRoutes = true;
     tags = [ "tag:infrastructure" ];
   };

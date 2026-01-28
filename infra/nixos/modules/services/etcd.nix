@@ -1,21 +1,21 @@
 # etcd - Distributed key-value store for Patroni coordination
-# Runs on all 3 nodes for quorum (can tolerate 1 node failure)
+# Runs on nbg1, nbg2, nbg3 for 3-node quorum (tolerates 1 node failure)
+# Used by both Patroni clusters: "coordinator" (nbg1+nbg2) and "worker" (nbg3+nbg4)
 { config, pkgs, lib, ... }:
 
 let
-  # Get Tailscale IPs (these will be set after Tailscale is configured)
-  # For initial setup, replace these with actual IPs after `tailscale ip -4`
-  nodeATailscaleIP = "100.64.0.1";  # Replace after setup
-  nodeBTailscaleIP = "100.64.0.2";  # Replace after setup
-  nodeCTailscaleIP = "100.64.0.3";  # Replace after setup
+  # Tailscale IPs (static, assigned via Tailscale admin console)
+  nodes = {
+    nbg1 = "100.64.1.1";
+    nbg2 = "100.64.1.2";
+    nbg3 = "100.64.1.3";
+  };
 
-  # Determine this node's name and IP
   nodeName = config.networking.hostName;
-  nodeIP = if nodeName == "uptrack-node-a" then nodeATailscaleIP
-           else if nodeName == "uptrack-node-b" then nodeBTailscaleIP
-           else nodeCTailscaleIP;
+  isEtcdNode = builtins.hasAttr nodeName nodes;
+  nodeIP = if isEtcdNode then nodes.${nodeName} else null;
 
-in {
+in lib.mkIf isEtcdNode {
   services.etcd = {
     enable = true;
     name = nodeName;
@@ -33,9 +33,9 @@ in {
 
     # Cluster members
     initialCluster = [
-      "uptrack-node-a=http://${nodeATailscaleIP}:2380"
-      "uptrack-node-b=http://${nodeBTailscaleIP}:2380"
-      "uptrack-node-c=http://${nodeCTailscaleIP}:2380"
+      "nbg1=http://${nodes.nbg1}:2380"
+      "nbg2=http://${nodes.nbg2}:2380"
+      "nbg3=http://${nodes.nbg3}:2380"
     ];
 
     initialClusterState = "new";
@@ -47,9 +47,17 @@ in {
 
   # Ensure etcd starts after Tailscale
   systemd.services.etcd = {
-    after = [ "tailscaled.service" ];
+    after = [ "tailscaled.service" "tailscale-autoconnect.service" ];
     requires = [ "tailscaled.service" ];
+
+    serviceConfig = {
+      # Fail fast if Tailscale isn't ready
+      TimeoutStartSec = "60s";
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
   };
 
-  # No firewall rules needed - Tailscale handles it
+  # etcdctl convenience alias
+  environment.systemPackages = [ pkgs.etcd ];
 }

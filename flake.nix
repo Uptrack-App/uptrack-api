@@ -64,7 +64,7 @@
           deployment = {
             targetHost = "152.53.181.117";
             targetUser = "root";
-            tags = [ "netcup" "nuremberg" "api" "coordinator" "tailscale" ];
+            tags = [ "netcup" "nuremberg" "api" "coordinator" "etcd" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -75,12 +75,12 @@
           ];
         };
 
-        # nbg2 - Citus Worker 1
+        # nbg2 - Coordinator Standby + Phoenix API
         nbg2 = {
           deployment = {
             targetHost = "152.53.183.208";
             targetUser = "root";
-            tags = [ "netcup" "nuremberg" "worker" "tailscale" ];
+            tags = [ "netcup" "nuremberg" "api" "coordinator" "etcd" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -91,12 +91,12 @@
           ];
         };
 
-        # nbg3 - Citus Worker 2
+        # nbg3 - Citus Worker Primary
         nbg3 = {
           deployment = {
             targetHost = "152.53.180.51";
             targetUser = "root";
-            tags = [ "netcup" "nuremberg" "worker" "tailscale" ];
+            tags = [ "netcup" "nuremberg" "worker" "data" "etcd" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -107,12 +107,12 @@
           ];
         };
 
-        # nbg4 - Coordinator Standby + Phoenix API
+        # nbg4 - Citus Worker Standby
         nbg4 = {
           deployment = {
             targetHost = "159.195.56.242";
             targetUser = "root";
-            tags = [ "netcup" "nuremberg" "api" "coordinator" "tailscale" ];
+            tags = [ "netcup" "nuremberg" "worker" "data" "tailscale" ];
             buildOnTarget = true;
             allowLocalDeployment = false;
           };
@@ -180,26 +180,8 @@
           ];
         };
 
-        # Asia - India Hyderabad Worker 1 (Oracle Free Tier ARM64)
-        india-hyderabad-1 = {
-          deployment = {
-            targetHost = "152.67.179.42";
-            targetUser = "le";
-            tags = [ "worker" "oracle" "asia" "india-hyderabad" "postgres" "minimal" "arm64" ];
-            buildOnTarget = true;
-            allowLocalDeployment = false;
-          };
-
-          nixpkgs.system = "aarch64-linux";
-
-          imports = [
-            agenixModule
-            ./infra/nixos/regions/asia/india-hyderabad/worker-1
-          ];
-        };
-
-        # Asia - India Hyderabad Worker 2 (Oracle Free Tier ARM64)
-        india-hyderabad-2 = {
+        # Asia - India Hyderabad Regional Worker (Oracle Free Tier ARM64)
+        india-rworker = {
           deployment = {
             targetHost = "144.24.150.48";
             targetUser = "root";
@@ -212,7 +194,7 @@
 
           imports = [
             agenixModule
-            ./infra/nixos/regions/asia/india-hyderabad/worker-2
+            ./infra/nixos/regions/asia/india-hyderabad/india-rworker
           ];
         };
       };
@@ -300,20 +282,11 @@
           specialArgs = { inherit self; };
         };
 
-        india-hyderabad-1 = nixpkgs.lib.nixosSystem {
+        india-rworker = nixpkgs.lib.nixosSystem {
           system = "aarch64-linux";
           modules = [
             agenixModule
-            ./infra/nixos/regions/asia/india-hyderabad/worker-1
-          ];
-          specialArgs = { inherit self; };
-        };
-
-        india-hyderabad-2 = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";
-          modules = [
-            agenixModule
-            ./infra/nixos/regions/asia/india-hyderabad/worker-2
+            ./infra/nixos/regions/asia/india-hyderabad/india-rworker
           ];
           specialArgs = { inherit self; };
         };
@@ -387,16 +360,10 @@
               ${colmena.packages.${system}.colmena}/bin/colmena apply --on contabo-tertiary
             '');
           };
-          deploy-india-hyderabad-1 = {
+          deploy-india-rworker = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-india-hyderabad-1" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on india-hyderabad-1
-            '');
-          };
-          deploy-india-hyderabad-2 = {
-            type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-india-hyderabad-2" ''
-              ${colmena.packages.${system}.colmena}/bin/colmena apply --on india-hyderabad-2
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "deploy-india-rworker" ''
+              ${colmena.packages.${system}.colmena}/bin/colmena apply --on india-rworker
             '');
           };
           install-hetzner-primary = {
@@ -426,21 +393,12 @@
                 root@147.93.146.35
             '');
           };
-          install-india-hyderabad-1 = {
+          install-india-rworker = {
             type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-india-hyderabad-1" ''
+            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-india-rworker" ''
               ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
                 --build-on-remote \
-                --flake .#india-hyderabad-1 \
-                le@152.67.179.42
-            '');
-          };
-          install-india-hyderabad-2 = {
-            type = "app";
-            program = toString (nixpkgs.legacyPackages.${system}.writeShellScript "install-india-hyderabad-2" ''
-              ${nixos-anywhere.packages.${system}.default}/bin/nixos-anywhere \
-                --build-on-remote \
-                --flake .#india-hyderabad-2 \
+                --flake .#india-rworker \
                 root@144.24.150.48
             '');
           };

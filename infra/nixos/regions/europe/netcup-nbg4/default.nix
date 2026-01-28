@@ -1,7 +1,7 @@
-# Netcup Nuremberg Node 4 (nbg4) - Coordinator Standby + Phoenix API
+# Netcup Nuremberg Node 4 (nbg4) - Citus Worker Standby
 # IP: 159.195.56.242
 # Tailscale: 100.64.1.4
-# Services: Phoenix API, PostgreSQL Coordinator Standby, etcd, vmstorage
+# Services: PostgreSQL Worker Standby, Patroni (worker), vmstorage
 { config, pkgs, lib, ... }:
 
 let
@@ -31,8 +31,6 @@ in {
     hostname = "nbg4";
     acceptRoutes = true;
     tags = [ "tag:infrastructure" ];
-    # Advertise Phoenix API for Tailscale Services load balancing
-    servePort = 4000;
   };
 
   # User configuration

@@ -23,8 +23,7 @@ Complete guide for deploying Tailscale across all 5 infrastructure nodes.
 │  └─ eu-c     → 100.64.1.3  (Hostkey Italy)              │
 │                                                          │
 │  India Nodes (Oracle Cloud)                              │
-│  ├─ india-s  → 100.64.1.10 (Hyderabad - Strong)         │
-│  └─ india-w  → 100.64.1.11 (Mumbai - Weak)              │
+│  └─ india-rworker  → 100.64.1.11 (Hyderabad)            │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -34,44 +33,14 @@ Complete guide for deploying Tailscale across all 5 infrastructure nodes.
 - [x] Tailscale account created (hoangbytes@gmail.com)
 - [x] Auth key generated (expires Jan 28, 2026)
 - [x] Tag `infrastructure` created
-- [ ] SSH access confirmed to all 5 nodes
+- [ ] SSH access confirmed to all 4 nodes
 - [ ] Node IPs documented in `node-inventory.md`
 
 ## Installation Methods
 
-### Method A: NixOS Nodes (india-s)
+### Method A: Debian/Ubuntu Nodes (EU + india-rworker)
 
-**Node:** india-s (152.67.179.42)
-
-1. **Configuration already added** to `infra/nixos/regions/asia/india-hyderabad/worker-1/default.nix`
-
-2. **Deploy using NixOS rebuild:**
-   ```bash
-   # Set auth key as environment variable (one-time use)
-   export TAILSCALE_AUTHKEY="tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg"
-
-   # SSH to the node
-   ssh -i ~/.ssh/id_ed25519 le@152.67.179.42
-
-   # Build and activate new configuration
-   cd /etc/nixos  # Or wherever your config is
-   sudo TAILSCALE_AUTHKEY="$TAILSCALE_AUTHKEY" nixos-rebuild switch --flake '.#node-india-strong'
-   ```
-
-3. **Verify installation:**
-   ```bash
-   sudo tailscale status
-   sudo tailscale ip -4
-   ```
-
-4. **Expected output:**
-   ```
-   100.64.x.x   india-s              hoangbytes@  linux   -
-   ```
-
-### Method B: Debian/Ubuntu Nodes (EU + india-w)
-
-**Nodes:** eu-a, eu-b, eu-c, india-w
+**Nodes:** eu-a, eu-b, eu-c, india-rworker
 
 #### Option 1: Run script locally and SSH to each node
 
@@ -101,8 +70,8 @@ cat scripts/install-tailscale-debian.sh | ssh root@<eu-b-ip> 'bash -s eu-b tskey
 # For eu-c
 cat scripts/install-tailscale-debian.sh | ssh root@<eu-c-ip> 'bash -s eu-c tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg'
 
-# For india-w
-cat scripts/install-tailscale-debian.sh | ssh ubuntu@<india-w-ip> 'bash -s india-w tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg'
+# For india-rworker
+cat scripts/install-tailscale-debian.sh | ssh ubuntu@<india-rworker-ip> 'bash -s india-rworker tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg'
 ```
 
 ## Post-Installation: Assign Static IPs
@@ -116,16 +85,14 @@ After all nodes are connected, assign static Tailscale IPs:
 
    | Machine | Current IP | Static IP | Steps |
    |---------|-----------|-----------|-------|
-   | india-s | 100.64.x.x | 100.64.1.10 | Click machine → ⚙️ → Edit IP address → Enter `100.64.1.10` → Save |
-   | india-w | 100.64.x.x | 100.64.1.11 | Click machine → ⚙️ → Edit IP address → Enter `100.64.1.11` → Save |
-   | eu-a | 100.64.x.x | 100.64.1.1 | Click machine → ⚙️ → Edit IP address → Enter `100.64.1.1` → Save |
-   | eu-b | 100.64.x.x | 100.64.1.2 | Click machine → ⚙️ → Edit IP address → Enter `100.64.1.2` → Save |
-   | eu-c | 100.64.x.x | 100.64.1.3 | Click machine → ⚙️ → Edit IP address → Enter `100.64.1.3` → Save |
+   | india-rworker | 100.64.x.x | 100.64.1.11 | Click machine → Edit IP address → Enter `100.64.1.11` → Save |
+   | eu-a | 100.64.x.x | 100.64.1.1 | Click machine → Edit IP address → Enter `100.64.1.1` → Save |
+   | eu-b | 100.64.x.x | 100.64.1.2 | Click machine → Edit IP address → Enter `100.64.1.2` → Save |
+   | eu-c | 100.64.x.x | 100.64.1.3 | Click machine → Edit IP address → Enter `100.64.1.3` → Save |
 
 3. **Screenshot of expected admin console:**
    ```
-   ✓ india-s     100.64.1.10   tag:infrastructure   Online
-   ✓ india-w     100.64.1.11   tag:infrastructure   Online
+   ✓ india-rworker     100.64.1.11   tag:infrastructure   Online
    ✓ eu-a        100.64.1.1    tag:infrastructure   Online
    ✓ eu-b        100.64.1.2    tag:infrastructure   Online
    ✓ eu-c        100.64.1.3    tag:infrastructure   Online
@@ -146,23 +113,19 @@ tailscale ip -4
 
 ### Test 2: Ping Between Nodes
 
-From **india-s** (100.64.1.10), ping all other nodes:
+From **india-rworker** (100.64.1.11), ping all other nodes:
 
 ```bash
-ssh le@152.67.179.42
+ssh root@144.24.150.48
 
 # Ping EU nodes
 ping -c 3 100.64.1.1   # eu-a
 ping -c 3 100.64.1.2   # eu-b
 ping -c 3 100.64.1.3   # eu-c
-
-# Ping India weak
-ping -c 3 100.64.1.11  # india-w
 ```
 
 **Expected latency:**
-- india-s → india-w: <10ms
-- india-s → EU nodes: ~150ms
+- india-rworker → EU nodes: ~150ms
 
 ### Test 3: SSH Over Tailscale
 
@@ -171,8 +134,7 @@ ping -c 3 100.64.1.11  # india-w
 ssh root@100.64.1.1   # eu-a
 ssh root@100.64.1.2   # eu-b
 ssh root@100.64.1.3   # eu-c
-ssh le@100.64.1.10    # india-s
-ssh ubuntu@100.64.1.11  # india-w (adjust user as needed)
+ssh root@100.64.1.11  # india-rworker
 ```
 
 ### Test 4: DNS Resolution (MagicDNS)
@@ -181,7 +143,7 @@ Tailscale provides automatic DNS for hostnames:
 
 ```bash
 # From any node, ping by hostname
-ping -c 3 india-s
+ping -c 3 india-rworker
 ping -c 3 eu-a
 ping -c 3 eu-b
 ```
