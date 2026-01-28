@@ -158,12 +158,18 @@ in lib.mkIf isPatroniNode {
           };
         };
         parameters = {
-          unix_socket_directories = "/run/postgresql";
+          # Use /run/patroni for socket (patroni user has access)
+          unix_socket_directories = "/run/patroni";
           shared_preload_libraries = "citus";
         };
       };
     };
   };
+
+  # Create socket directory for PostgreSQL (owned by patroni)
+  systemd.tmpfiles.rules = [
+    "d /run/patroni 0755 patroni patroni -"
+  ];
 
   # Systemd overrides: Patroni depends on etcd + Tailscale
   systemd.services.patroni = {
