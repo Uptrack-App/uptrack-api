@@ -17,57 +17,45 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
-# VM Specifications & Build Optimization
+# NixOS Build & Deployment Guide
 
-## Oracle Cloud Instance: VM.Standard.A1.Flex
-- **3 OCPUs** (ARM64 Ampere)
-- **18GB RAM**
-- **46GB Storage** (boot volume)
-- **Recommended `--max-jobs`: 3**
+## Active Nodes
 
-### Why max-jobs 3?
-```
---max-jobs = min(CPU_cores, RAM_GB / 2)
---max-jobs = min(3, 18/2) = min(3, 9) = 3
-```
+| Node | Provider | Location | Architecture | Specs |
+|------|----------|----------|-------------|-------|
+| nbg1 | Netcup | Nuremberg, DE | x86_64 | Coordinator Primary + Phoenix API |
+| nbg2 | Netcup | Nuremberg, DE | x86_64 | Coordinator Standby + Phoenix API |
+| nbg3 | Netcup | Nuremberg, DE | x86_64 | Citus Worker Primary |
+| nbg4 | Netcup | Nuremberg, DE | x86_64 | Citus Worker Standby |
+| india-rworker | Oracle Cloud | Hyderabad, IN | ARM64 | 1 OCPU, 6GB RAM - Backups & Logs |
 
-**Result**: ~3x faster builds than `--max-jobs 1`, safe RAM usage
-
-### Build Command (Always Use)
-```bash
-nixos-rebuild build --flake '.#node-india-strong' --max-jobs 3
-nixos-rebuild build --flake '.#node-india-strong' --max-jobs "$(nproc)"  # Auto-detect
-```
-
-### Expected Build Time
-- First build: ~15-20 minutes (includes PostgreSQL 16 compilation)
-- Subsequent builds: ~5-10 minutes (cached dependencies)
+### Legacy Nodes (Deprecated)
+- hetzner-primary, contabo-secondary, contabo-tertiary
 
 ---
 
-# Safe Deployment Workflow (Sequential Steps)
+## Safe Deployment Workflow (Sequential Steps)
 
-## Step 1: Validate config syntax (no network access needed)
+### Step 1: Validate config syntax (no network access needed)
 ```bash
-nixos-rebuild dry-build --flake '.#node-india-strong'
+nixos-rebuild dry-build --flake '.#<node-name>'
 ```
 - Checks for Nix syntax errors
 - No building, no system changes
 - Quick validation (30 seconds)
 
-## Step 2: Build everything without activation (no system changes)
+### Step 2: Build everything without activation (no system changes)
 ```bash
-nixos-rebuild build --flake '.#node-india-strong' --max-jobs 3
+nixos-rebuild build --flake '.#<node-name>' --max-jobs "$(nproc)"
 ```
 - Compiles all packages and services
 - Does NOT activate configuration
 - Takes time but safe (can fail without affecting system)
 - Result stored in /nix/store
-- **Expected time: 15-20 min (first), 5-10 min (subsequent)**
 
-## Step 3: Commit to boot (changes boot only, NOT current session)
+### Step 3: Commit to boot (changes boot only, NOT current session)
 ```bash
-nixos-rebuild switch --flake '.#node-india-strong'
+nixos-rebuild switch --flake '.#<node-name>'
 ```
 - Changes boot configuration
 - Does NOT activate services immediately
@@ -76,12 +64,12 @@ nixos-rebuild switch --flake '.#node-india-strong'
 - User controls when to reboot
 
 **Why `switch` instead of `test`**:
-- ⚠️ `test` activates immediately → Can hang with PostgreSQL initdb
-- ✅ `switch` only changes boot → Activation on reboot (expected)
-- ✅ `switch` is production standard for NixOS
-- ✅ Auto-rollback still protects you at boot time
+- `test` activates immediately - Can hang with PostgreSQL initdb
+- `switch` only changes boot - Activation on reboot (expected)
+- `switch` is production standard for NixOS
+- Auto-rollback still protects you at boot time
 
-## Step 4: Reboot to activate new configuration
+### Step 4: Reboot to activate new configuration
 ```bash
 sudo reboot
 ```
@@ -90,7 +78,7 @@ sudo reboot
 - Services start normally during boot
 - PostgreSQL initializes during systemd startup (expected, not blocking)
 
-## Step 5: Verify After Reboot
+### Step 5: Verify After Reboot
 
 After system comes back online:
 ```bash
@@ -136,12 +124,12 @@ If new configuration fails to boot:
 
 | Phase | Command | What Happens | SSH Status | Risk |
 |-------|---------|--------------|-----------|------|
-| Validate | `dry-build` | Check syntax | ✅ | None |
-| Build | `build` | Compile | ✅ | Low |
-| Commit | `switch` | Boot config changes | ✅ | Low |
-| Reboot | `reboot` | Manual | 🔄 | Expected |
-| Boot | (automatic) | Activate services | 🔄 | Medium |
-| Running | (normal) | Services active | ✅ | Low |
+| Validate | `dry-build` | Check syntax | OK | None |
+| Build | `build` | Compile | OK | Low |
+| Commit | `switch` | Boot config changes | OK | Low |
+| Reboot | `reboot` | Manual | Restarting | Expected |
+| Boot | (automatic) | Activate services | Restarting | Medium |
+| Running | (normal) | Services active | OK | Low |
 
 ---
 
@@ -198,11 +186,11 @@ systemd.extraConfig = ''
 
 ## How It Works
 
-1. **Service starts** → Sets 30-second timer
-2. **Service hangs** → Timer expires after 30s
-3. **Service marked failed** → Systemd stops waiting
-4. **SSH becomes available** → Can SSH in and rollback
-5. **User runs**: `nixos-rebuild switch --rollback` → Back to old config
+1. **Service starts** - Sets 30-second timer
+2. **Service hangs** - Timer expires after 30s
+3. **Service marked failed** - Systemd stops waiting
+4. **SSH becomes available** - Can SSH in and rollback
+5. **User runs**: `nixos-rebuild switch --rollback` - Back to old config
 
 ## Manual Recovery (If Needed)
 
@@ -219,11 +207,11 @@ If system is completely unresponsive:
 
 Before each `switch`, verify:
 
-- [ ] Step 1: `nixos-rebuild dry-build` passed ✅
-- [ ] Step 2: `nixos-rebuild build` completed ✅
-- [ ] Step 3: `nixos-rebuild test` succeeded ✅
-- [ ] Service timeouts configured (30s for PostgreSQL) ✅
-- [ ] SSH doesn't depend on application services ✅
+- [ ] Step 1: `nixos-rebuild dry-build` passed
+- [ ] Step 2: `nixos-rebuild build` completed
+- [ ] Step 3: `nixos-rebuild test` succeeded
+- [ ] Service timeouts configured (30s for PostgreSQL)
+- [ ] SSH doesn't depend on application services
 - [ ] Health checks pass:
   - [ ] `systemctl is-active sshd` = active
   - [ ] `systemctl is-active postgresql` = active (or failed/inactive is OK)
@@ -243,8 +231,8 @@ Before each `switch`, verify:
 ## Worst Case: System Won't Boot at All
 
 1. Power off
-2. Power on → Boot menu appears
+2. Power on - Boot menu appears
 3. Select previous NixOS generation (before broken deployment)
-4. Boot succeeds → SSH works again
+4. Boot succeeds - SSH works again
 5. Investigate and fix config
 6. Redeploy safely

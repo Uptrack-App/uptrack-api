@@ -11,7 +11,7 @@ An instance is considered **idle** when during a 7-day period:
 - Network utilization < 20%
 - Memory utilization < 20% (A1 shapes only)
 
-This system ensures the indiastrong node stays above these thresholds.
+This system ensures Oracle Cloud nodes stay above these thresholds.
 
 ---
 
@@ -178,8 +178,8 @@ iex> Uptrack.Health.IdlePrevention.get_stats()
 Monitor real-time activity:
 
 ```bash
-# SSH into the instance
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42
+# SSH into the Oracle instance
+ssh root@REMOVED_IP
 
 # View live logs
 tail -f /path/to/uptrack/logs/*.log | grep IdlePrevention
@@ -368,8 +368,8 @@ export IDLE_PREVENTION_ENABLED=false
 ### Manual Test
 
 ```bash
-# SSH into instance
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42
+# SSH into Oracle instance
+ssh root@REMOVED_IP
 
 # Monitor resource usage during load generation
 watch -n 1 'free -h; echo; df -h; echo; top -b -n1 | head -15'

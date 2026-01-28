@@ -1,6 +1,6 @@
-# Deploy India Weak Node (Oracle Cloud Free)
+# Deploy India RWorker Node (Oracle Cloud Free)
 
-**Node**: India Weak
+**Node**: India RWorker
 **Provider**: Oracle Cloud Free Tier
 **Specs**: 1 ARM64 core, ? GB RAM, ? GB storage
 **Cost**: FREE
@@ -13,11 +13,11 @@
 ```bash
 # Deploy with nixos-anywhere + Colmena
 nix run github:nix-community/nixos-anywhere -- \
-  --flake .#node-india-weak \
+  --flake .#india-rworker \
   -i ssh-key.key \
-  root@INDIA_WEAK_IP
+  root@INDIA_RWORKER_IP
 
-colmena apply --on node-india-weak
+colmena apply --on india-rworker
 ```
 
 ---
@@ -67,7 +67,7 @@ colmena apply --on node-india-weak
 ## Verification
 
 ```bash
-ssh root@INDIA_WEAK_IP
+ssh root@INDIA_RWORKER_IP
 
 # Check etcd
 etcdctl endpoint health --cluster

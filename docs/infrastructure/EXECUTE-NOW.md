@@ -8,11 +8,8 @@
 Open your terminal and run these commands to verify SSH access:
 
 ```bash
-# Test india-s (NixOS)
-ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=5 le@152.67.179.42 "echo 'india-s: OK'; hostname"
-
-# Test india-w
-ssh -o ConnectTimeout=5 root@REMOVED_IP "echo 'india-w: OK'; hostname"
+# Test india-rworker
+ssh -o ConnectTimeout=5 root@REMOVED_IP "echo 'india-rworker: OK'; hostname"
 
 # Test eu-a
 ssh -o ConnectTimeout=5 root@REMOVED_IP "echo 'eu-a: OK'; hostname"
@@ -45,42 +42,21 @@ cd ~/repos/uptrack
 
 This script will:
 1. Test SSH to all nodes
-2. Deploy to india-s (NixOS) - **15-20 minutes first build**
-3. Deploy to india-w - **2 minutes**
-4. Deploy to eu-a - **2 minutes**
-5. Deploy to eu-b - **2 minutes**
-6. Deploy to eu-c - **2 minutes**
+2. Deploy to india-rworker - **2 minutes**
+3. Deploy to eu-a - **2 minutes**
+4. Deploy to eu-b - **2 minutes**
+5. Deploy to eu-c - **2 minutes**
 
-**Total time:** ~25-30 minutes
+**Total time:** ~10-15 minutes
 
 ### Option B: Deploy One by One (Manual Control)
 
 If you prefer to deploy step-by-step:
 
-#### 2.1: Deploy to india-s (NixOS)
+#### 2.1: Deploy to india-rworker
 
 ```bash
-cd ~/repos/uptrack
-
-# Set auth key
-export TAILSCALE_AUTHKEY="REMOVED_TAILSCALE_AUTH_KEY"
-
-# Deploy
-./scripts/deploy-tailscale-india-s.sh
-```
-
-**Duration:** 15-20 minutes (first build), 5-10 minutes (subsequent)
-
-**Watch for:**
-- ✅ "Code synced"
-- ✅ "building the system configuration..."
-- ✅ "Tailscale connected successfully"
-- ✅ "Tailscale IP: 100.64.x.x"
-
-#### 2.2: Deploy to india-w
-
-```bash
-cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP 'bash -s india-w REMOVED_TAILSCALE_AUTH_KEY'
+cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP 'bash -s india-rworker REMOVED_TAILSCALE_AUTH_KEY'
 ```
 
 **Duration:** 2-3 minutes
@@ -91,19 +67,19 @@ cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP 'bash -s india-w R
 - ✅ "✓ Tailscale connected"
 - ✅ "IPv4: 100.64.x.x"
 
-#### 2.3: Deploy to eu-a
+#### 2.2: Deploy to eu-a
 
 ```bash
 cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP 'bash -s eu-a REMOVED_TAILSCALE_AUTH_KEY'
 ```
 
-#### 2.4: Deploy to eu-b
+#### 2.3: Deploy to eu-b
 
 ```bash
 cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP 'bash -s eu-b REMOVED_TAILSCALE_AUTH_KEY'
 ```
 
-#### 2.5: Deploy to eu-c
+#### 2.4: Deploy to eu-c
 
 ```bash
 cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP 'bash -s eu-c REMOVED_TAILSCALE_AUTH_KEY'
@@ -117,9 +93,8 @@ Go to Tailscale admin console:
 
 **URL:** https://login.tailscale.com/admin/machines
 
-**Expected:** You should see 5 machines online:
-- india-s (100.64.x.x) - tag:infrastructure
-- india-w (100.64.x.x) - tag:infrastructure
+**Expected:** You should see 4 machines online:
+- india-rworker (100.64.x.x) - tag:infrastructure
 - eu-a (100.64.x.x) - tag:infrastructure
 - eu-b (100.64.x.x) - tag:infrastructure
 - eu-c (100.64.x.x) - tag:infrastructure
@@ -134,15 +109,14 @@ In Tailscale admin console (https://login.tailscale.com/admin/machines):
 
 ### For each machine:
 
-1. **Click the machine name** (e.g., "india-s")
+1. **Click the machine name** (e.g., "india-rworker")
 2. **Click the ⚙️ (settings icon)** on the right
 3. **Click "Edit IP address"**
 4. **Enter the static IP** according to this table:
 
 | Machine | Current IP | Static IP |
 |---------|-----------|-----------|
-| india-s | 100.64.x.x | **100.64.1.10** |
-| india-w | 100.64.x.x | **100.64.1.11** |
+| india-rworker | 100.64.x.x | **100.64.1.11** |
 | eu-a | 100.64.x.x | **100.64.1.1** |
 | eu-b | 100.64.x.x | **100.64.1.2** |
 | eu-c | 100.64.x.x | **100.64.1.3** |
@@ -155,11 +129,7 @@ In Tailscale admin console (https://login.tailscale.com/admin/machines):
 Run these commands to verify:
 
 ```bash
-# Verify india-s
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 'sudo tailscale ip -4'
-# Expected: 100.64.1.10
-
-# Verify india-w
+# Verify india-rworker
 ssh root@REMOVED_IP 'sudo tailscale ip -4'
 # Expected: 100.64.1.11
 
@@ -195,22 +165,14 @@ ssh root@REMOVED_IP 'ping -c 3 100.64.1.3'
 ### Test Ping (Cross-Region)
 
 ```bash
-# From india-s, ping eu-a
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 'ping -c 3 100.64.1.1'
+# From india-rworker, ping eu-a
+ssh root@REMOVED_IP 'ping -c 3 100.64.1.1'
 # Expected: ~150ms latency
-
-# From india-s, ping india-w
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 'ping -c 3 100.64.1.11'
-# Expected: <10ms latency
 ```
 
 ### Test SSH via Tailscale
 
 ```bash
-# SSH to india-s via Tailscale IP
-ssh -i ~/.ssh/id_ed25519 le@100.64.1.10 'hostname'
-# Expected: uptrack-india-hyderabad-1
-
 # SSH to eu-a via Tailscale IP
 ssh root@100.64.1.1 'hostname'
 # Expected: hostname of eu-a
@@ -225,26 +187,26 @@ ssh root@100.64.1.1 'hostname'
 Verify Tailscale auto-starts after reboot:
 
 ```bash
-# Reboot india-s
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 'sudo reboot'
+# Reboot india-rworker
+ssh root@REMOVED_IP 'sudo reboot'
 
 # Wait 60 seconds for boot
 sleep 60
 
 # Check if online in Tailscale admin
 # Go to: https://login.tailscale.com/admin/machines
-# india-s should show "Online"
+# india-rworker should show "Online"
 
 # Verify Tailscale IP unchanged
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 'sudo tailscale ip -4'
-# Expected: 100.64.1.10
+ssh root@REMOVED_IP 'sudo tailscale ip -4'
+# Expected: 100.64.1.11
 ```
 
 ---
 
 ## Success Criteria
 
-✅ All 5 nodes visible in Tailscale admin console
+✅ All 4 nodes visible in Tailscale admin console
 ✅ All nodes have correct static IPs assigned
 ✅ Ping works between all nodes
 ✅ SSH works via Tailscale IPs
@@ -254,17 +216,6 @@ ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 'sudo tailscale ip -4'
 ---
 
 ## If Something Goes Wrong
-
-### Deployment fails on india-s
-
-```bash
-# Check logs
-ssh -i ~/.ssh/id_ed25519 le@152.67.179.42
-sudo journalctl -u tailscaled -n 50
-
-# Rollback if needed
-sudo nixos-rebuild switch --rollback
-```
 
 ### Node doesn't appear in admin console
 
@@ -310,8 +261,8 @@ Commit the infrastructure code:
 git add .
 git commit -m "feat(infra): deploy Tailscale mesh network
 
-- Deployed Tailscale to all 5 nodes (3 EU + 2 India)
-- Assigned static IPs: 100.64.1.1-3, 100.64.1.10-11
+- Deployed Tailscale to all 4 nodes (3 EU + 1 India)
+- Assigned static IPs: 100.64.1.1-3, 100.64.1.11
 - Verified mesh connectivity
 - All nodes online and reachable
 

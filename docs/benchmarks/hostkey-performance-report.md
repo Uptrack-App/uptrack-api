@@ -423,16 +423,13 @@ Based on Hostkey's exceptional performance-per-euro:
 │                      ASIA REGION                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│ india-s (Oracle ARM - 152.67.179.42)                        │
-│ ────────────────────────────────────                        │
-│ • Monitoring Workers (Asia region checks)                   │
-│ • Phoenix App (Asia traffic)                                 │
-│ • VictoriaMetrics Read Replica (optional)                  │
+│ india-rworker (Oracle ARM - REMOVED_IP)                  │
+│ ──────────────────────────────────────────                  │
+│ • Backups & Logs                                             │
 │                                                              │
-│ CPU: 3 OCPU ARM64 (Ampere Altra)                           │
-│ RAM: 18 GB | Storage: 46 GB                                 │
+│ CPU: 1 OCPU ARM64 (Ampere Altra)                           │
+│ RAM: 6 GB | Storage: ~40 GB                                 │
 │                                                              │
-│ Performance: ★★★★★ (10/10 - ARM64)                          │
 │ Cost: FREE (Oracle Always Free Tier)                        │
 └─────────────────────────────────────────────────────────────┘
 

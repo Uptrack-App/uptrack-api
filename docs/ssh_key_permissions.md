@@ -332,7 +332,7 @@ chmod 600 ~/.ssh/ssh-key-2025-10-18.key
 
 # Then run nixos-anywhere
 nix run github:nix-community/nixos-anywhere -- \
-  --flake .#node-india-strong \
+  --flake .#india-rworker \
   -i ~/.ssh/ssh-key-2025-10-18.key \
   root@144.24.133.171
 ```

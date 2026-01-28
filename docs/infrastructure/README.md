@@ -2,7 +2,7 @@
 
 Quick reference for Uptrack infrastructure deployment and operations.
 
-## Current Infrastructure (5 Nodes)
+## Current Infrastructure (4 Nodes)
 
 ### EU Nodes (Hostkey Italy)
 - **eu-a:** REMOVED_IP → Tailscale: 100.64.1.1
@@ -10,8 +10,7 @@ Quick reference for Uptrack infrastructure deployment and operations.
 - **eu-c:** REMOVED_IP → Tailscale: 100.64.1.3
 
 ### India Nodes (Oracle Cloud)
-- **india-s:** 152.67.179.42 → Tailscale: 100.64.1.10
-- **india-w:** REMOVED_IP → Tailscale: 100.64.1.11
+- **india-rworker:** REMOVED_IP → Tailscale: 100.64.1.11
 
 ## Quick Start Guides
 
@@ -27,15 +26,14 @@ Quick reference for Uptrack infrastructure deployment and operations.
 ## Deployment Scripts
 
 Located in `/scripts/`:
-- `deploy-tailscale-india-s.sh` - Deploy to india-s (NixOS)
 - `install-tailscale-debian.sh` - Deploy to Debian/Ubuntu nodes
-- `deploy-tailscale-all.sh` - Deploy to all 5 nodes sequentially
+- `deploy-tailscale-all.sh` - Deploy to all 4 nodes sequentially
 
 ## NixOS Configuration
 
 Located in `/infra/nixos/`:
 - `modules/services/tailscale.nix` - Tailscale module
-- `regions/asia/india-hyderabad/worker-1/` - india-s configuration
+- `regions/asia/india-hyderabad/rworker/` - india-rworker configuration
 
 ## OpenSpec Changes
 
@@ -49,8 +47,7 @@ openspec show deploy-tailscale-mesh-network  # View Tailscale deployment spec
 
 ### SSH to Nodes via Tailscale
 ```bash
-ssh le@100.64.1.10      # india-s
-ssh root@100.64.1.11    # india-w
+ssh root@100.64.1.11    # india-rworker
 ssh root@100.64.1.1     # eu-a
 ssh root@100.64.1.2     # eu-b
 ssh root@100.64.1.3     # eu-c
@@ -62,13 +59,12 @@ ssh <user>@<ip> 'sudo tailscale status'
 ssh <user>@<ip> 'sudo tailscale ip -4'
 ```
 
-### Ping All Nodes from india-s
+### Ping All Nodes from india-rworker
 ```bash
-ssh le@152.67.179.42
+ssh root@REMOVED_IP
 ping -c 3 100.64.1.1   # eu-a
 ping -c 3 100.64.1.2   # eu-b
 ping -c 3 100.64.1.3   # eu-c
-ping -c 3 100.64.1.11  # india-w
 ```
 
 ## Tailscale Admin

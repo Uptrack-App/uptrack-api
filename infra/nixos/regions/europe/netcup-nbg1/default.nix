@@ -1,7 +1,8 @@
-# Netcup Nuremberg Node 1 (nbg1) - Coordinator Primary + Phoenix API
+# Netcup Nuremberg Node 1 (nbg1) - Coordinator Primary + API
 # IP: 152.53.181.117
 # Tailscale: 100.64.1.1
-# Services: Phoenix API, PostgreSQL Coordinator Primary, etcd, vmstorage
+# Services: Phoenix API, cloudflared, PostgreSQL Coordinator Primary,
+#           Patroni (coordinator), etcd (1/3), vminsert, vmselect, vmagent
 { config, pkgs, lib, ... }:
 
 let
@@ -11,6 +12,7 @@ in {
     ../../../common/base.nix
     ../../../common/netcup.nix
     ../../../modules/services/tailscale.nix
+    ../../../modules/services/etcd.nix
   ];
 
   # Hostname

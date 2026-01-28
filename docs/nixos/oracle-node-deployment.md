@@ -11,7 +11,7 @@ Oracle Cloud instances **cannot use the disko module** for disk partitioning. Th
 modules = [
   disko.nixosModules.disko  # This expects ESP and swap partitions
   ./common.nix              # Imports disko.nix
-  ./node-india-strong-minimal.nix
+  ./oracle-node-minimal.nix
 ];
 ```
 
@@ -79,13 +79,13 @@ Create a separate common configuration **without disko** for Oracle nodes.
 #### 2. Updated `flake.nix`
 
 ```nix
-node-india-strong = nixpkgs.lib.nixosSystem {
+india-rworker = nixpkgs.lib.nixosSystem {
   system = "aarch64-linux";
   modules = [
     # ✅ Use Oracle-specific common config (no disko)
     agenix.nixosModules.default
     ./infra/nixos/common-oracle.nix         # NOT common.nix!
-    ./infra/nixos/node-india-strong-minimal.nix
+    ./infra/nixos/oracle-node-minimal.nix
   ];
   specialArgs = { inherit self; };
 };
@@ -124,22 +124,22 @@ cat /etc/fstab
 rsync -av -e "ssh -i ~/.ssh/id_ed25519" \
   /Users/le/repos/uptrack/flake.nix \
   /Users/le/repos/uptrack/infra \
-  root@152.67.179.42:/root/uptrack/
+  root@REMOVED_IP:/root/uptrack/
 
 # 2. Validate configuration
-ssh -i ~/.ssh/id_ed25519 root@152.67.179.42 \
-  "cd /root/uptrack && nixos-rebuild dry-build --flake '.#node-india-strong'"
+ssh -i ~/.ssh/id_ed25519 root@REMOVED_IP \
+  "cd /root/uptrack && nixos-rebuild dry-build --flake '.#india-rworker'"
 
 # 3. Build configuration (15-20 min first time, 5-10 min subsequent)
-ssh -i ~/.ssh/id_ed25519 root@152.67.179.42 \
-  "cd /root/uptrack && nixos-rebuild build --flake '.#node-india-strong' --max-jobs 3"
+ssh -i ~/.ssh/id_ed25519 root@REMOVED_IP \
+  "cd /root/uptrack && nixos-rebuild build --flake '.#india-rworker' --max-jobs 3"
 
 # 4. Deploy (commit to boot config only, SSH always works)
-ssh -i ~/.ssh/id_ed25519 root@152.67.179.42 \
-  "cd /root/uptrack && nixos-rebuild switch --flake '.#node-india-strong'"
+ssh -i ~/.ssh/id_ed25519 root@REMOVED_IP \
+  "cd /root/uptrack && nixos-rebuild switch --flake '.#india-rworker'"
 
 # 5. Reboot to activate new configuration
-ssh -i ~/.ssh/id_ed25519 root@152.67.179.42 "sudo reboot"
+ssh -i ~/.ssh/id_ed25519 root@REMOVED_IP "sudo reboot"
 ```
 
 ### Boot Loader Configuration
@@ -168,7 +168,7 @@ boot.loader.grub = {
 
 ## Oracle Cloud Specific Configuration
 
-### node-india-strong-minimal.nix
+### oracle-node-minimal.nix
 
 Includes:
 - PostgreSQL 17 with JIT compilation
@@ -205,7 +205,7 @@ systemd.timers.idle-prevention = {
    - `infra/nixos/common-oracle.nix` - Oracle-specific common config without disko
 
 2. **Modified:**
-   - `flake.nix` - Updated `node-india-strong` to use `common-oracle.nix`
+   - `flake.nix` - Updated `india-rworker` to use `common-oracle.nix`
 
 ## Common Errors
 

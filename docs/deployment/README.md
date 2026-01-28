@@ -15,8 +15,7 @@ Complete guide for deploying and managing the 5-node Uptrack infrastructure with
 | **Germany** | Netcup ARM G11 | PG Primary + CH Replica | $7.11/mo | [germany.md](./nodes/germany.md) |
 | **Austria** | Netcup ARM G11 | CH Primary + PG Replica | $7.11/mo | [austria.md](./nodes/austria.md) |
 | **Canada** | OVH VPS-1 | App-only | $4.20/mo | [canada.md](./nodes/canada.md) |
-| **India Strong** | Oracle Free | PG Replica + etcd | FREE | [india-strong-v2.md](./nodes/india-strong-v2.md) |
-| **India Weak** | Oracle Free | App-only + etcd | FREE | [india-weak.md](./nodes/india-weak.md) |
+| **India RWorker** | Oracle Free | Backups & Logs | FREE | [india-rworker.md](./nodes/india-rworker.md) |
 
 ---
 
@@ -29,22 +28,18 @@ Complete guide for deploying and managing the 5-node Uptrack infrastructure with
 
 **Node-Specific:**
 
-3. **[india-strong.md](./nodes/india-strong.md)** - Detailed India Strong setup with nixos-anywhere
-
 ---
 
-## 📊 Architecture Overview
+## Architecture Overview
 
 ### Database Distribution
 
 ```
-PostgreSQL PRIMARY: Germany 🇩🇪
-├─ Replica 1: Austria 🇦🇹
-└─ Replica 2: India Strong 🇮🇳
+PostgreSQL PRIMARY: Germany
+├─ Replica 1: Austria
 
-ClickHouse PRIMARY: Austria 🇦🇹
-├─ Replica 1: Germany 🇩🇪
-└─ Replica 2: India Strong 🇮🇳
+ClickHouse PRIMARY: Austria
+├─ Replica 1: Germany
 
 etcd Cluster: All 5 nodes
 ├─ Quorum: 3/5
@@ -55,7 +50,7 @@ etcd Cluster: All 5 nodes
 
 - **Europe**: Germany, Austria (database primaries)
 - **North America**: Canada (app-only)
-- **APAC**: India Strong, India Weak (replica + app-only)
+- **APAC**: India RWorker (backups & logs)
 
 ---
 
@@ -95,39 +90,18 @@ etcdctl endpoint health --cluster
 
 ---
 
-### Phase 3: India Nodes (Oracle Free)
+### Phase 3: India RWorker (Oracle Free)
 
 ```bash
-# Deploy India Strong (Postgres replica + etcd)
-nix run github:nix-community/nixos-anywhere -- \
-  --flake .#node-india-strong \
-  -i ssh-key-2025-10-18.key \
-  root@144.24.133.171
+# Deploy India RWorker (App-only + etcd)
+colmena apply --on india-rworker
 
-colmena apply --on node-india-strong
-
-# Verify 4-node cluster
-patronictl list uptrack-pg-cluster
-etcdctl member list
-```
-
-**Time**: ~15 minutes
-**Result**: 4-node cluster, Postgres replica in APAC
-
----
-
-### Phase 4: India Weak (Oracle Free)
-
-```bash
-# Deploy India Weak (App-only + etcd)
-colmena apply --on node-india-weak
-
-# Verify 5-node cluster
+# Verify cluster
 etcdctl endpoint health --cluster
 ```
 
 **Time**: ~10 minutes
-**Result**: 5-node etcd cluster complete, optimal consensus
+**Result**: India RWorker deployed
 
 ---
 
@@ -272,7 +246,7 @@ etcdctl member remove <ID>
 colmena eval node-germany -- psql -U postgres -c "SELECT pg_last_wal_receive_lsn() - pg_last_wal_replay_lsn();"
 
 # If high, check network
-colmena eval node-india-strong -- tailscale status
+colmena eval india-rworker -- tailscale status
 ```
 
 ---
@@ -299,7 +273,7 @@ colmena eval node-india-strong -- tailscale status
 1. Read [ARCHITECTURE-SUMMARY.md](../architecture/ARCHITECTURE-SUMMARY.md)
 2. Read [nixos-general.md](./guides/nixos-general.md)
 3. Follow [deployment-plan.md](./guides/deployment-plan.md)
-4. Deploy nodes in order: Germany → Austria → Canada → India Strong → India Weak
+4. Deploy nodes in order: Germany → Austria → Canada → India RWorker
 
 ---
 

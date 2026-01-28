@@ -37,9 +37,7 @@ infra/nixos/
 │   │
 │   └── asia/
 │       └── india-hyderabad/
-│           ├── worker-1/        # 152.67.179.42 (node-india-strong)
-│           │   └── default.nix
-│           └── worker-2/        # TBD (node-india-weak)
+│           └── rworker/         # REMOVED_IP (india-rworker)
 │               └── default.nix
 │
 ├── disko/              # Disk partitioning schemes
@@ -57,8 +55,7 @@ infra/nixos/
 - `germany` → Europe Germany (Netcup ARM G11) - PG Primary + CH Replica
 - `austria` → Europe Austria (Netcup ARM G11) - CH Primary + PG Replica
 - `canada` → Americas Canada (OVH VPS-1) - App-only + etcd
-- `india-hyderabad-1` → Asia India (Oracle Free) - PG Replica (152.67.179.42)
-- `india-hyderabad-2` → Asia India (Oracle Free) - App-only + etcd (129.159.22.183)
+- `india-rworker` → Asia India (Oracle Free) - Backups & Logs (REMOVED_IP)
 
 ### Legacy Names (Deprecated - To Be Removed After Migration)
 - ~~`hetzner-primary`~~ → (91.98.89.119) - Old node-a, will be decommissioned
@@ -77,8 +74,7 @@ colmena apply
 colmena apply --on germany
 colmena apply --on austria
 colmena apply --on canada
-colmena apply --on india-hyderabad-1
-colmena apply --on india-hyderabad-2
+colmena apply --on india-rworker
 ```
 
 ### Deploy by tags
@@ -106,8 +102,7 @@ colmena apply --on @legacy              # All legacy nodes
 nix run .#install-germany
 nix run .#install-austria
 nix run .#install-canada
-nix run .#install-india-hyderabad-1
-nix run .#install-india-hyderabad-2
+nix run .#install-india-rworker
 ```
 
 ## Adding a New Region
@@ -200,7 +195,7 @@ colmena apply --on singapore-1
 ### Minimal Profile
 - Minimal deployment for resource-constrained environments
 - Services: PostgreSQL only (app deployed as release)
-- Used by: Oracle Cloud Free Tier nodes (`india-hyderabad-1`, `india-hyderabad-2`)
+- Used by: Oracle Cloud Free Tier nodes (`india-rworker`)
 
 ## Provider-Specific Notes
 
@@ -234,8 +229,7 @@ infra/nixos/
 ├── node-a.nix
 ├── node-b.nix
 ├── node-c.nix
-├── node-india-strong.nix
-├── node-india-weak.nix
+├── india-rworker.nix
 ├── services/
 └── packages/
 ```
@@ -259,8 +253,7 @@ infra/nixos/
 │   │   └── contabo-tertiary/ (from node-c.nix)
 │   └── asia/
 │       └── india-hyderabad/
-│           ├── worker-1/ (from node-india-strong-minimal.nix)
-│           └── worker-2/ (from node-india-weak.nix)
+│           └── rworker/ (from india-rworker.nix)
 └── disko/
     ├── hetzner-arm64.nix (from disko.nix)
     ├── contabo-vps.nix (from disko.nix)
@@ -271,7 +264,7 @@ infra/nixos/
 
 1. **Scalable** - Easy to add new regions/workers
 2. **Clear hierarchy** - Region → Provider → Instance
-3. **Consistent naming** - `asia/india-hyderabad/worker-1` vs `node-india-strong`
+3. **Consistent naming** - Region-based paths (e.g., `asia/india-hyderabad/rworker`)
 4. **Reusable profiles** - Apply "minimal" profile to all Oracle free tier nodes
 5. **Better git organization** - Regional teams can work on their regions independently
 6. **DRY principle** - Shared configs in `common/`, region-specific configs in `regions/`

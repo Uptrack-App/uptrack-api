@@ -5,9 +5,9 @@
   Your Current Situation
 
   You have:
-  - ✅ PostgreSQL 17 already running on node-india-strong
+  - ✅ PostgreSQL 17 already running
   - ✅ Elixir/Phoenix app using Oban
-  - ✅ Single Oracle Cloud node (3 vCPU, 18GB RAM)
+  - ✅ Oracle Cloud node (india-rworker: 1 vCPU, 6GB RAM)
 
   When to Use What
 

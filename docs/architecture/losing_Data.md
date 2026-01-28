@@ -37,8 +37,8 @@ will i lose victoriametrics and postgres data after install new version of nixos
   ---
   Your Workflow (from CLAUDE.md) is Safe
 
-  nixos-rebuild build --flake '.#node-india-strong' --max-jobs 3  # ✅ Data safe
-  nixos-rebuild switch --flake '.#node-india-strong'              # ✅ Data safe
+  nixos-rebuild build --flake '.#india-rworker' --max-jobs 3  # ✅ Data safe
+  nixos-rebuild switch --flake '.#india-rworker'              # ✅ Data safe
   sudo reboot                                                      # ✅ Data safe
 
   This is an upgrade, not a reinstall. All data in /var/lib/ persists.
