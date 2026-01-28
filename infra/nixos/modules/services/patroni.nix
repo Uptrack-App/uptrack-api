@@ -57,6 +57,12 @@ in lib.mkIf isPatroniNode {
       group = "patroni";
       mode = "0400";
     };
+    uptrack-app-password = {
+      file = ../../secrets/uptrack-app-password.age;
+      owner = "patroni";
+      group = "patroni";
+      mode = "0400";
+    };
   };
 
   # Patroni HA manager
@@ -197,6 +203,10 @@ in lib.mkIf isPatroniNode {
       psql -h /run/patroni -U postgres -c "CREATE DATABASE uptrack OWNER uptrack_app_user;"
       psql -h /run/patroni -U postgres -d uptrack -c "GRANT ALL PRIVILEGES ON DATABASE uptrack TO uptrack_app_user;"
       psql -h /run/patroni -U postgres -d uptrack -c "GRANT ALL ON SCHEMA public TO uptrack_app_user;"
+
+      # Set password for application user
+      APP_PASSWORD=$(cat ${config.age.secrets.uptrack-app-password.path})
+      psql -h /run/patroni -U postgres -c "ALTER USER uptrack_app_user WITH PASSWORD '$APP_PASSWORD'"
 
       ${if isCoordinator then ''
       # Coordinator-specific setup: register self and add worker node
