@@ -133,7 +133,7 @@ in lib.mkIf isPatroniNode {
           replicator = {
             options = [ "replication" ];
           };
-          uptrack = {
+          uptrack_app_user = {
             options = [ "createrole" "createdb" ];
           };
         };
@@ -193,6 +193,11 @@ in lib.mkIf isPatroniNode {
       # Install Citus extension
       psql -h /run/patroni -U postgres -c "CREATE EXTENSION IF NOT EXISTS citus;"
 
+      # Create application database and grant permissions
+      psql -h /run/patroni -U postgres -c "CREATE DATABASE uptrack OWNER uptrack_app_user;"
+      psql -h /run/patroni -U postgres -d uptrack -c "GRANT ALL PRIVILEGES ON DATABASE uptrack TO uptrack_app_user;"
+      psql -h /run/patroni -U postgres -d uptrack -c "GRANT ALL ON SCHEMA public TO uptrack_app_user;"
+
       ${if isCoordinator then ''
       # Coordinator-specific setup: register self and add worker node
       # Wait a bit for worker cluster to be ready
@@ -210,9 +215,12 @@ in lib.mkIf isPatroniNode {
         echo "Waiting for worker node... attempt $i"
         sleep 5
       done
+
+      # Install Citus in uptrack database
+      psql -h /run/patroni -U postgres -d uptrack -c "CREATE EXTENSION IF NOT EXISTS citus;"
       '' else ''
-      # Worker cluster: just Citus extension (already done above)
-      echo "Worker node Citus setup complete"
+      # Worker cluster setup complete
+      echo "Worker node setup complete"
       ''}
     '';
   };
