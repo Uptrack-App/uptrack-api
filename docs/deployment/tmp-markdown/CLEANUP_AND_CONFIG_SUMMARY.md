@@ -86,13 +86,13 @@ config :uptrack, Uptrack.ResultsRepo,
 
 ### 3. 5-Node Infrastructure Completion
 
-**Objective**: Add India Weak node and complete flake.nix configuration
+**Objective**: Add India RWorker node and complete flake.nix configuration
 
 **Node Configurations**:
 
 #### New Files
 - ✅ `infra/nixos/node-india-strong.nix` - PG Replica + etcd (ARM64)
-- ✅ `infra/nixos/node-india-weak.nix` - App-only + etcd (ARM64)
+- ✅ `infra/nixos/india-rworker.nix` - App-only + etcd (ARM64)
 
 #### Updated `flake.nix`
 
@@ -104,8 +104,8 @@ node-india-strong = {
   imports = [...app, postgres, clickhouse...]
 }
 
-node-india-weak = {
-  deployment.targetHost = "INDIA_WEAK_IP"
+india-rworker = {
+  deployment.targetHost = "INDIA_RWORKER_IP"
   tags = [ "app" "etcd" "oracle" "arm64" ]
   imports = [...app only...]
 }
@@ -118,7 +118,7 @@ node-india-strong = nixpkgs.lib.nixosSystem {
   modules = [...postgres, clickhouse...]
 }
 
-node-india-weak = nixpkgs.lib.nixosSystem {
+india-rworker = nixpkgs.lib.nixosSystem {
   system = "aarch64-linux"
   modules = [...app only...]
 }
@@ -126,9 +126,9 @@ node-india-weak = nixpkgs.lib.nixosSystem {
 
 **Deployment scripts added**:
 - `nix run deploy-node-india-strong`
-- `nix run deploy-node-india-weak`
+- `nix run deploy-india-rworker`
 - `nix run install-node-india-strong`
-- `nix run install-node-india-weak`
+- `nix run install-india-rworker`
 
 ---
 
@@ -152,7 +152,7 @@ node-india-weak = nixpkgs.lib.nixosSystem {
 PostgreSQL PRIMARY: Germany (Hetzner ARM64)
 ├─ Replica 1: Austria (Contabo)
 ├─ Replica 2: India Strong (Oracle Free ARM64)
-└─ Oban jobs: Germany, Austria, Canada, India Strong, India Weak
+└─ Oban jobs: Germany, Austria, Canada, India Strong, India RWorker
 
 ClickHouse PRIMARY: Austria (Contabo)
 ├─ Replica 1: Germany (Hetzner ARM64)
@@ -185,8 +185,8 @@ App Nodes: All 5 nodes
    - Monitor connection usage per repo
    - Verify queue_target and queue_interval work correctly
 
-2. **India Weak Node Setup**
-   - Update INDIA_WEAK_IP in flake.nix with actual IP
+2. **India RWorker Node Setup**
+   - Update INDIA_RWORKER_IP in flake.nix with actual IP
    - Configure SSH access
    - Deploy with nixos-anywhere
 
@@ -204,7 +204,7 @@ App Nodes: All 5 nodes
 2. Austria (CH Primary)
 3. Canada (App)
 4. India Strong (DB Replica)
-5. India Weak (App + etcd quorum)
+5. India RWorker (App + etcd quorum)
 ```
 
 ---
@@ -218,7 +218,7 @@ App Nodes: All 5 nodes
 
 **Created**:
 - `.env.example` - Environment variable documentation
-- `infra/nixos/node-india-weak.nix` - New node config
+- `infra/nixos/india-rworker.nix` - New node config
 - `/docs/deployment/` - Restructured deployment documentation
 - `/docs/OBAN_CLICKHOUSE_POOLING_ANALYSIS.md` - Technical analysis
 
@@ -233,7 +233,7 @@ App Nodes: All 5 nodes
 - [x] Per-repo pool sizes implemented
 - [x] Environment variables documented
 - [x] India Strong node in flake.nix
-- [x] India Weak node in flake.nix
+- [x] India RWorker node in flake.nix
 - [x] Deploy scripts for both nodes
 - [x] Git commit completed
 - [x] Ready for ClickHouse migration

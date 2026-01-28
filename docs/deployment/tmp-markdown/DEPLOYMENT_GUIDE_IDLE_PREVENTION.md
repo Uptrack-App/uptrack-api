@@ -1,6 +1,6 @@
 # Deployment Guide: Idle Prevention System
 
-This guide covers deploying the Idle Prevention System to Oracle Always Free instances (indiastrong and india-week).
+This guide covers deploying the Idle Prevention System to Oracle Always Free instances (indiastrong and india-rworker).
 
 ---
 
@@ -167,14 +167,14 @@ ssh -i ~/.ssh/id_ed25519 le@152.67.179.42 \
 
 ---
 
-## Deployment to india-week
+## Deployment to india-rworker
 
 Follow the same steps as indiastrong, but replace:
 ```bash
-ssh -i ~/.ssh/id_ed25519 le@<india-week-ip>
+ssh -i ~/.ssh/id_ed25519 le@<india-rworker-ip>
 ```
 
-With actual india-week IP address.
+With actual india-rworker IP address.
 
 ---
 
@@ -507,5 +507,5 @@ Once all items are confirmed, deployment is complete and the instance is protect
 
 **Document Version**: 1.0
 **Last Updated**: 2025-10-20
-**Applicable To**: indiastrong, india-week
+**Applicable To**: indiastrong, india-rworker
 **Status**: Ready for Deployment

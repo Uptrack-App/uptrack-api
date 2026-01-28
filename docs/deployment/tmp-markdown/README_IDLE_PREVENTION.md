@@ -6,7 +6,7 @@ Successfully implemented a comprehensive **Idle Prevention System** for Uptrack 
 
 **Status**: ✅ **COMPLETE AND READY FOR DEPLOYMENT**
 
-**Instances Protected**: indiastrong, india-week
+**Instances Protected**: indiastrong, india-rworker
 **Deployment Date**: 2025-10-20
 **Expected Protection**: 7+ days guaranteed (> 20% CPU/Network/Memory)
 
@@ -260,7 +260,7 @@ See **DEPLOYMENT_GUIDE_IDLE_PREVENTION.md** for complete troubleshooting.
 ## Multiple Instances
 
 ### Same Codebase
-If both indiastring and india-week run the same Uptrack code:
+If both indiastring and india-rworker run the same Uptrack code:
 1. Deploy code to both instances
 2. Idle prevention runs independently on each
 3. No inter-instance coordination needed
@@ -331,7 +331,7 @@ Edit `lib/uptrack/health/idle_prevention.ex`:
 1. Review DEPLOYMENT_GUIDE_IDLE_PREVENTION.md
 2. Deploy to indiastrong
 3. Verify with curl and logs
-4. Deploy to india-week
+4. Deploy to india-rworker
 
 ### Short-term (This Week)
 1. Monitor logs and resource usage
@@ -406,7 +406,7 @@ tail -100 /path/to/uptrack/logs/*.log | grep IdlePrevention
 | 2025-10-20 | Deployment guide | ✅ Complete |
 | 2025-10-20 | Code commit | ✅ Complete |
 | Today | Deploy to indiastrong | ⏳ Ready |
-| Today | Deploy to india-week | ⏳ Ready |
+| Today | Deploy to india-rworker | ⏳ Ready |
 | 2025-10-27 | 7-day verification | ⏳ Pending |
 | 2025-11-20 | 30-day verification | ⏳ Pending |
 
@@ -414,7 +414,7 @@ tail -100 /path/to/uptrack/logs/*.log | grep IdlePrevention
 
 ## Conclusion
 
-The Idle Prevention System is **fully implemented, documented, and ready for deployment**. With dual-tier load generation, comprehensive monitoring, and minimal resource overhead, the system ensures that indiastrong and india-week will not be reclaimed by Oracle due to idle resource utilization.
+The Idle Prevention System is **fully implemented, documented, and ready for deployment**. With dual-tier load generation, comprehensive monitoring, and minimal resource overhead, the system ensures that indiastrong and india-rworker will not be reclaimed by Oracle due to idle resource utilization.
 
 **All code is committed and ready for immediate deployment.**
 
@@ -431,6 +431,6 @@ The Idle Prevention System is **fully implemented, documented, and ready for dep
 **Prepared by**: Claude Code
 **Date**: 2025-10-20
 **Status**: ✅ COMPLETE - READY FOR DEPLOYMENT
-**Next Action**: Deploy to indiastrong and india-week instances
+**Next Action**: Deploy to indiastrong and india-rworker instances
 
 For detailed deployment instructions, see **DEPLOYMENT_GUIDE_IDLE_PREVENTION.md**
