@@ -81,8 +81,17 @@ in {
   # Create with: agenix -e replicator-password.age
   "replicator-password.age".publicKeys = adminKeys ++ nbgNodes;
 
-  # pgBackRest encryption key for B2 backups
-  # "pgbackrest-cipher.age".publicKeys = allNodes;
+  # ========================================
+  # BACKBLAZE B2 SECRETS (pgBackRest)
+  # ========================================
+
+  # B2 Application Key ID
+  # Create with: agenix -e b2-key-id.age
+  "b2-key-id.age".publicKeys = adminKeys ++ nbgNodes;
+
+  # B2 Application Key (secret)
+  # Create with: agenix -e b2-application-key.age
+  "b2-application-key.age".publicKeys = adminKeys ++ nbgNodes;
 
   # ========================================
   # API NODE SECRETS (nbg1, nbg4 only)
