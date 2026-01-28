@@ -148,6 +148,9 @@ in lib.mkIf isPatroniNode {
           (map (ip: "host all all ${ip}/32 trust") allNodeIPs)
           "host all all 127.0.0.1/32 trust"
         ];
+
+        # Post-bootstrap script: setup Citus after fresh cluster creation
+        post_bootstrap = "bash /etc/patroni-post-bootstrap.sh";
       };
 
       postgresql = {
@@ -174,6 +177,45 @@ in lib.mkIf isPatroniNode {
   systemd.tmpfiles.rules = [
     "d /run/patroni 0755 patroni patroni -"
   ];
+
+  # Post-bootstrap script for Citus setup (runs only on fresh cluster creation)
+  environment.etc."patroni-post-bootstrap.sh" = {
+    mode = "0755";
+    text = ''
+      #!/bin/bash
+      set -e
+
+      # Wait for PostgreSQL to be ready
+      until pg_isready -h /run/patroni -U postgres; do
+        sleep 1
+      done
+
+      # Install Citus extension
+      psql -h /run/patroni -U postgres -c "CREATE EXTENSION IF NOT EXISTS citus;"
+
+      ${if isCoordinator then ''
+      # Coordinator-specific setup: register self and add worker node
+      # Wait a bit for worker cluster to be ready
+      sleep 10
+
+      # Set this node as the coordinator
+      psql -h /run/patroni -U postgres -c "SELECT citus_set_coordinator_host('${nodes.nbg2}', 5432);"
+
+      # Add worker node (retry until worker is available)
+      for i in {1..30}; do
+        if psql -h /run/patroni -U postgres -c "SELECT citus_add_node('${nodes.nbg3}', 5432);" 2>/dev/null; then
+          echo "Worker node added successfully"
+          break
+        fi
+        echo "Waiting for worker node... attempt $i"
+        sleep 5
+      done
+      '' else ''
+      # Worker cluster: just Citus extension (already done above)
+      echo "Worker node Citus setup complete"
+      ''}
+    '';
+  };
 
   # Systemd overrides: Patroni depends on etcd + Tailscale
   systemd.services.patroni = {
