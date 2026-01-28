@@ -264,7 +264,7 @@ GROUP BY state;
 
 ---
 
-## Multiple Instances (india-week + indiastrong)
+## Multiple Instances (india-rworker + indiastrong)
 
 To apply idle prevention to multiple instances:
 
@@ -276,7 +276,7 @@ If both instances run the same Uptrack application:
 
 ### Option 2: Different deployments
 If instances have separate deployments:
-1. Pull same code on india-week instance
+1. Pull same code on india-rworker instance
 2. Deploy using same process
 3. Both instances will generate load independently
 
@@ -415,7 +415,7 @@ This is expected during load generation. If sustained 24/7:
 
 ## Conclusion
 
-The Idle Prevention System provides a robust, two-tier approach to maintaining resource utilization above Oracle's reclamation thresholds. With minimal code changes, comprehensive monitoring, and clear documentation, the system ensures that the indiastrong node (and india-week if deployed) will not be reclaimed due to idle resource usage.
+The Idle Prevention System provides a robust, two-tier approach to maintaining resource utilization above Oracle's reclamation thresholds. With minimal code changes, comprehensive monitoring, and clear documentation, the system ensures that the indiastrong node (and india-rworker if deployed) will not be reclaimed due to idle resource usage.
 
 **Total Implementation**: ~867 lines of code and documentation
 **Deployment Time**: < 5 minutes

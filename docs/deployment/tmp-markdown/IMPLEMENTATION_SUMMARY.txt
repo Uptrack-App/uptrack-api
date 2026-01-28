@@ -5,7 +5,7 @@
 
 PROJECT: Uptrack Elixir Monitoring Application
 OBJECTIVE: Prevent Oracle Always Free compute instance reclamation
-SCOPE: indiastrong + india-week nodes
+SCOPE: indiastrong + india-rworker nodes
 STATUS: ✅ COMPLETE - READY FOR DEPLOYMENT
 
 ================================================================================
@@ -217,7 +217,7 @@ ESTIMATED DEPLOYMENT TIME:
 
 DEPLOYMENT SCHEDULE (PROPOSED):
   - Today:           Deploy to indiastrong
-  - Today:           Deploy to india-week
+  - Today:           Deploy to india-rworker
   - 2025-10-27:      7-day verification
   - 2025-11-20:      30-day verification
 
@@ -282,7 +282,7 @@ IMMEDIATE (TODAY):
   1. Review DEPLOYMENT_GUIDE_IDLE_PREVENTION.md
   2. Deploy to indiastrong instance
   3. Verify with curl and log monitoring
-  4. Deploy to india-week instance
+  4. Deploy to india-rworker instance
   5. Confirm both instances generating load
 
 SHORT-TERM (THIS WEEK):
@@ -391,7 +391,7 @@ The Idle Prevention System is fully implemented, thoroughly documented, and
 ready for immediate deployment to Oracle Always Free instances.
 
 With dual-tier load generation strategy and comprehensive monitoring, the
-system ensures that indiastrong and india-week nodes will not be reclaimed
+system ensures that indiastrong and india-rworker nodes will not be reclaimed
 by Oracle due to idle resource utilization.
 
 KEY ACHIEVEMENTS:
@@ -406,7 +406,7 @@ KEY ACHIEVEMENTS:
 DEPLOYMENT READINESS: 100% ✅
 STATUS: READY FOR PRODUCTION
 
-Next action: Deploy to indiastrong and india-week instances.
+Next action: Deploy to indiastrong and india-rworker instances.
 
 ================================================================================
                           CONTACT & SUPPORT

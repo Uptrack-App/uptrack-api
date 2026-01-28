@@ -2,7 +2,7 @@
 
 **Project**: Uptrack Monitoring Application
 **Objective**: Prevent Oracle Always Free compute instance reclamation
-**Scope**: indiastrong (152.67.179.42) + india-week
+**Scope**: indiastrong (152.67.179.42) + india-rworker
 **Date**: 2025-10-20
 **Status**: ✅ **FULLY IMPLEMENTED AND DEPLOYED**
 
@@ -169,13 +169,13 @@ TOTAL IMPLEMENTATION:                             2,500+ lines
 - SSH will be available when boot completes
 - Idle prevention will auto-start on successful boot
 
-### India-week - ⏳ READY FOR DEPLOYMENT
+### India-rworker - ⏳ READY FOR DEPLOYMENT
 
 **Steps to Deploy** (when indiastrong verified):
 1. Sync code to ~/uptrack
 2. Initialize git repo
 3. Create initial commit
-4. Run: `sudo nixos-rebuild switch --flake '.#node-india-weak'`
+4. Run: `sudo nixos-rebuild switch --flake '.#india-rworker'`
 5. Verify (same checklist as indiastrong)
 
 ---
@@ -283,7 +283,7 @@ a6d7635 Add idle prevention system deployment [ON INDIASTRONG]
 - [ ] Idle stats present in response
 - [ ] No errors in application logs
 
-### For india-week After Deployment
+### For india-rworker After Deployment
 
 - Same verification checklist
 - Confirm both instances running simultaneously
@@ -415,7 +415,7 @@ a6d7635 Add idle prevention system deployment [ON INDIASTRONG]
 | 2025-10-20 | Code Deployment (indiastrong) | ✅ Complete |
 | 2025-10-20 | NixOS Rebuild Initiated | ✅ In Progress |
 | 2025-10-20 | System Verification | ⏳ Pending |
-| 2025-10-20 | India-week Deployment | ⏳ Ready |
+| 2025-10-20 | India-rworker Deployment | ⏳ Ready |
 | 2025-10-20 | Both Instances Verified | ⏳ Ready |
 | 2025-10-27 | 7-day Verification | ⏳ Pending |
 | 2025-11-20 | 30-day Verification | ⏳ Pending |
@@ -497,13 +497,13 @@ The **Idle Prevention System** has been successfully implemented, comprehensivel
 ### Deployment Status
 
 ✅ **indiastrong**: Code deployed, rebuild in progress, system rebooting
-⏳ **india-week**: Ready for deployment (same process)
+⏳ **india-rworker**: Ready for deployment (same process)
 
 ### Next Steps
 
 1. Verify indiastrong comes back online (5-15 minutes)
 2. Confirm idle prevention is running
-3. Deploy to india-week using same process
+3. Deploy to india-rworker using same process
 4. Verify both instances
 5. Monitor for 24-48 hours for issues
 6. Confirm no Oracle idle reclamation
@@ -516,7 +516,7 @@ The **Idle Prevention System** has been successfully implemented, comprehensivel
 **Confidence**: VERY HIGH
 **Risk**: LOW
 
-All code is committed, tested, and ready for production use. The system will automatically protect both indiastrong and india-week instances from Oracle's idle reclamation policy.
+All code is committed, tested, and ready for production use. The system will automatically protect both indiastrong and india-rworker instances from Oracle's idle reclamation policy.
 
 ---
 

@@ -50,7 +50,7 @@
 1. Verify system comes back online
 2. Confirm idle prevention is running
 3. Check health endpoint
-4. Deploy to india-week (same process)
+4. Deploy to india-rworker (same process)
 5. Verify both instances
 
 ---
@@ -263,14 +263,14 @@ iex> Uptrack.Health.IdlePrevention.get_stats()
 
 ---
 
-## Deployment to india-week
+## Deployment to india-rworker
 
-Once indiastrong is verified, deploy to india-week using **identical process**:
+Once indiastrong is verified, deploy to india-rworker using **identical process**:
 
 1. Sync code files to ~/uptrack
 2. Initialize git repo
 3. Create initial commit
-4. Run `sudo nixos-rebuild switch --flake '.#node-india-weak'`
+4. Run `sudo nixos-rebuild switch --flake '.#india-rworker'`
 5. Wait for boot
 6. Verify (same checks as indiastrong)
 
@@ -310,7 +310,7 @@ All documentation for troubleshooting and operation:
 
 ### Short-term (This Week)
 
-1. Deploy to india-week
+1. Deploy to india-rworker
 2. Verify both instances running idle prevention
 3. Monitor logs for 24-48 hours
 4. Confirm no performance issues
