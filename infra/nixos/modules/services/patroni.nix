@@ -124,7 +124,7 @@ in lib.mkIf isPatroniNode {
 
         initdb = [
           { encoding = "UTF8"; }
-          { data-checksums = true; }
+          "data-checksums"
           { locale = "en_US.UTF-8"; }
         ];
 
