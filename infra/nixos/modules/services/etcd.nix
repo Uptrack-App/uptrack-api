@@ -52,9 +52,9 @@ in lib.mkIf isEtcdNode {
 
     serviceConfig = {
       # Fail fast if Tailscale isn't ready
-      TimeoutStartSec = "60s";
-      Restart = "on-failure";
-      RestartSec = "5s";
+      TimeoutStartSec = lib.mkForce "60s";
+      Restart = lib.mkForce "on-failure";
+      RestartSec = lib.mkForce "5s";
     };
   };
 
