@@ -13,6 +13,7 @@ in {
     ../../../common/netcup.nix
     ../../../modules/services/tailscale.nix
     ../../../modules/services/etcd.nix
+    ../../../modules/services/patroni.nix
   ];
 
   # Hostname
