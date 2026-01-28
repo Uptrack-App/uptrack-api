@@ -19,30 +19,28 @@ let
   # Get these by running: ssh root@<ip> cat /etc/ssh/ssh_host_ed25519_key.pub
 
   nbg1Key = [
-    # ssh root@152.53.181.117 cat /etc/ssh/ssh_host_ed25519_key.pub
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAd4rr7uOZTHsA305X6+x8K2vE4x5jc/crC4I2j1u+BS root@v2202511312657401393"
   ];
 
   nbg2Key = [
-    # ssh root@152.53.183.208 cat /etc/ssh/ssh_host_ed25519_key.pub
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILoAGQputlTNlkh5Y5EWBShCqDDh6t5OAMDgJTcvYKqs root@v2202511312657401394"
   ];
 
   nbg3Key = [
-    # ssh root@152.53.180.51 cat /etc/ssh/ssh_host_ed25519_key.pub
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHfdITVtibBFf7VfCDGzjxjS1mmJ3bDB7PUa82Mla2QN root@v2202511312657401395"
   ];
 
   nbg4Key = [
-    # ssh root@159.195.56.242 cat /etc/ssh/ssh_host_ed25519_key.pub
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDlTrRWbq1aF0nLdnh15vxmgmXk1BYhZsXnZUTRQtU9Q root@v2202511312657409490"
   ];
 
   # ========================================
-  # LEGACY NODE KEYS (to be removed)
+  # ORACLE INDIA NODE KEY
   # ========================================
-  nodeAKey = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEun58BHKtRxbZ0OXMD/gdsL5gfnuiDI+dCw5KgKCT1V root@uptrack-node-a"
-  ];
+  # Get by running: ssh root@REMOVED_IP cat /etc/ssh/ssh_host_ed25519_key.pub
 
-  nodeCKey = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID4Cq2eVhte57p1hanUNMT2C98YW2pOABIb/zny+iPns root@uptrack-node-c"
+  indiaRworkerKey = [
+    # ssh root@REMOVED_IP cat /etc/ssh/ssh_host_ed25519_key.pub
   ];
 
   # ========================================
@@ -53,7 +51,7 @@ let
   nbgNodes = nbg1Key ++ nbg2Key ++ nbg3Key ++ nbg4Key;
 
   # All nodes that need secrets
-  allNodes = adminKeys ++ nbgNodes ++ nodeAKey ++ nodeCKey;
+  allNodes = adminKeys ++ nbgNodes ++ indiaRworkerKey;
 
   # API nodes only (nbg1 + nbg4 = coordinators with Phoenix API)
   apiNodes = adminKeys ++ nbg1Key ++ nbg4Key;

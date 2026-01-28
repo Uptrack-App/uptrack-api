@@ -80,7 +80,7 @@
   # User configuration
   users.users.root.openssh.authorizedKeys.keys = [
     # Your SSH public key
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXfwtx9sZyrufYfJ1NvYIJSn3WG36jhY/j4gzyHGoMs giahoangth@gmail.com"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOlnOlGCkDNCBadzikbIMVBDe1jJQTDXeqZYc8e6SYIX le@le-arm64"
   ];
 
   # Automatic garbage collection

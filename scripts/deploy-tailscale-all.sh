@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# Deploy Tailscale to all 5 nodes
+# DEPRECATED (2026-01-28): All nodes are now on NixOS with Tailscale managed via
+# NixOS configuration (flake). This script was used for the initial Tailscale
+# deployment to eu-a/b/c + india-rworker (Debian era). Kept for reference or
+# re-deployment only. Current nodes: nbg1, nbg2, nbg3, nbg4, india-rworker.
+#
+# Original purpose: Deploy Tailscale to all 4 nodes
 # Run from your local machine
 
 set -euo pipefail
+
+echo "This script is deprecated. All nodes now run NixOS with Tailscale managed in the flake."
+echo "Current active nodes: nbg1 (100.64.1.1), nbg2 (100.64.1.2), nbg3 (100.64.1.3), nbg4 (100.64.1.4), india-rworker (100.64.1.11)"
+echo "To re-deploy, review and update the node list below, then remove this exit guard."
+exit 0
+
+# --- Legacy script below (eu-a/b/c era, Debian-based) ---
 
 # Colors
 GREEN='\033[0;32m'
@@ -12,7 +24,7 @@ NC='\033[0m'
 
 AUTHKEY="REMOVED_TAILSCALE_AUTH_KEY"
 
-echo -e "${YELLOW}=== Deploying Tailscale to All 5 Nodes ===${NC}"
+echo -e "${YELLOW}=== Deploying Tailscale to All 4 Nodes ===${NC}"
 echo ""
 
 # Test SSH connectivity first
@@ -23,8 +35,7 @@ NODES=(
   "eu-a:root@REMOVED_IP"
   "eu-b:root@REMOVED_IP"
   "eu-c:root@REMOVED_IP"
-  "india-s:le@152.67.179.42"
-  "india-w:root@REMOVED_IP"
+  "india-rworker:root@REMOVED_IP"
 )
 
 FAILED=0
@@ -34,20 +45,11 @@ for node in "${NODES[@]}"; do
 
   echo -n "Testing $NAME ($SSH)... "
 
-  if [ "$NAME" = "india-s" ]; then
-    if ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=5 -o StrictHostKeyChecking=no $SSH "echo 'OK'" &>/dev/null; then
-      echo -e "${GREEN}✓${NC}"
-    else
-      echo -e "${RED}✗ FAILED${NC}"
-      FAILED=1
-    fi
+  if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no $SSH "echo 'OK'" &>/dev/null; then
+    echo -e "${GREEN}✓${NC}"
   else
-    if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no $SSH "echo 'OK'" &>/dev/null; then
-      echo -e "${GREEN}✓${NC}"
-    else
-      echo -e "${RED}✗ FAILED${NC}"
-      FAILED=1
-    fi
+    echo -e "${RED}✗ FAILED${NC}"
+    FAILED=1
   fi
 done
 
@@ -65,14 +67,9 @@ echo ""
 echo -e "${YELLOW}Step 2: Deploying Tailscale...${NC}"
 echo ""
 
-# Deploy to india-s (NixOS)
-echo -e "${YELLOW}=== Deploying to india-s (NixOS) ===${NC}"
-./scripts/deploy-tailscale-india-s.sh
-echo ""
-
-# Deploy to india-w
-echo -e "${YELLOW}=== Deploying to india-w ===${NC}"
-cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP "bash -s india-w $AUTHKEY"
+# Deploy to india-rworker
+echo -e "${YELLOW}=== Deploying to india-rworker ===${NC}"
+cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP "bash -s india-rworker $AUTHKEY"
 echo ""
 
 # Deploy to eu-a
@@ -90,27 +87,24 @@ echo -e "${YELLOW}=== Deploying to eu-c ===${NC}"
 cat scripts/install-tailscale-debian.sh | ssh root@REMOVED_IP "bash -s eu-c $AUTHKEY"
 echo ""
 
-echo -e "${GREEN}✓✓✓ All 5 nodes deployed! ✓✓✓${NC}"
+echo -e "${GREEN}✓✓✓ All 4 nodes deployed! ✓✓✓${NC}"
 echo ""
 echo -e "${YELLOW}=== Next Steps ===${NC}"
 echo "1. Go to: https://login.tailscale.com/admin/machines"
-echo "2. You should see 5 machines online:"
-echo "   - india-s"
-echo "   - india-w"
+echo "2. You should see 4 machines online:"
+echo "   - india-rworker"
 echo "   - eu-a"
 echo "   - eu-b"
 echo "   - eu-c"
 echo ""
 echo "3. Assign static IPs to each machine:"
-echo "   - india-s  → 100.64.1.10"
-echo "   - india-w  → 100.64.1.11"
+echo "   - india-rworker  → 100.64.1.11"
 echo "   - eu-a     → 100.64.1.1"
 echo "   - eu-b     → 100.64.1.2"
 echo "   - eu-c     → 100.64.1.3"
 echo ""
 echo "4. Verify connectivity:"
-echo "   ssh le@152.67.179.42"
 echo "   ping -c 3 100.64.1.1   # eu-a"
 echo "   ping -c 3 100.64.1.2   # eu-b"
 echo "   ping -c 3 100.64.1.3   # eu-c"
-echo "   ping -c 3 100.64.1.11  # india-w"
+echo "   ping -c 3 100.64.1.11  # india-rworker"
