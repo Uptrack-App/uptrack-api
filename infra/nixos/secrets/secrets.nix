@@ -93,6 +93,10 @@ in {
   # Create with: agenix -e b2-application-key.age
   "b2-application-key.age".publicKeys = adminKeys ++ nbgNodes;
 
+  # Application database user password
+  # Create with: agenix -e uptrack-app-password.age
+  "uptrack-app-password.age".publicKeys = adminKeys ++ nbgNodes;
+
   # ========================================
   # API NODE SECRETS (nbg1, nbg4 only)
   # ========================================
