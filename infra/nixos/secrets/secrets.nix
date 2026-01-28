@@ -70,11 +70,16 @@ in {
   "uptrack-env.age".publicKeys = allNodes;
 
   # ========================================
-  # DATABASE SECRETS
+  # DATABASE SECRETS (Patroni nodes: nbg1-4)
   # ========================================
 
-  # PostgreSQL passwords (for Patroni/Citus)
-  # "postgres-passwords.age".publicKeys = allNodes;
+  # PostgreSQL superuser password
+  # Create with: agenix -e postgres-password.age
+  "postgres-password.age".publicKeys = adminKeys ++ nbgNodes;
+
+  # PostgreSQL replication password
+  # Create with: agenix -e replicator-password.age
+  "replicator-password.age".publicKeys = adminKeys ++ nbgNodes;
 
   # pgBackRest encryption key for B2 backups
   # "pgbackrest-cipher.age".publicKeys = allNodes;

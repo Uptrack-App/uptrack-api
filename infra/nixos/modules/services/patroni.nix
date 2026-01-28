@@ -4,6 +4,7 @@
 #   - "worker" cluster: nbg3 (primary) + nbg4 (standby) — Citus shards
 #
 # Both clusters use etcd at 100.64.1.{1,2,3}:2379 for DCS (leader election).
+# Passwords are loaded from agenix secrets via environment variables.
 { config, pkgs, lib, ... }:
 
 let
@@ -42,6 +43,22 @@ let
   pgPackage = pkgs.postgresql_17.withPackages (ps: [ ps.citus ]);
 
 in lib.mkIf isPatroniNode {
+  # Declare agenix secrets for this node
+  age.secrets = {
+    postgres-password = {
+      file = ../../secrets/postgres-password.age;
+      owner = "patroni";
+      group = "patroni";
+      mode = "0400";
+    };
+    replicator-password = {
+      file = ../../secrets/replicator-password.age;
+      owner = "patroni";
+      group = "patroni";
+      mode = "0400";
+    };
+  };
+
   # Patroni HA manager
   services.patroni = {
     enable = true;
@@ -55,6 +72,13 @@ in lib.mkIf isPatroniNode {
 
     postgresqlPackage = pgPackage;
     postgresqlPort = 5432;
+
+    # Passwords loaded from agenix secrets via environment variables
+    # Patroni reads PATRONI_SUPERUSER_PASSWORD and PATRONI_REPLICATION_PASSWORD
+    environmentFiles = {
+      PATRONI_SUPERUSER_PASSWORD = config.age.secrets.postgres-password.path;
+      PATRONI_REPLICATION_PASSWORD = config.age.secrets.replicator-password.path;
+    };
 
     # All Patroni config goes into settings as freeform YAML
     settings = {
@@ -104,13 +128,12 @@ in lib.mkIf isPatroniNode {
           { locale = "en_US.UTF-8"; }
         ];
 
+        # Users created on bootstrap — passwords come from environment variables
         users = {
           replicator = {
-            password = "CHANGE_ME_REPLICATOR_PASSWORD";
             options = [ "replication" ];
           };
           uptrack = {
-            password = "CHANGE_ME_UPTRACK_PASSWORD";
             options = [ "createrole" "createdb" ];
           };
         };
@@ -127,11 +150,11 @@ in lib.mkIf isPatroniNode {
         authentication = {
           replication = {
             username = "replicator";
-            password = "CHANGE_ME_REPLICATOR_PASSWORD";
+            # Password loaded from PATRONI_REPLICATION_PASSWORD env var
           };
           superuser = {
             username = "postgres";
-            password = "CHANGE_ME_POSTGRES_PASSWORD";
+            # Password loaded from PATRONI_SUPERUSER_PASSWORD env var
           };
         };
         parameters = {
