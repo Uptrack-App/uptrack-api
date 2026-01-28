@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# Install Tailscale on Debian/Ubuntu nodes
+# DEPRECATED (2026-01-28): All nodes are now NixOS. Tailscale is managed via
+# NixOS flake configuration, not this Debian install script. Kept for reference only.
+#
+# Original purpose: Install Tailscale on Debian/Ubuntu nodes
 # Usage: ./install-tailscale-debian.sh <hostname> <tailscale-auth-key>
 #
-# Hostnames: eu-a, eu-b, eu-c, india-w
+# Legacy hostnames: eu-a, eu-b, eu-c, india-rworker
+# Current nodes: nbg1, nbg2, nbg3, nbg4, india-rworker (all NixOS)
+# Auth key below is expired/revoked — do not reuse.
 # Auth key: tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg
 
 set -euo pipefail
@@ -21,7 +26,7 @@ if [ $# -ne 2 ]; then
   echo "Examples:"
   echo "  $0 eu-a tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg"
   echo "  $0 eu-b tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg"
-  echo "  $0 india-w tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg"
+  echo "  $0 india-rworker tskey-auth-kpxV7eU19h11CNTRL-rvHLb1SbQd1xaS8gPgJQd17fk2Fmgnzg"
   exit 1
 fi
 
@@ -30,12 +35,12 @@ AUTHKEY="$2"
 
 # Validate hostname
 case "$HOSTNAME" in
-  eu-a|eu-b|eu-c|india-w)
+  eu-a|eu-b|eu-c|india-rworker)
     echo -e "${GREEN}✓ Valid hostname: $HOSTNAME${NC}"
     ;;
   *)
     echo -e "${RED}Error: Invalid hostname '$HOSTNAME'${NC}"
-    echo "Valid hostnames: eu-a, eu-b, eu-c, india-w"
+    echo "Valid hostnames: eu-a, eu-b, eu-c, india-rworker"
     exit 1
     ;;
 esac
@@ -118,7 +123,7 @@ echo "4. Set static IP according to plan:"
 echo "   - eu-a: 100.64.1.1"
 echo "   - eu-b: 100.64.1.2"
 echo "   - eu-c: 100.64.1.3"
-echo "   - india-w: 100.64.1.11"
+echo "   - india-rworker: 100.64.1.11"
 echo ""
 echo "5. Test connectivity from another node:"
 echo "   ping $TAILSCALE_IP"
