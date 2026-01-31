@@ -3,6 +3,7 @@ defmodule Uptrack.Monitoring.AlertChannel do
   import Ecto.Changeset
 
   alias Uptrack.Accounts.User
+  alias Uptrack.Organizations.Organization
 
   @types ~w(email slack webhook sms)
 
@@ -15,6 +16,7 @@ defmodule Uptrack.Monitoring.AlertChannel do
     field :config, :map
     field :is_active, :boolean, default: true
 
+    belongs_to :organization, Organization
     belongs_to :user, User
 
     timestamps(type: :utc_datetime)

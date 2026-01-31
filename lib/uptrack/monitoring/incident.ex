@@ -2,6 +2,7 @@ defmodule Uptrack.Monitoring.Incident do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Uptrack.Organizations.Organization
   alias Uptrack.Monitoring.{Monitor, MonitorCheck, IncidentUpdate}
 
   @statuses ~w(ongoing resolved)
@@ -16,6 +17,7 @@ defmodule Uptrack.Monitoring.Incident do
     field :duration, :integer
     field :cause, :string
 
+    belongs_to :organization, Organization
     belongs_to :monitor, Monitor
     belongs_to :first_check, MonitorCheck, type: :integer
     belongs_to :last_check, MonitorCheck, type: :integer

@@ -3,6 +3,7 @@ defmodule Uptrack.Monitoring.StatusPage do
   import Ecto.Changeset
 
   alias Uptrack.Accounts.User
+  alias Uptrack.Organizations.Organization
   alias Uptrack.Monitoring.{StatusPageMonitor}
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
@@ -17,6 +18,7 @@ defmodule Uptrack.Monitoring.StatusPage do
     field :logo_url, :string
     field :theme_config, :map, default: %{}
 
+    belongs_to :organization, Organization
     belongs_to :user, User
     has_many :status_page_monitors, StatusPageMonitor, on_delete: :delete_all
     has_many :monitors, through: [:status_page_monitors, :monitor]

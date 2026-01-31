@@ -3,6 +3,7 @@ defmodule Uptrack.Monitoring.Monitor do
   import Ecto.Changeset
 
   alias Uptrack.Accounts.User
+  alias Uptrack.Organizations.Organization
   alias Uptrack.Monitoring.{MonitorCheck, Incident}
 
   @monitor_types ~w(http https tcp ping keyword)
@@ -22,6 +23,7 @@ defmodule Uptrack.Monitoring.Monitor do
     field :alert_contacts, :map, default: %{}
     field :settings, :map, default: %{}
 
+    belongs_to :organization, Organization
     belongs_to :user, User
     has_many :monitor_checks, MonitorCheck, preload_order: [desc: :checked_at]
     has_many :incidents, Incident, preload_order: [desc: :started_at]
