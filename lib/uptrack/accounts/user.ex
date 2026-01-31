@@ -2,6 +2,7 @@ defmodule Uptrack.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Uptrack.Organizations.Organization
   alias Uptrack.Monitoring.{Monitor, AlertChannel, StatusPage}
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
@@ -17,6 +18,7 @@ defmodule Uptrack.Accounts.User do
     field :confirmed_at, :naive_datetime
     field :notification_preferences, :map, default: %{}
 
+    belongs_to :organization, Organization
     has_many :monitors, Monitor
     has_many :alert_channels, AlertChannel
     has_many :status_pages, StatusPage
