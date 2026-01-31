@@ -15,6 +15,7 @@ in {
     ../../../modules/services/etcd.nix
     ../../../modules/services/patroni.nix
     ../../../modules/services/pgbouncer.nix
+    ../../../modules/services/postgres-exporter.nix
   ];
 
   # Hostname

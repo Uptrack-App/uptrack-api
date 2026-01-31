@@ -12,6 +12,7 @@ in {
     ../../../common/netcup.nix
     ../../../modules/services/tailscale.nix
     ../../../modules/services/patroni.nix
+    ../../../modules/services/postgres-exporter.nix
   ];
 
   # Hostname
