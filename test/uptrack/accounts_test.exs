@@ -14,7 +14,8 @@ defmodule Uptrack.AccountsTest do
       email: nil,
       provider_id: nil,
       hashed_password: nil,
-      confirmed_at: nil
+      confirmed_at: nil,
+      organization_id: nil
     }
 
     test "list_users/0 returns all users" do
@@ -28,22 +29,19 @@ defmodule Uptrack.AccountsTest do
     end
 
     test "create_user/1 with valid data creates a user" do
+      org = organization_fixture()
+
       valid_attrs = %{
-        name: "some name",
-        provider: "some provider",
-        email: "some email",
-        provider_id: "some provider_id",
-        hashed_password: "some hashed_password",
-        confirmed_at: ~N[2025-09-10 02:16:00]
+        name: "Test User",
+        email: "test@example.com",
+        password: "secure_password_123",
+        organization_id: org.id
       }
 
       assert {:ok, %User{} = user} = Accounts.create_user(valid_attrs)
-      assert user.name == "some name"
-      assert user.provider == "some provider"
-      assert user.email == "some email"
-      assert user.provider_id == "some provider_id"
-      assert user.hashed_password == "some hashed_password"
-      assert user.confirmed_at == ~N[2025-09-10 02:16:00]
+      assert user.name == "Test User"
+      assert user.email == "test@example.com"
+      assert user.organization_id == org.id
     end
 
     test "create_user/1 with invalid data returns error changeset" do
@@ -54,21 +52,13 @@ defmodule Uptrack.AccountsTest do
       user = user_fixture()
 
       update_attrs = %{
-        name: "some updated name",
-        provider: "some updated provider",
-        email: "some updated email",
-        provider_id: "some updated provider_id",
-        hashed_password: "some updated hashed_password",
-        confirmed_at: ~N[2025-09-11 02:16:00]
+        name: "Updated Name",
+        email: "updated@example.com"
       }
 
-      assert {:ok, %User{} = user} = Accounts.update_user(user, update_attrs)
-      assert user.name == "some updated name"
-      assert user.provider == "some updated provider"
-      assert user.email == "some updated email"
-      assert user.provider_id == "some updated provider_id"
-      assert user.hashed_password == "some updated hashed_password"
-      assert user.confirmed_at == ~N[2025-09-11 02:16:00]
+      assert {:ok, %User{} = updated_user} = Accounts.update_user(user, update_attrs)
+      assert updated_user.name == "Updated Name"
+      assert updated_user.email == "updated@example.com"
     end
 
     test "update_user/2 with invalid data returns error changeset" do

@@ -20,7 +20,7 @@ defmodule Uptrack.Monitoring.Monitor do
     field :timeout, :integer, default: 30
     field :status, :string, default: "active"
     field :description, :string
-    field :alert_contacts, :map, default: %{}
+    field :alert_contacts, {:array, :string}, default: []
     field :settings, :map, default: %{}
 
     belongs_to :organization, Organization

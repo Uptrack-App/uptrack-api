@@ -10,35 +10,35 @@ defmodule UptrackWeb.Features.AuthenticationMiddlewareTest do
       session
       |> visit("/dashboard")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Please sign in to access your dashboard"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access your dashboard"))
     end
 
     test "monitors page requires authentication", %{session: session} do
       session
       |> visit("/monitors")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Please sign in to access"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access"))
     end
 
     test "profile page requires authentication", %{session: session} do
       session
       |> visit("/profile")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Please sign in to access"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access"))
     end
 
     test "incidents page requires authentication", %{session: session} do
       session
       |> visit("/incidents")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Please sign in to access"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access"))
     end
 
     test "alerts page requires authentication", %{session: session} do
       session
       |> visit("/alerts")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Please sign in to access"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access"))
     end
   end
 
@@ -91,7 +91,7 @@ defmodule UptrackWeb.Features.AuthenticationMiddlewareTest do
       |> authenticate_user(user)
       |> visit("/dashboard")
       |> assert_has(link("Logout"))
-      |> assert_has(text("Welcome, #{user.name}"))
+      |> assert_has(Wallaby.Query.text("Welcome, #{user.name}"))
     end
   end
 
@@ -107,7 +107,7 @@ defmodule UptrackWeb.Features.AuthenticationMiddlewareTest do
       |> expire_session()
       |> visit("/dashboard")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Your session has expired"))
+      |> assert_has(Wallaby.Query.text("Your session has expired"))
     end
   end
 

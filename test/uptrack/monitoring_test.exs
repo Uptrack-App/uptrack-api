@@ -17,12 +17,14 @@ defmodule Uptrack.MonitoringTest do
       monitor_type: nil,
       interval: nil,
       alert_contacts: nil,
-      settings: nil
+      settings: nil,
+      organization_id: nil,
+      user_id: nil
     }
 
-    test "list_monitors/0 returns all monitors" do
+    test "list_monitors/1 returns monitors for organization" do
       monitor = monitor_fixture()
-      assert Monitoring.list_monitors() == [monitor]
+      assert Monitoring.list_monitors(monitor.organization_id) == [monitor]
     end
 
     test "get_monitor!/1 returns the monitor with given id" do
@@ -31,28 +33,34 @@ defmodule Uptrack.MonitoringTest do
     end
 
     test "create_monitor/1 with valid data creates a monitor" do
+      {user, org} = user_with_org_fixture()
+
       valid_attrs = %{
-        timeout: 42,
-        name: "some name",
-        status: "some status",
-        description: "some description",
-        url: "some url",
-        monitor_type: "some monitor_type",
-        interval: 42,
-        alert_contacts: %{},
-        settings: %{}
+        timeout: 30,
+        name: "Test Monitor",
+        status: "active",
+        description: "Test description",
+        url: "https://example.com",
+        monitor_type: "http",
+        interval: 300,
+        alert_contacts: [],
+        settings: %{},
+        organization_id: org.id,
+        user_id: user.id
       }
 
       assert {:ok, %Monitor{} = monitor} = Monitoring.create_monitor(valid_attrs)
-      assert monitor.timeout == 42
-      assert monitor.name == "some name"
-      assert monitor.status == "some status"
-      assert monitor.description == "some description"
-      assert monitor.url == "some url"
-      assert monitor.monitor_type == "some monitor_type"
-      assert monitor.interval == 42
-      assert monitor.alert_contacts == %{}
+      assert monitor.timeout == 30
+      assert monitor.name == "Test Monitor"
+      assert monitor.status == "active"
+      assert monitor.description == "Test description"
+      assert monitor.url == "https://example.com"
+      assert monitor.monitor_type == "http"
+      assert monitor.interval == 300
+      assert monitor.alert_contacts == []
       assert monitor.settings == %{}
+      assert monitor.organization_id == org.id
+      assert monitor.user_id == user.id
     end
 
     test "create_monitor/1 with invalid data returns error changeset" do
@@ -63,27 +71,23 @@ defmodule Uptrack.MonitoringTest do
       monitor = monitor_fixture()
 
       update_attrs = %{
-        timeout: 43,
-        name: "some updated name",
-        status: "some updated status",
-        description: "some updated description",
-        url: "some updated url",
-        monitor_type: "some updated monitor_type",
-        interval: 43,
-        alert_contacts: %{},
-        settings: %{}
+        timeout: 60,
+        name: "Updated Monitor",
+        status: "paused",
+        description: "Updated description",
+        url: "https://updated.example.com",
+        monitor_type: "https",
+        interval: 600
       }
 
       assert {:ok, %Monitor{} = monitor} = Monitoring.update_monitor(monitor, update_attrs)
-      assert monitor.timeout == 43
-      assert monitor.name == "some updated name"
-      assert monitor.status == "some updated status"
-      assert monitor.description == "some updated description"
-      assert monitor.url == "some updated url"
-      assert monitor.monitor_type == "some updated monitor_type"
-      assert monitor.interval == 43
-      assert monitor.alert_contacts == %{}
-      assert monitor.settings == %{}
+      assert monitor.timeout == 60
+      assert monitor.name == "Updated Monitor"
+      assert monitor.status == "paused"
+      assert monitor.description == "Updated description"
+      assert monitor.url == "https://updated.example.com"
+      assert monitor.monitor_type == "https"
+      assert monitor.interval == 600
     end
 
     test "update_monitor/2 with invalid data returns error changeset" do
@@ -101,6 +105,61 @@ defmodule Uptrack.MonitoringTest do
     test "change_monitor/1 returns a monitor changeset" do
       monitor = monitor_fixture()
       assert %Ecto.Changeset{} = Monitoring.change_monitor(monitor)
+    end
+  end
+
+  describe "status_page_subscribers" do
+    alias Uptrack.Monitoring.StatusPageSubscriber
+
+    import Uptrack.MonitoringFixtures
+
+    test "subscribe_to_status_page/2 creates a subscriber" do
+      status_page = status_page_fixture()
+
+      assert {:ok, %StatusPageSubscriber{} = subscriber} =
+               Monitoring.subscribe_to_status_page(status_page.id, "test@example.com")
+
+      assert subscriber.email == "test@example.com"
+      assert subscriber.status_page_id == status_page.id
+      assert subscriber.verified == false
+      assert subscriber.verification_token != nil
+      assert subscriber.unsubscribe_token != nil
+    end
+
+    test "subscribe_to_status_page/2 prevents duplicate emails" do
+      status_page = status_page_fixture()
+
+      {:ok, _} = Monitoring.subscribe_to_status_page(status_page.id, "test@example.com")
+
+      assert {:error, changeset} =
+               Monitoring.subscribe_to_status_page(status_page.id, "test@example.com")
+
+      assert "already subscribed to this status page" in errors_on(changeset).status_page_id
+    end
+
+    test "verify_subscriber/1 marks subscriber as verified" do
+      status_page = status_page_fixture()
+      {:ok, subscriber} = Monitoring.subscribe_to_status_page(status_page.id, "test@example.com")
+
+      assert {:ok, verified_subscriber} = Monitoring.verify_subscriber(subscriber)
+      assert verified_subscriber.verified == true
+      assert verified_subscriber.subscribed_at != nil
+    end
+
+    test "unsubscribe/1 removes the subscriber" do
+      status_page = status_page_fixture()
+      {:ok, subscriber} = Monitoring.subscribe_to_status_page(status_page.id, "test@example.com")
+
+      assert {:ok, _} = Monitoring.unsubscribe(subscriber)
+      assert Monitoring.get_subscriber_by_unsubscribe_token(subscriber.unsubscribe_token) == nil
+    end
+
+    test "get_subscriber_by_verification_token/1 finds subscriber" do
+      status_page = status_page_fixture()
+      {:ok, subscriber} = Monitoring.subscribe_to_status_page(status_page.id, "test@example.com")
+
+      found = Monitoring.get_subscriber_by_verification_token(subscriber.verification_token)
+      assert found.id == subscriber.id
     end
   end
 end

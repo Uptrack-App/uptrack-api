@@ -98,7 +98,7 @@ defmodule UptrackWeb.Features.AuthenticationTest do
       session
       |> visit("/dashboard")
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
-      |> assert_has(text("Please sign in to access your dashboard"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access your dashboard"))
     end
   end
 
@@ -120,7 +120,7 @@ defmodule UptrackWeb.Features.AuthenticationTest do
       session
       |> authenticate_user(user)
       |> visit("/profile")
-      |> check(css("input[name='notification_preferences[email_alerts]']"))
+      |> Wallaby.Browser.check(css("input[name='notification_preferences[email_alerts]']"))
       |> click(css("button", text: "Update Profile"))
       |> assert_has(css(".flash-success", text: "Profile updated successfully"))
     end
