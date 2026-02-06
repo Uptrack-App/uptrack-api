@@ -384,6 +384,94 @@ defmodule Uptrack.Monitoring do
     StatusPage.changeset(status_page, attrs)
   end
 
+  @doc """
+  Gets a status page by slug (non-raising version).
+  Returns nil if not found.
+  """
+  def get_status_page_by_slug(slug) do
+    StatusPage
+    |> where([sp], sp.slug == ^slug)
+    |> where([sp], sp.is_public == true)
+    |> AppRepo.one()
+  end
+
+  @doc """
+  Calculates the uptime percentage for a status page over the given number of days.
+  Returns a float between 0 and 100.
+  """
+  def get_status_page_uptime(status_page_id, days \\ 30) do
+    # Get all monitor IDs for this status page
+    monitor_ids =
+      StatusPageMonitor
+      |> where([spm], spm.status_page_id == ^status_page_id)
+      |> select([spm], spm.monitor_id)
+      |> AppRepo.all()
+
+    if Enum.empty?(monitor_ids) do
+      100.0
+    else
+      since = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
+
+      # Calculate weighted uptime based on number of checks
+      {total_up, total_checks} =
+        MonitorCheck
+        |> where([mc], mc.monitor_id in ^monitor_ids)
+        |> where([mc], mc.checked_at >= ^since)
+        |> select([mc], {count(fragment("CASE WHEN ? = 'up' THEN 1 END", mc.status)), count()})
+        |> AppRepo.one()
+
+      if total_checks > 0 do
+        (total_up || 0) / total_checks * 100.0
+      else
+        100.0
+      end
+    end
+  end
+
+  @doc """
+  Gets the overall operational status for a status page.
+  Returns one of: :operational, :degraded, :partial_outage, :major_outage
+  """
+  def get_status_page_status(status_page_id) do
+    # Get all monitors for this status page
+    monitor_ids =
+      StatusPageMonitor
+      |> where([spm], spm.status_page_id == ^status_page_id)
+      |> select([spm], spm.monitor_id)
+      |> AppRepo.all()
+
+    if Enum.empty?(monitor_ids) do
+      :operational
+    else
+      # Get the latest check status for each monitor
+      statuses =
+        Enum.map(monitor_ids, fn monitor_id ->
+          MonitorCheck
+          |> where([mc], mc.monitor_id == ^monitor_id)
+          |> order_by([mc], desc: mc.checked_at)
+          |> limit(1)
+          |> select([mc], mc.status)
+          |> AppRepo.one()
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      if Enum.empty?(statuses) do
+        :operational
+      else
+        down_count = Enum.count(statuses, &(&1 == "down"))
+        total = length(statuses)
+        down_ratio = down_count / total
+
+        cond do
+          down_ratio == 0 -> :operational
+          down_ratio < 0.25 -> :degraded
+          down_ratio < 0.75 -> :partial_outage
+          true -> :major_outage
+        end
+      end
+    end
+  end
+
   # Incident management functions
 
   @doc """
