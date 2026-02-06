@@ -25,10 +25,11 @@ defmodule Uptrack.Monitoring.AlertChannel do
   @doc false
   def changeset(alert_channel, attrs) do
     alert_channel
-    |> cast(attrs, [:type, :name, :config, :is_active, :user_id])
-    |> validate_required([:type, :name, :config, :user_id])
+    |> cast(attrs, [:type, :name, :config, :is_active, :organization_id, :user_id])
+    |> validate_required([:type, :name, :config, :organization_id, :user_id])
     |> validate_inclusion(:type, @types)
     |> validate_config()
+    |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:user_id)
   end
 

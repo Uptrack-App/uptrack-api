@@ -6,15 +6,12 @@ defmodule UptrackWeb.IncidentLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    # TODO: Get user from session/auth
-    # Placeholder - will be replaced with actual auth
-    user_id = 1
+    %{current_organization: org} = socket.assigns
 
-    incidents = Monitoring.list_incidents(user_id)
+    incidents = Monitoring.list_incidents(org.id)
 
     socket =
       socket
-      |> assign(:user_id, user_id)
       |> assign(:incidents, incidents)
       |> assign(:page_title, "Incidents")
 
@@ -42,12 +39,13 @@ defmodule UptrackWeb.IncidentLive do
 
   @impl true
   def handle_event("resolve_incident", %{"id" => id}, socket) do
+    %{current_organization: org} = socket.assigns
     incident = Monitoring.get_incident!(id)
 
     case Monitoring.manually_resolve_incident(incident) do
       {:ok, _incident} ->
         # Refresh incidents list
-        incidents = Monitoring.list_incidents(socket.assigns.user_id)
+        incidents = Monitoring.list_incidents(org.id)
 
         socket =
           socket
@@ -63,10 +61,12 @@ defmodule UptrackWeb.IncidentLive do
   end
 
   def handle_event("add_update", %{"incident_update" => update_params}, socket) do
+    %{current_user: user} = socket.assigns
+
     update_params =
       update_params
       |> Map.put("incident_id", socket.assigns.incident.id)
-      |> Map.put("user_id", socket.assigns.user_id)
+      |> Map.put("user_id", user.id)
 
     case Monitoring.create_incident_update(update_params) do
       {:ok, _update} ->

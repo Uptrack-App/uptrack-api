@@ -37,9 +37,10 @@ defmodule Uptrack.Monitoring.StatusPage do
       :custom_domain,
       :logo_url,
       :theme_config,
+      :organization_id,
       :user_id
     ])
-    |> validate_required([:name, :slug, :user_id])
+    |> validate_required([:name, :slug, :organization_id, :user_id])
     |> validate_length(:name, min: 1, max: 255)
     |> validate_length(:slug, min: 1, max: 100)
     |> validate_format(:slug, ~r/^[a-z0-9\-]+$/i,
@@ -49,6 +50,7 @@ defmodule Uptrack.Monitoring.StatusPage do
     |> validate_url(:custom_domain)
     |> validate_url(:logo_url)
     |> maybe_generate_slug()
+    |> foreign_key_constraint(:organization_id)
   end
 
   defp maybe_generate_slug(changeset) do

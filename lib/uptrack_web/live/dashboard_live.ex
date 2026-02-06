@@ -5,22 +5,19 @@ defmodule UptrackWeb.DashboardLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    # TODO: Get user from session/auth
-    # Placeholder - will be replaced with actual auth
-    user_id = 1
+    %{current_organization: org} = socket.assigns
 
-    stats = Monitoring.get_dashboard_stats(user_id)
-    monitors = Monitoring.get_dashboard_monitors(user_id)
-    overall_uptime = Monitoring.get_user_overall_uptime(user_id)
+    stats = Monitoring.get_dashboard_stats(org.id)
+    monitors = Monitoring.get_dashboard_monitors(org.id)
+    overall_uptime = Monitoring.get_organization_overall_uptime(org.id)
 
-    # Subscribe to real-time updates for this user
+    # Subscribe to real-time updates for this organization
     if connected?(socket) do
-      Phoenix.PubSub.subscribe(Uptrack.PubSub, "user:#{user_id}")
+      Phoenix.PubSub.subscribe(Uptrack.PubSub, "organization:#{org.id}")
     end
 
     socket =
       socket
-      |> assign(:user_id, user_id)
       |> assign(:stats, stats)
       |> assign(:monitors, monitors)
       |> assign(:overall_uptime, overall_uptime)
@@ -47,13 +44,14 @@ defmodule UptrackWeb.DashboardLive do
 
   @impl true
   def handle_event("delete_monitor", %{"id" => id}, socket) do
-    monitor = Monitoring.get_monitor!(id)
+    %{current_organization: org} = socket.assigns
+    monitor = Monitoring.get_organization_monitor!(org.id, id)
     {:ok, _} = Monitoring.delete_monitor(monitor)
 
     # Refresh the data
-    stats = Monitoring.get_dashboard_stats(socket.assigns.user_id)
-    monitors = Monitoring.get_dashboard_monitors(socket.assigns.user_id)
-    overall_uptime = Monitoring.get_user_overall_uptime(socket.assigns.user_id)
+    stats = Monitoring.get_dashboard_stats(org.id)
+    monitors = Monitoring.get_dashboard_monitors(org.id)
+    overall_uptime = Monitoring.get_organization_overall_uptime(org.id)
 
     socket =
       socket
@@ -81,10 +79,11 @@ defmodule UptrackWeb.DashboardLive do
 
   @impl true
   def handle_info({UptrackWeb.MonitorLive.FormComponent, {:saved, _monitor}}, socket) do
+    %{current_organization: org} = socket.assigns
     # Refresh the data when a monitor is saved
-    stats = Monitoring.get_dashboard_stats(socket.assigns.user_id)
-    monitors = Monitoring.get_dashboard_monitors(socket.assigns.user_id)
-    overall_uptime = Monitoring.get_user_overall_uptime(socket.assigns.user_id)
+    stats = Monitoring.get_dashboard_stats(org.id)
+    monitors = Monitoring.get_dashboard_monitors(org.id)
+    overall_uptime = Monitoring.get_organization_overall_uptime(org.id)
 
     socket =
       socket
@@ -96,12 +95,13 @@ defmodule UptrackWeb.DashboardLive do
   end
 
   def handle_info({:check_completed, event_data}, socket) do
+    %{current_organization: org} = socket.assigns
     # Update the specific monitor in the list
     monitors = update_monitor_in_list(socket.assigns.monitors, event_data)
 
     # Refresh stats
-    stats = Monitoring.get_dashboard_stats(socket.assigns.user_id)
-    overall_uptime = Monitoring.get_user_overall_uptime(socket.assigns.user_id)
+    stats = Monitoring.get_dashboard_stats(org.id)
+    overall_uptime = Monitoring.get_organization_overall_uptime(org.id)
 
     socket =
       socket
@@ -114,26 +114,28 @@ defmodule UptrackWeb.DashboardLive do
   end
 
   def handle_info({:incident_created, event_data}, socket) do
+    %{current_organization: org} = socket.assigns
     # Refresh data to show new incident
-    stats = Monitoring.get_dashboard_stats(socket.assigns.user_id)
-    monitors = Monitoring.get_dashboard_monitors(socket.assigns.user_id)
-    overall_uptime = Monitoring.get_user_overall_uptime(socket.assigns.user_id)
+    stats = Monitoring.get_dashboard_stats(org.id)
+    monitors = Monitoring.get_dashboard_monitors(org.id)
+    overall_uptime = Monitoring.get_organization_overall_uptime(org.id)
 
     socket =
       socket
       |> assign(:stats, stats)
       |> assign(:monitors, monitors)
       |> assign(:overall_uptime, overall_uptime)
-      |> put_flash(:error, "🚨 Incident: #{event_data["monitor_name"]} is down!")
+      |> put_flash(:error, "Incident: #{event_data["monitor_name"]} is down!")
 
     {:noreply, socket}
   end
 
   def handle_info({:incident_resolved, event_data}, socket) do
+    %{current_organization: org} = socket.assigns
     # Refresh data to clear incident
-    stats = Monitoring.get_dashboard_stats(socket.assigns.user_id)
-    monitors = Monitoring.get_dashboard_monitors(socket.assigns.user_id)
-    overall_uptime = Monitoring.get_user_overall_uptime(socket.assigns.user_id)
+    stats = Monitoring.get_dashboard_stats(org.id)
+    monitors = Monitoring.get_dashboard_monitors(org.id)
+    overall_uptime = Monitoring.get_organization_overall_uptime(org.id)
 
     duration_text = format_duration(event_data["duration"])
 
@@ -144,7 +146,7 @@ defmodule UptrackWeb.DashboardLive do
       |> assign(:overall_uptime, overall_uptime)
       |> put_flash(
         :info,
-        "✅ Resolved: #{event_data["monitor_name"]} is back up! (Downtime: #{duration_text})"
+        "Resolved: #{event_data["monitor_name"]} is back up! (Downtime: #{duration_text})"
       )
 
     {:noreply, socket}

@@ -5,8 +5,11 @@ defmodule Uptrack.Accounts do
 
   import Ecto.Query, warn: false
   alias Uptrack.AppRepo
+  alias Ecto.Multi
 
   alias Uptrack.Accounts.User
+  alias Uptrack.Organizations
+  alias Uptrack.Organizations.Organization
 
   @doc """
   Returns the list of users.
@@ -137,6 +140,40 @@ defmodule Uptrack.Accounts do
   end
 
   @doc """
+  Registers a user with a new organization in a single transaction.
+
+  Creates the organization first, then the user with the organization_id.
+  The organization name is derived from the user's name or email.
+
+  ## Examples
+
+      iex> register_user_with_organization(%{name: "Jane Doe", email: "jane@example.com", password: "password123!"})
+      {:ok, %User{organization_id: org_id}}
+
+      iex> register_user_with_organization(%{email: "invalid"})
+      {:error, :user, %Ecto.Changeset{}, %{}}
+
+  """
+  def register_user_with_organization(attrs) do
+    org_name = derive_organization_name(attrs)
+
+    Multi.new()
+    |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name}))
+    |> Multi.insert(:user, fn %{organization: org} ->
+      user_attrs = Map.put(attrs, "organization_id", org.id)
+
+      %User{}
+      |> User.registration_changeset(user_attrs)
+    end)
+    |> AppRepo.transaction()
+    |> case do
+      {:ok, %{user: user, organization: _org}} -> {:ok, user}
+      {:error, :organization, changeset, _} -> {:error, :organization, changeset, %{}}
+      {:error, :user, changeset, _} -> {:error, :user, changeset, %{}}
+    end
+  end
+
+  @doc """
   Creates a user from OAuth data.
 
   ## Examples
@@ -152,6 +189,58 @@ defmodule Uptrack.Accounts do
     %User{}
     |> User.oauth_changeset(attrs)
     |> AppRepo.insert()
+  end
+
+  @doc """
+  Creates a user from OAuth data with a new organization in a single transaction.
+
+  Creates the organization first, then the user with the organization_id.
+  The organization name is derived from the user's name or email.
+
+  ## Examples
+
+      iex> create_user_from_oauth_with_organization(%{name: "Jane", email: "jane@example.com", provider: "github", provider_id: "123"})
+      {:ok, %User{organization_id: org_id}}
+
+      iex> create_user_from_oauth_with_organization(%{email: "invalid"})
+      {:error, :user, %Ecto.Changeset{}, %{}}
+
+  """
+  def create_user_from_oauth_with_organization(attrs) do
+    org_name = derive_organization_name(attrs)
+
+    Multi.new()
+    |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name}))
+    |> Multi.insert(:user, fn %{organization: org} ->
+      user_attrs = Map.put(attrs, "organization_id", org.id)
+
+      %User{}
+      |> User.oauth_changeset(user_attrs)
+    end)
+    |> AppRepo.transaction()
+    |> case do
+      {:ok, %{user: user, organization: _org}} -> {:ok, user}
+      {:error, :organization, changeset, _} -> {:error, :organization, changeset, %{}}
+      {:error, :user, changeset, _} -> {:error, :user, changeset, %{}}
+    end
+  end
+
+  # Derives an organization name from user attributes
+  defp derive_organization_name(attrs) do
+    name = attrs["name"] || attrs[:name]
+    email = attrs["email"] || attrs[:email]
+
+    cond do
+      name && String.trim(name) != "" ->
+        "#{String.trim(name)}'s Organization"
+
+      email ->
+        username = email |> String.split("@") |> List.first()
+        "#{username}'s Organization"
+
+      true ->
+        "My Organization"
+    end
   end
 
   @doc """

@@ -28,8 +28,8 @@ defmodule Uptrack.Alerting do
         Logger.info("Skipping incident alert for user #{user.id} due to quiet hours")
         [{:skipped_quiet_hours, user.id}]
       else
-        # Get user's alert channels
-        alert_channels = list_active_alert_channels(monitor.user_id)
+        # Get organization's alert channels
+        alert_channels = list_active_alert_channels(monitor.organization_id)
 
         # Get monitor-specific alert settings
         monitor_alert_contacts = monitor.alert_contacts || %{}
@@ -72,8 +72,8 @@ defmodule Uptrack.Alerting do
       # Check quiet hours (but allow critical resolution notifications)
       # Resolution notifications are typically allowed even during quiet hours
 
-      # Get user's alert channels
-      alert_channels = list_active_alert_channels(monitor.user_id)
+      # Get organization's alert channels
+      alert_channels = list_active_alert_channels(monitor.organization_id)
 
       # Get monitor-specific alert settings
       monitor_alert_contacts = monitor.alert_contacts || %{}
@@ -98,11 +98,11 @@ defmodule Uptrack.Alerting do
   end
 
   @doc """
-  Returns the list of active alert channels for a user.
+  Returns the list of active alert channels for an organization.
   """
-  def list_active_alert_channels(user_id) do
+  def list_active_alert_channels(organization_id) do
     AlertChannel
-    |> where([ac], ac.user_id == ^user_id and ac.is_active == true)
+    |> where([ac], ac.organization_id == ^organization_id and ac.is_active == true)
     |> order_by([ac], asc: ac.name)
     |> AppRepo.all()
   end
