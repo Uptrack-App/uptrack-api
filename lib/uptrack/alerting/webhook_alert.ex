@@ -38,6 +38,26 @@ defmodule Uptrack.Alerting.WebhookAlert do
     end
   end
 
+  @doc """
+  Sends a test alert to verify the webhook is configured correctly.
+  """
+  def send_test_alert(%AlertChannel{} = channel) do
+    webhook_url = channel.config["url"]
+
+    if is_nil(webhook_url) or webhook_url == "" do
+      {:error, "No webhook URL configured"}
+    else
+      payload = %{
+        event: "test",
+        message: "This is a test notification from Uptrack",
+        status: "working",
+        timestamp: DateTime.utc_now()
+      }
+
+      send_webhook(webhook_url, payload)
+    end
+  end
+
   defp build_incident_payload(incident, monitor) do
     %{
       event: "incident.created",

@@ -113,6 +113,75 @@ defmodule Uptrack.Alerting.EmailAlert do
     end
   end
 
+  @doc """
+  Sends a test alert email to verify the email channel is configured correctly.
+  """
+  def send_test_alert(%AlertChannel{} = channel) do
+    email_config = channel.config
+    recipient_email = email_config["email"]
+
+    if is_nil(recipient_email) or recipient_email == "" do
+      {:error, "No email address configured"}
+    else
+      email =
+        new()
+        |> to(recipient_email)
+        |> from({"Uptrack Monitoring", "alerts@uptrack.dev"})
+        |> subject("Test Alert from Uptrack")
+        |> html_body(test_html_body())
+        |> text_body("This is a test notification from Uptrack. If you received this, your email integration is working correctly!")
+
+      case Mailer.deliver(email) do
+        {:ok, _metadata} ->
+          Logger.info("Test alert email sent to #{recipient_email}")
+          {:ok, recipient_email}
+
+        {:error, reason} ->
+          Logger.error("Failed to send test alert email to #{recipient_email}: #{inspect(reason)}")
+          {:error, reason}
+      end
+    end
+  end
+
+  defp test_html_body do
+    """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test Alert from Uptrack</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+            .header { background: #3b82f6; color: white; padding: 24px; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .content { padding: 24px; }
+            .success-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 16px; margin: 16px 0; }
+            .footer { background: #f9f9f9; padding: 16px 24px; font-size: 14px; color: #666; text-align: center; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>✅ Test Alert</h1>
+            </div>
+            <div class="content">
+                <div class="success-box">
+                    <h2 style="margin-top: 0; color: #22c55e;">Your email integration is working!</h2>
+                    <p>This is a test notification from Uptrack. If you received this, your email integration is configured correctly.</p>
+                </div>
+                <p>You can now receive incident alerts at this email address.</p>
+            </div>
+            <div class="footer">
+                <p>Sent by <a href="https://uptrack.dev">Uptrack</a> Monitoring</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+  end
+
   # Email templates
 
   defp incident_html_body(incident, monitor) do
