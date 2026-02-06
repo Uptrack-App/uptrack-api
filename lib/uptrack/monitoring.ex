@@ -113,6 +113,11 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
+  Creates a monitor check (alias for create_monitor_check).
+  """
+  def create_check(attrs), do: create_monitor_check(attrs)
+
+  @doc """
   Returns recent checks for a monitor.
   """
   def get_recent_checks(monitor_id, limit \\ 50) do
@@ -179,6 +184,17 @@ defmodule Uptrack.Monitoring do
   def get_ongoing_incident(monitor_id) do
     Incident
     |> where([i], i.monitor_id == ^monitor_id and i.status == "ongoing")
+    |> AppRepo.one()
+  end
+
+  @doc """
+  Returns any active (non-resolved) incident for a monitor.
+  Active means ongoing, investigating, or identified.
+  """
+  def get_active_incident(monitor_id) do
+    Incident
+    |> where([i], i.monitor_id == ^monitor_id)
+    |> where([i], i.status in ["ongoing", "investigating", "identified"])
     |> AppRepo.one()
   end
 

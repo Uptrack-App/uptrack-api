@@ -135,6 +135,10 @@ defmodule UptrackWeb.Router do
     # Invitation acceptance (token-based, may or may not be authenticated)
     get "/invitations/:token", InvitationController, :show_by_token
     post "/invitations/:token/accept", InvitationController, :accept
+
+    # Heartbeat receiver (passive monitoring)
+    post "/heartbeat/:token", HeartbeatController, :ping
+    head "/heartbeat/:token", HeartbeatController, :head_ping
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
