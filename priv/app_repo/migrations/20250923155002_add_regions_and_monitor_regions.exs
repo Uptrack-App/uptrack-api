@@ -23,7 +23,7 @@ defmodule Uptrack.AppRepo.Migrations.AddRegionsAndMonitorRegions do
 
     # Create monitor_regions join table
     create table(:monitor_regions, prefix: :app) do
-      add :monitor_id, references(:monitors, on_delete: :delete_all, prefix: :app), null: false
+      add :monitor_id, references(:monitors, type: :uuid, on_delete: :delete_all, prefix: :app), null: false
       add :region_id, references(:regions, on_delete: :delete_all, prefix: :app), null: false
       add :is_enabled, :boolean, default: true
       add :priority, :integer, default: 0  # For future failover logic
