@@ -92,6 +92,8 @@ config :uptrack, Oban,
     {Oban.Plugins.Cron, crontab: [
       # Run monitor checks every minute (scheduler handles sub-minute intervals)
       {"* * * * *", Uptrack.Monitoring.SchedulerWorker},
+      # Check for missed heartbeats every minute
+      {"* * * * *", Uptrack.Monitoring.HeartbeatCheckerWorker},
       # Run idle prevention every 3 hours to prevent Oracle Always Free reclamation
       {"0 */3 * * *", Uptrack.Monitoring.IdlePreventionWorker}
     ]}

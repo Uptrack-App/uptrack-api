@@ -6,7 +6,7 @@ defmodule Uptrack.Monitoring.Monitor do
   alias Uptrack.Organizations.Organization
   alias Uptrack.Monitoring.{MonitorCheck, Incident}
 
-  @monitor_types ~w(http https tcp ping keyword)
+  @monitor_types ~w(http https tcp ping keyword ssl heartbeat)
   @statuses ~w(active paused disabled)
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
@@ -65,13 +65,38 @@ defmodule Uptrack.Monitoring.Monitor do
   end
 
   defp validate_url(changeset) do
+    monitor_type = get_field(changeset, :monitor_type)
+
     validate_change(changeset, :url, fn :url, url ->
-      case URI.parse(url) do
-        %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and not is_nil(host) ->
+      cond do
+        # HTTP/HTTPS monitors require valid URL
+        monitor_type in ["http", "https", "keyword", "ssl"] ->
+          case URI.parse(url) do
+            %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and not is_nil(host) ->
+              []
+
+            %URI{host: host} when not is_nil(host) ->
+              # Accept bare hostname for SSL checks
+              []
+
+            _ ->
+              [url: "must be a valid URL or hostname"]
+          end
+
+        # TCP/Ping monitors accept host:port or just host
+        monitor_type in ["tcp", "ping"] ->
+          if String.match?(url, ~r/^[a-zA-Z0-9\-\.]+(\:\d+)?$/) do
+            []
+          else
+            [url: "must be a valid hostname or host:port"]
+          end
+
+        # Heartbeat monitors don't need a URL (they generate one)
+        monitor_type == "heartbeat" ->
           []
 
-        _ ->
-          [url: "must be a valid HTTP or HTTPS URL"]
+        true ->
+          []
       end
     end)
   end
