@@ -110,6 +110,22 @@ defmodule UptrackWeb.Router do
 
       resources "/audit-logs", AuditLogController, only: [:index]
     end
+
+    # Monitor API
+    post "/monitors/smart-defaults", MonitorController, :smart_defaults
+    resources "/monitors", MonitorController, only: [:index, :create, :show, :update, :delete]
+
+    # Integration OAuth initiation (requires auth)
+    get "/integrations/slack/auth", IntegrationController, :slack_auth
+    get "/integrations/discord/auth", IntegrationController, :discord_auth
+  end
+
+  # OAuth callbacks (no auth - redirects from OAuth providers)
+  scope "/api/integrations", UptrackWeb.Api do
+    pipe_through :api
+
+    get "/slack/callback", IntegrationController, :slack_callback
+    get "/discord/callback", IntegrationController, :discord_callback
   end
 
   # Public API routes (no authentication required)
