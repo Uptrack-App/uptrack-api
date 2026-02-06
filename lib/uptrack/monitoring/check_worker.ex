@@ -348,6 +348,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
             # Send resolution alerts
             Task.start(fn ->
               Alerting.send_resolution_alerts(resolved_incident, monitor)
+              Alerting.notify_subscribers_resolution(resolved_incident, monitor)
             end)
         end
 
@@ -370,6 +371,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
                 # Send alerts for the new incident
                 Task.start(fn ->
                   Alerting.send_incident_alerts(incident, monitor)
+                  Alerting.notify_subscribers_incident(incident, monitor)
                 end)
 
               {:error, changeset} ->

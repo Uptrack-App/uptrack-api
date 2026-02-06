@@ -63,8 +63,46 @@ defmodule UptrackWeb.StatusPageLive.FormComponent do
             checked={@form[:is_public].value}
           />
         </div>
-        
-    <!-- Branding -->
+
+        <!-- Email Subscriptions -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-medium">Email Subscriptions</h3>
+
+          <.input
+            field={@form[:allow_subscriptions]}
+            type="checkbox"
+            label="Allow visitors to subscribe for incident notifications"
+            checked={@form[:allow_subscriptions].value}
+          />
+          <p class="text-sm text-base-content/60 mt-1">
+            When enabled, visitors can subscribe to receive email notifications when incidents occur.
+          </p>
+        </div>
+
+        <!-- Language Settings -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-medium">Language</h3>
+
+          <.input
+            field={@form[:default_language]}
+            type="select"
+            label="Default Language"
+            options={[
+              {"English", "en"},
+              {"Deutsch", "de"},
+              {"Francais", "fr"},
+              {"Espanol", "es"},
+              {"Portugues", "pt"},
+              {"日本語", "ja"},
+              {"中文", "zh"}
+            ]}
+          />
+          <p class="text-sm text-base-content/60 mt-1">
+            The default display language for your status page. Visitors can also switch languages.
+          </p>
+        </div>
+
+        <!-- Branding -->
         <div class="space-y-4">
           <h3 class="text-lg font-medium">Branding</h3>
 

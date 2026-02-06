@@ -7,7 +7,10 @@ defmodule Uptrack.Alerting do
   alias Uptrack.AppRepo
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   alias Uptrack.Alerting.{EmailAlert, SlackAlert, DiscordAlert, TelegramAlert, TeamsAlert, TwilioAlert, WebhookAlert}
+  alias Uptrack.Monitoring.{StatusPage, StatusPageMonitor, StatusPageSubscriber}
+  alias Uptrack.Emails.SubscriberEmail
   alias Uptrack.Accounts.User
+  alias Uptrack.Mailer
   require Logger
 
   @doc """
@@ -326,5 +329,102 @@ defmodule Uptrack.Alerting do
     e ->
       Logger.error("Error sending test alert via #{channel.type}: #{Exception.message(e)}")
       {:error, Exception.message(e)}
+  end
+
+  # Status page subscriber notifications
+
+  @doc """
+  Notifies all subscribers of status pages that include this monitor about a new incident.
+  """
+  def notify_subscribers_incident(%Incident{} = incident, %Monitor{} = monitor) do
+    status_pages = get_status_pages_for_monitor(monitor.id)
+
+    results =
+      Enum.flat_map(status_pages, fn status_page ->
+        if status_page.allow_subscriptions do
+          subscribers = get_verified_subscribers(status_page.id)
+
+          Enum.map(subscribers, fn subscriber ->
+            send_subscriber_incident_email(subscriber, status_page, incident, monitor)
+          end)
+        else
+          []
+        end
+      end)
+
+    successful = Enum.count(results, &match?({:ok, _}, &1))
+    total = length(results)
+    Logger.info("Sent #{successful}/#{total} subscriber notifications for incident #{incident.id}")
+
+    results
+  end
+
+  @doc """
+  Notifies all subscribers of status pages that include this monitor about a resolved incident.
+  """
+  def notify_subscribers_resolution(%Incident{} = incident, %Monitor{} = monitor) do
+    status_pages = get_status_pages_for_monitor(monitor.id)
+
+    results =
+      Enum.flat_map(status_pages, fn status_page ->
+        if status_page.allow_subscriptions do
+          subscribers = get_verified_subscribers(status_page.id)
+
+          Enum.map(subscribers, fn subscriber ->
+            send_subscriber_resolution_email(subscriber, status_page, incident, monitor)
+          end)
+        else
+          []
+        end
+      end)
+
+    successful = Enum.count(results, &match?({:ok, _}, &1))
+    total = length(results)
+    Logger.info("Sent #{successful}/#{total} subscriber resolution notifications for incident #{incident.id}")
+
+    results
+  end
+
+  defp get_status_pages_for_monitor(monitor_id) do
+    StatusPageMonitor
+    |> where([spm], spm.monitor_id == ^monitor_id)
+    |> join(:inner, [spm], sp in StatusPage, on: sp.id == spm.status_page_id)
+    |> where([spm, sp], sp.is_public == true)
+    |> select([spm, sp], sp)
+    |> AppRepo.all()
+  end
+
+  defp get_verified_subscribers(status_page_id) do
+    StatusPageSubscriber
+    |> where([s], s.status_page_id == ^status_page_id and s.verified == true)
+    |> AppRepo.all()
+  end
+
+  defp send_subscriber_incident_email(subscriber, status_page, incident, monitor) do
+    email = SubscriberEmail.incident_email(subscriber, status_page, incident, monitor)
+
+    case Mailer.deliver(email) do
+      {:ok, _} ->
+        Logger.debug("Sent incident notification to subscriber #{subscriber.email}")
+        {:ok, subscriber.email}
+
+      {:error, reason} ->
+        Logger.error("Failed to send incident notification to #{subscriber.email}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  defp send_subscriber_resolution_email(subscriber, status_page, incident, monitor) do
+    email = SubscriberEmail.resolution_email(subscriber, status_page, incident, monitor)
+
+    case Mailer.deliver(email) do
+      {:ok, _} ->
+        Logger.debug("Sent resolution notification to subscriber #{subscriber.email}")
+        {:ok, subscriber.email}
+
+      {:error, reason} ->
+        Logger.error("Failed to send resolution notification to #{subscriber.email}: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 end

@@ -14,7 +14,8 @@ defmodule Uptrack.Monitoring do
     IncidentUpdate,
     AlertChannel,
     StatusPage,
-    StatusPageMonitor
+    StatusPageMonitor,
+    StatusPageSubscriber
   }
 
   # Monitor functions
@@ -470,6 +471,72 @@ defmodule Uptrack.Monitoring do
         end
       end
     end
+  end
+
+  # Status page subscriber functions
+
+  @doc """
+  Lists all verified subscribers for a status page.
+  """
+  def list_status_page_subscribers(status_page_id) do
+    StatusPageSubscriber
+    |> where([s], s.status_page_id == ^status_page_id and s.verified == true)
+    |> order_by([s], desc: s.subscribed_at)
+    |> AppRepo.all()
+  end
+
+  @doc """
+  Creates a new subscriber (unverified).
+  """
+  def subscribe_to_status_page(status_page_id, email) do
+    attrs = %{status_page_id: status_page_id, email: email}
+
+    %StatusPageSubscriber{}
+    |> StatusPageSubscriber.changeset(attrs)
+    |> AppRepo.insert()
+  end
+
+  @doc """
+  Gets a subscriber by verification token.
+  """
+  def get_subscriber_by_verification_token(token) do
+    StatusPageSubscriber
+    |> where([s], s.verification_token == ^token)
+    |> AppRepo.one()
+  end
+
+  @doc """
+  Gets a subscriber by unsubscribe token.
+  """
+  def get_subscriber_by_unsubscribe_token(token) do
+    StatusPageSubscriber
+    |> where([s], s.unsubscribe_token == ^token)
+    |> AppRepo.one()
+  end
+
+  @doc """
+  Verifies a subscriber's email address.
+  """
+  def verify_subscriber(%StatusPageSubscriber{} = subscriber) do
+    subscriber
+    |> StatusPageSubscriber.verify_changeset()
+    |> AppRepo.update()
+  end
+
+  @doc """
+  Deletes a subscriber (unsubscribe).
+  """
+  def unsubscribe(%StatusPageSubscriber{} = subscriber) do
+    AppRepo.delete(subscriber)
+  end
+
+  @doc """
+  Checks if an email is already subscribed to a status page.
+  """
+  def subscriber_exists?(status_page_id, email) do
+    StatusPageSubscriber
+    |> where([s], s.status_page_id == ^status_page_id and s.email == ^email)
+    |> AppRepo.exists?()
   end
 
   # Incident management functions
