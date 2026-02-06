@@ -18,6 +18,11 @@ defmodule Uptrack.Monitoring.StatusPage do
     field :logo_url, :string
     field :theme_config, :map, default: %{}
 
+    # Password protection fields
+    field :password_protected, :boolean, default: false
+    field :password_hash, :string
+    field :password, :string, virtual: true
+
     belongs_to :organization, Organization
     belongs_to :user, User
     has_many :status_page_monitors, StatusPageMonitor, on_delete: :delete_all
@@ -37,6 +42,8 @@ defmodule Uptrack.Monitoring.StatusPage do
       :custom_domain,
       :logo_url,
       :theme_config,
+      :password_protected,
+      :password,
       :organization_id,
       :user_id
     ])
@@ -50,7 +57,42 @@ defmodule Uptrack.Monitoring.StatusPage do
     |> validate_url(:custom_domain)
     |> validate_url(:logo_url)
     |> maybe_generate_slug()
+    |> maybe_hash_password()
     |> foreign_key_constraint(:organization_id)
+  end
+
+  @doc """
+  Verifies a password against the stored hash.
+  Returns true if the password matches, false otherwise.
+  """
+  def verify_password(%__MODULE__{password_hash: nil}, _password), do: false
+  def verify_password(%__MODULE__{password_hash: hash}, password) do
+    Bcrypt.verify_pass(password, hash)
+  end
+
+  @doc """
+  Checks if password is required for access.
+  """
+  def requires_password?(%__MODULE__{password_protected: true, password_hash: hash})
+      when not is_nil(hash), do: true
+  def requires_password?(_), do: false
+
+  defp maybe_hash_password(changeset) do
+    password = get_change(changeset, :password)
+    password_protected = get_field(changeset, :password_protected)
+
+    cond do
+      # If password protection is being disabled, clear the hash
+      password_protected == false ->
+        put_change(changeset, :password_hash, nil)
+
+      # If a new password is provided and protection is enabled, hash it
+      password && password_protected ->
+        put_change(changeset, :password_hash, Bcrypt.hash_pwd_salt(password))
+
+      true ->
+        changeset
+    end
   end
 
   defp maybe_generate_slug(changeset) do
