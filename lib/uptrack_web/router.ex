@@ -139,6 +139,15 @@ defmodule UptrackWeb.Router do
     # Heartbeat receiver (passive monitoring)
     post "/heartbeat/:token", HeartbeatController, :ping
     head "/heartbeat/:token", HeartbeatController, :head_ping
+
+    # Status page badges (public, no auth required)
+    get "/badge/:slug", StatusBadgeController, :show
+    get "/badge/:slug/status", StatusBadgeController, :status
+    get "/badge/:slug/uptime", StatusBadgeController, :uptime
+
+    # Status page embeddable widgets
+    get "/widget/:slug/script.js", StatusWidgetController, :script
+    get "/widget/:slug/data", StatusWidgetController, :data
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
