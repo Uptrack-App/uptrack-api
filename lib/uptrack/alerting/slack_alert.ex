@@ -38,6 +38,41 @@ defmodule Uptrack.Alerting.SlackAlert do
     end
   end
 
+  @doc """
+  Sends a test alert to verify the Slack webhook is configured correctly.
+  """
+  def send_test_alert(%AlertChannel{} = channel) do
+    webhook_url = channel.config["webhook_url"]
+
+    if is_nil(webhook_url) or webhook_url == "" do
+      {:error, "No Slack webhook URL configured"}
+    else
+      payload = %{
+        text: "Test notification from Uptrack",
+        attachments: [
+          %{
+            color: "good",
+            fields: [
+              %{
+                title: "Status",
+                value: "Working",
+                short: true
+              },
+              %{
+                title: "Time",
+                value: Calendar.strftime(DateTime.utc_now(), "%B %d, %Y at %I:%M %p UTC"),
+                short: true
+              }
+            ],
+            text: "If you received this, your Slack integration is working correctly!"
+          }
+        ]
+      }
+
+      send_slack_message(webhook_url, payload)
+    end
+  end
+
   defp build_incident_payload(incident, monitor) do
     %{
       text: "🚨 Monitor Alert: #{monitor.name} is DOWN",
