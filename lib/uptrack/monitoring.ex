@@ -53,12 +53,21 @@ defmodule Uptrack.Monitoring do
   def get_monitor!(id), do: AppRepo.get!(Monitor, id)
 
   @doc """
-  Gets a monitor by organization.
+  Gets a monitor by organization. Raises if not found.
   """
   def get_organization_monitor!(organization_id, monitor_id) do
     Monitor
     |> where([m], m.organization_id == ^organization_id and m.id == ^monitor_id)
     |> AppRepo.one!()
+  end
+
+  @doc """
+  Gets a monitor by organization. Returns nil if not found.
+  """
+  def get_organization_monitor(organization_id, monitor_id) do
+    Monitor
+    |> where([m], m.organization_id == ^organization_id and m.id == ^monitor_id)
+    |> AppRepo.one()
   end
 
   @doc """
