@@ -8,7 +8,6 @@ defmodule Uptrack.Monitoring.CheckWorker do
   alias Uptrack.Alerting
   require Logger
 
-  @timeout 30_000
   @user_agent "Uptrack Monitor/1.0"
 
   @doc """
@@ -26,6 +25,8 @@ defmodule Uptrack.Monitoring.CheckWorker do
         "tcp" -> check_tcp(monitor)
         "ping" -> check_ping(monitor)
         "keyword" -> check_keyword(monitor)
+        "ssl" -> check_ssl(monitor)
+        "heartbeat" -> {:ok, nil, %{}, ""}  # Heartbeat is passive, no active check
         _ -> {:error, "Unsupported monitor type: #{monitor.monitor_type}"}
       end
 
@@ -71,9 +72,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
     end
   end
 
-  @doc """
-  Performs HTTP/HTTPS check.
-  """
+  # Performs HTTP/HTTPS check.
   defp check_http(%Monitor{} = monitor) do
     headers = [
       {"User-Agent", @user_agent},
@@ -118,9 +117,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
     end
   end
 
-  @doc """
-  Performs TCP port check.
-  """
+  # Performs TCP port check.
   defp check_tcp(%Monitor{} = monitor) do
     uri = URI.parse(monitor.url)
     host = uri.host || monitor.url
@@ -141,9 +138,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
     end
   end
 
-  @doc """
-  Performs ping check using system ping command.
-  """
+  # Performs ping check using system ping command.
   defp check_ping(%Monitor{} = monitor) do
     uri = URI.parse(monitor.url)
     host = uri.host || monitor.url
@@ -162,9 +157,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
       {:error, "Ping command error: #{Exception.message(e)}"}
   end
 
-  @doc """
-  Performs keyword check (HTTP check + keyword search).
-  """
+  # Performs keyword check (HTTP check + keyword search).
   defp check_keyword(%Monitor{} = monitor) do
     keyword = Map.get(monitor.settings, "keyword")
 
@@ -185,9 +178,160 @@ defmodule Uptrack.Monitoring.CheckWorker do
     end
   end
 
-  @doc """
-  Handles the result of a monitor check and manages incidents.
-  """
+  # Performs SSL certificate check.
+  defp check_ssl(%Monitor{} = monitor) do
+    # Parse host and port from URL
+    {host, port} = parse_host_port(monitor.url, 443)
+    settings = monitor.settings || %{}
+    warn_days = settings["warn_days_before_expiry"] || 30
+
+    case :ssl.connect(String.to_charlist(host), port, [
+           verify: :verify_none,
+           depth: 10,
+           cacerts: :public_key.cacerts_get()
+         ], monitor.timeout * 1000) do
+      {:ok, ssl_socket} ->
+        case :ssl.peercert(ssl_socket) do
+          {:ok, der_cert} ->
+            :ssl.close(ssl_socket)
+            cert_info = parse_certificate(der_cert)
+
+            days_remaining = cert_info.days_until_expiry
+
+            if days_remaining < 0 do
+              {:error, "SSL certificate expired #{abs(days_remaining)} days ago"}
+            else if days_remaining < warn_days do
+              # Certificate expiring soon - still return OK but with warning
+              metadata = %{
+                "ssl_warning" => "Certificate expires in #{days_remaining} days",
+                "ssl_expiry" => cert_info.not_after,
+                "ssl_issuer" => cert_info.issuer,
+                "ssl_subject" => cert_info.subject,
+                "ssl_days_remaining" => days_remaining
+              }
+              {:ok, 200, metadata, Jason.encode!(cert_info)}
+            else
+              metadata = %{
+                "ssl_expiry" => cert_info.not_after,
+                "ssl_issuer" => cert_info.issuer,
+                "ssl_subject" => cert_info.subject,
+                "ssl_days_remaining" => days_remaining
+              }
+              {:ok, 200, metadata, Jason.encode!(cert_info)}
+            end
+            end
+
+          {:error, reason} ->
+            :ssl.close(ssl_socket)
+            {:error, "Failed to get certificate: #{inspect(reason)}"}
+        end
+
+      {:error, reason} ->
+        {:error, "SSL connection failed: #{inspect(reason)}"}
+    end
+  rescue
+    e ->
+      {:error, "SSL check error: #{Exception.message(e)}"}
+  end
+
+  defp parse_certificate(der_cert) do
+    # Decode the certificate
+    otp_cert = :public_key.pkix_decode_cert(der_cert, :otp)
+    tbs = elem(otp_cert, 2)
+
+    # Extract validity period
+    validity = elem(tbs, 5)
+    not_before = parse_cert_time(elem(validity, 1))
+    not_after = parse_cert_time(elem(validity, 2))
+
+    # Extract subject and issuer
+    subject = extract_cn(elem(tbs, 6))
+    issuer = extract_cn(elem(tbs, 4))
+
+    # Calculate days until expiry
+    now = DateTime.utc_now()
+    days_until_expiry = DateTime.diff(not_after, now, :day)
+
+    %{
+      subject: subject,
+      issuer: issuer,
+      not_before: DateTime.to_iso8601(not_before),
+      not_after: DateTime.to_iso8601(not_after),
+      days_until_expiry: days_until_expiry,
+      is_valid: days_until_expiry > 0
+    }
+  end
+
+  defp parse_cert_time({:utcTime, time_str}) do
+    # UTCTime format: YYMMDDHHMMSSZ
+    <<yy::binary-size(2), mm::binary-size(2), dd::binary-size(2),
+      hh::binary-size(2), mi::binary-size(2), ss::binary-size(2), "Z">> = to_string(time_str)
+
+    year = String.to_integer(yy)
+    year = if year >= 50, do: 1900 + year, else: 2000 + year
+
+    {:ok, dt} = DateTime.new(
+      Date.new!(year, String.to_integer(mm), String.to_integer(dd)),
+      Time.new!(String.to_integer(hh), String.to_integer(mi), String.to_integer(ss))
+    )
+    dt
+  end
+
+  defp parse_cert_time({:generalTime, time_str}) do
+    # GeneralizedTime format: YYYYMMDDHHMMSSZ
+    <<yyyy::binary-size(4), mm::binary-size(2), dd::binary-size(2),
+      hh::binary-size(2), mi::binary-size(2), ss::binary-size(2), "Z">> = to_string(time_str)
+
+    {:ok, dt} = DateTime.new(
+      Date.new!(String.to_integer(yyyy), String.to_integer(mm), String.to_integer(dd)),
+      Time.new!(String.to_integer(hh), String.to_integer(mi), String.to_integer(ss))
+    )
+    dt
+  end
+
+  defp extract_cn(rdn_sequence) do
+    # RDN sequence contains lists of attribute-value pairs
+    # We want to find the CN (Common Name)
+    {:rdnSequence, rdns} = rdn_sequence
+
+    cn = Enum.find_value(rdns, fn rdn ->
+      Enum.find_value(rdn, fn
+        {:AttributeTypeAndValue, {2, 5, 4, 3}, value} ->
+          extract_string_value(value)
+        _ ->
+          nil
+      end)
+    end)
+
+    cn || "Unknown"
+  end
+
+  defp extract_string_value({:utf8String, value}), do: to_string(value)
+  defp extract_string_value({:printableString, value}), do: to_string(value)
+  defp extract_string_value({:teletexString, value}), do: to_string(value)
+  defp extract_string_value(value) when is_binary(value), do: value
+  defp extract_string_value(value) when is_list(value), do: to_string(value)
+  defp extract_string_value(_), do: "Unknown"
+
+  defp parse_host_port(url, default_port) do
+    cond do
+      # Full URL with scheme
+      String.starts_with?(url, "http://") or String.starts_with?(url, "https://") ->
+        uri = URI.parse(url)
+        {uri.host, uri.port || default_port}
+
+      # host:port format
+      String.match?(url, ~r/^[^:]+:\d+$/) ->
+        [host, port_str] = String.split(url, ":")
+        {host, String.to_integer(port_str)}
+
+      # Just hostname
+      true ->
+        {url, default_port}
+    end
+  end
+
+  # Handles the result of a monitor check and manages incidents.
   defp handle_check_result(%Monitor{} = monitor, %MonitorCheck{} = check) do
     case check.status do
       "up" ->
@@ -232,16 +376,14 @@ defmodule Uptrack.Monitoring.CheckWorker do
                 Logger.error("Failed to create incident: #{inspect(changeset.errors)}")
             end
 
-          incident ->
+          _incident ->
             # Update existing incident with latest check
             Logger.info("Ongoing incident for monitor: #{monitor.name}")
         end
     end
   end
 
-  @doc """
-  Truncates response body to prevent storing very large responses.
-  """
+  # Truncates response body to prevent storing very large responses.
   defp truncate_body(body) when is_binary(body) do
     max_length = 10_000
 
