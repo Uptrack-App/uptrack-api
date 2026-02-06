@@ -131,8 +131,8 @@ defmodule UptrackWeb.StatusPageLive.FormComponent do
   def update(%{status_page: status_page} = assigns, socket) do
     changeset = Monitoring.change_status_page(status_page, %{})
 
-    # Get user monitors for selection
-    monitors = Monitoring.list_monitors(assigns.user_id)
+    # Get organization monitors for selection
+    monitors = Monitoring.list_monitors(assigns.organization_id)
 
     # Get currently selected monitors if editing
     selected_monitor_ids =
@@ -180,8 +180,11 @@ defmodule UptrackWeb.StatusPageLive.FormComponent do
   end
 
   defp save_status_page(socket, :edit, status_page_params) do
-    # Add user_id to params
-    status_page_params = Map.put(status_page_params, "user_id", socket.assigns.user_id)
+    # Add organization_id and user_id to params
+    status_page_params =
+      status_page_params
+      |> Map.put("organization_id", socket.assigns.organization_id)
+      |> Map.put("user_id", socket.assigns.user_id)
 
     case Monitoring.update_status_page(socket.assigns.status_page, status_page_params) do
       {:ok, status_page} ->
@@ -201,8 +204,11 @@ defmodule UptrackWeb.StatusPageLive.FormComponent do
   end
 
   defp save_status_page(socket, :new, status_page_params) do
-    # Add user_id to params
-    status_page_params = Map.put(status_page_params, "user_id", socket.assigns.user_id)
+    # Add organization_id and user_id to params
+    status_page_params =
+      status_page_params
+      |> Map.put("organization_id", socket.assigns.organization_id)
+      |> Map.put("user_id", socket.assigns.user_id)
 
     case Monitoring.create_status_page(status_page_params) do
       {:ok, status_page} ->

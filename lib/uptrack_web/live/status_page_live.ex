@@ -6,15 +6,12 @@ defmodule UptrackWeb.StatusPageLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    # TODO: Get user from session/auth
-    # Placeholder - will be replaced with actual auth
-    user_id = 1
+    %{current_organization: org} = socket.assigns
 
-    status_pages = Monitoring.list_status_pages(user_id)
+    status_pages = Monitoring.list_status_pages(org.id)
 
     socket =
       socket
-      |> assign(:user_id, user_id)
       |> assign(:status_pages, status_pages)
       |> assign(:page_title, "Status Pages")
 
@@ -57,11 +54,12 @@ defmodule UptrackWeb.StatusPageLive do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
+    %{current_organization: org} = socket.assigns
     status_page = Monitoring.get_status_page!(id)
     {:ok, _} = Monitoring.delete_status_page(status_page)
 
     # Refresh the list
-    status_pages = Monitoring.list_status_pages(socket.assigns.user_id)
+    status_pages = Monitoring.list_status_pages(org.id)
 
     socket =
       socket
@@ -81,8 +79,9 @@ defmodule UptrackWeb.StatusPageLive do
 
   @impl true
   def handle_info({UptrackWeb.StatusPageLive.FormComponent, {:saved, _status_page}}, socket) do
+    %{current_organization: org} = socket.assigns
     # Refresh the data when a status page is saved
-    status_pages = Monitoring.list_status_pages(socket.assigns.user_id)
+    status_pages = Monitoring.list_status_pages(org.id)
 
     socket =
       socket
@@ -262,7 +261,8 @@ defmodule UptrackWeb.StatusPageLive do
             title={@page_title}
             action={@live_action}
             status_page={@status_page}
-            user_id={@user_id}
+            organization_id={@current_organization.id}
+            user_id={@current_user.id}
             patch={~p"/dashboard/status-pages"}
           />
         </div>

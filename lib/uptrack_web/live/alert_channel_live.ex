@@ -6,15 +6,12 @@ defmodule UptrackWeb.AlertChannelLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    # TODO: Get user from session/auth
-    # Placeholder - will be replaced with actual auth
-    user_id = 1
+    %{current_organization: org} = socket.assigns
 
-    alert_channels = Alerting.list_active_alert_channels(user_id)
+    alert_channels = Alerting.list_active_alert_channels(org.id)
 
     socket =
       socket
-      |> assign(:user_id, user_id)
       |> assign(:alert_channels, alert_channels)
       |> assign(:page_title, "Alert Channels")
 
@@ -47,11 +44,12 @@ defmodule UptrackWeb.AlertChannelLive do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
+    %{current_organization: org} = socket.assigns
     alert_channel = Alerting.get_alert_channel!(id)
     {:ok, _} = Alerting.delete_alert_channel(alert_channel)
 
     # Refresh the list
-    alert_channels = Alerting.list_active_alert_channels(socket.assigns.user_id)
+    alert_channels = Alerting.list_active_alert_channels(org.id)
 
     socket =
       socket
@@ -62,14 +60,16 @@ defmodule UptrackWeb.AlertChannelLive do
   end
 
   def handle_event("test_alert", %{"id" => id}, socket) do
+    %{current_organization: org, current_user: user} = socket.assigns
     alert_channel = Alerting.get_alert_channel!(id)
 
     # Create test structs for testing
     test_monitor = %Uptrack.Monitoring.Monitor{
-      id: 999,
+      id: nil,
       name: "Test Monitor",
       url: "https://example.com",
-      user_id: socket.assigns.user_id,
+      organization_id: org.id,
+      user_id: user.id,
       monitor_type: "http"
     }
 
@@ -128,8 +128,9 @@ defmodule UptrackWeb.AlertChannelLive do
 
   @impl true
   def handle_info({UptrackWeb.AlertChannelLive.FormComponent, {:saved, _alert_channel}}, socket) do
+    %{current_organization: org} = socket.assigns
     # Refresh the data when an alert channel is saved
-    alert_channels = Alerting.list_active_alert_channels(socket.assigns.user_id)
+    alert_channels = Alerting.list_active_alert_channels(org.id)
 
     socket =
       socket

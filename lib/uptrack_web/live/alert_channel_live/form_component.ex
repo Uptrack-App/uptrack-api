@@ -173,9 +173,11 @@ defmodule UptrackWeb.AlertChannelLive.FormComponent do
   end
 
   defp save_alert_channel(socket, :new, alert_channel_params) do
-    # Add user_id to params
-    # TODO: Get from session
-    alert_channel_params = Map.put(alert_channel_params, "user_id", 1)
+    # Add organization_id and user_id to params
+    alert_channel_params =
+      alert_channel_params
+      |> Map.put("organization_id", socket.assigns.organization_id)
+      |> Map.put("user_id", socket.assigns.user_id)
 
     # Extract config parameters based on type
     {alert_channel_params, config} = extract_config_params(alert_channel_params)

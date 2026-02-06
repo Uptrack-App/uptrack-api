@@ -16,15 +16,18 @@ defmodule UptrackWeb.AuthLive.Signup do
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
-    case Accounts.register_user(user_params) do
-      {:ok, user} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "User created successfully")
-         |> redirect(to: ~p"/auth/login")}
+    changeset =
+      %User{}
+      |> Accounts.change_user_registration(user_params)
+      |> Map.put(:action, :validate)
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, socket |> assign(form: to_form(changeset))}
+    if changeset.valid? do
+      {:noreply,
+       socket
+       |> assign(form: to_form(changeset))
+       |> assign(trigger_submit: true)}
+    else
+      {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
@@ -102,7 +105,14 @@ defmodule UptrackWeb.AuthLive.Signup do
           
     <!-- Email Signup Form -->
           <div class="mt-8">
-            <.form for={@form} phx-change="validate" phx-submit="save" class="space-y-6">
+            <.form
+              for={@form}
+              action={~p"/auth/register"}
+              phx-change="validate"
+              phx-submit="save"
+              phx-trigger-action={@trigger_submit}
+              class="space-y-6"
+            >
               <div>
                 <.input
                   field={@form[:name]}

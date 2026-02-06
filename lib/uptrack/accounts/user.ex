@@ -7,6 +7,8 @@ defmodule Uptrack.Accounts.User do
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
   @foreign_key_type Uniq.UUID
+  @roles ~w(owner admin editor viewer notify_only)a
+
   @schema_prefix "app"
   schema "users" do
     field :email, :string
@@ -17,6 +19,7 @@ defmodule Uptrack.Accounts.User do
     field :password, :string, virtual: true
     field :confirmed_at, :naive_datetime
     field :notification_preferences, :map, default: %{}
+    field :role, Ecto.Enum, values: @roles, default: :owner
 
     belongs_to :organization, Organization
     has_many :monitors, Monitor
@@ -25,6 +28,11 @@ defmodule Uptrack.Accounts.User do
 
     timestamps(type: :utc_datetime)
   end
+
+  @doc """
+  Returns the list of valid roles.
+  """
+  def roles, do: @roles
 
   @doc false
   def changeset(user, attrs) do
@@ -36,10 +44,13 @@ defmodule Uptrack.Accounts.User do
       :name,
       :hashed_password,
       :confirmed_at,
-      :notification_preferences
+      :notification_preferences,
+      :organization_id,
+      :role
     ])
     |> validate_required([:email, :name])
     |> validate_email()
+    |> validate_inclusion(:role, @roles)
     |> unique_constraint(:email)
     |> ensure_notification_preferences()
   end
@@ -48,13 +59,16 @@ defmodule Uptrack.Accounts.User do
     user
     |> changeset(attrs)
     |> cast(attrs, [:password])
+    |> validate_required([:organization_id])
     |> validate_password(hash_password: true)
+    |> foreign_key_constraint(:organization_id)
   end
 
   def oauth_changeset(user, attrs) do
     user
     |> changeset(attrs)
-    |> validate_required([:provider, :provider_id])
+    |> validate_required([:provider, :provider_id, :organization_id])
+    |> foreign_key_constraint(:organization_id)
   end
 
   defp validate_email(changeset) do
@@ -238,4 +252,49 @@ defmodule Uptrack.Accounts.User do
   end
 
   defp valid_time_format?(_), do: false
+
+  # Role hierarchy helpers
+
+  @doc """
+  Returns true if the user has at least the given role level.
+  Role hierarchy: owner > admin > editor > viewer > notify_only
+  """
+  def has_role_at_least?(user, required_role) do
+    role_level(user.role) >= role_level(required_role)
+  end
+
+  @doc """
+  Returns true if the user can manage team members (owner or admin).
+  """
+  def can_manage_team?(user) do
+    user.role in [:owner, :admin]
+  end
+
+  @doc """
+  Returns true if the user can create/edit resources (owner, admin, or editor).
+  """
+  def can_edit?(user) do
+    user.role in [:owner, :admin, :editor]
+  end
+
+  @doc """
+  Returns true if the user can access the dashboard (everyone except notify_only).
+  """
+  def can_access_dashboard?(user) do
+    user.role != :notify_only
+  end
+
+  @doc """
+  Returns true if the user is the organization owner.
+  """
+  def is_owner?(user) do
+    user.role == :owner
+  end
+
+  defp role_level(:owner), do: 5
+  defp role_level(:admin), do: 4
+  defp role_level(:editor), do: 3
+  defp role_level(:viewer), do: 2
+  defp role_level(:notify_only), do: 1
+  defp role_level(_), do: 0
 end

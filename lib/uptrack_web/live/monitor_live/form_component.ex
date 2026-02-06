@@ -112,9 +112,11 @@ defmodule UptrackWeb.MonitorLive.FormComponent do
   end
 
   defp save_monitor(socket, :new_monitor, monitor_params) do
-    # Add user_id to monitor params
-    # TODO: Get from session
-    monitor_params = Map.put(monitor_params, "user_id", 1)
+    # Add organization_id and user_id to monitor params
+    monitor_params =
+      monitor_params
+      |> Map.put("organization_id", socket.assigns.organization_id)
+      |> Map.put("user_id", socket.assigns.user_id)
 
     case Monitoring.create_monitor(monitor_params) do
       {:ok, monitor} ->

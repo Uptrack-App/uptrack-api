@@ -35,14 +35,16 @@ defmodule Uptrack.Monitoring.Incident do
       :status,
       :duration,
       :cause,
+      :organization_id,
       :monitor_id,
       :first_check_id,
       :last_check_id
     ])
-    |> validate_required([:started_at, :monitor_id])
+    |> validate_required([:started_at, :organization_id, :monitor_id])
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:duration, greater_than_or_equal_to: 0)
     |> validate_resolved_at()
+    |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:monitor_id)
     |> foreign_key_constraint(:first_check_id)
     |> foreign_key_constraint(:last_check_id)

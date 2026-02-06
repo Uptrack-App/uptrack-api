@@ -20,21 +20,21 @@ defmodule Uptrack.Monitoring do
   # Monitor functions
 
   @doc """
-  Returns the list of monitors for a user.
+  Returns the list of monitors for an organization.
   """
-  def list_monitors(user_id) do
+  def list_monitors(organization_id) do
     Monitor
-    |> where([m], m.user_id == ^user_id)
+    |> where([m], m.organization_id == ^organization_id)
     |> order_by([m], desc: m.inserted_at)
     |> AppRepo.all()
   end
 
   @doc """
-  Returns the list of active monitors for a user.
+  Returns the list of active monitors for an organization.
   """
-  def list_active_monitors(user_id) do
+  def list_active_monitors(organization_id) do
     Monitor
-    |> where([m], m.user_id == ^user_id and m.status == "active")
+    |> where([m], m.organization_id == ^organization_id and m.status == "active")
     |> AppRepo.all()
   end
 
@@ -53,11 +53,11 @@ defmodule Uptrack.Monitoring do
   def get_monitor!(id), do: AppRepo.get!(Monitor, id)
 
   @doc """
-  Gets a monitor by user.
+  Gets a monitor by organization.
   """
-  def get_user_monitor!(user_id, monitor_id) do
+  def get_organization_monitor!(organization_id, monitor_id) do
     Monitor
-    |> where([m], m.user_id == ^user_id and m.id == ^monitor_id)
+    |> where([m], m.organization_id == ^organization_id and m.id == ^monitor_id)
     |> AppRepo.one!()
   end
 
@@ -174,14 +174,12 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
-  Returns recent incidents for a user.
+  Returns recent incidents for an organization.
   """
-  def list_recent_incidents(user_id, limit \\ 20) do
+  def list_recent_incidents(organization_id, limit \\ 20) do
     query =
       from i in Incident,
-        join: m in Monitor,
-        on: i.monitor_id == m.id,
-        where: m.user_id == ^user_id,
+        where: i.organization_id == ^organization_id,
         order_by: [desc: i.started_at],
         limit: ^limit,
         preload: [:monitor]
@@ -192,11 +190,11 @@ defmodule Uptrack.Monitoring do
   # Alert Channel functions
 
   @doc """
-  Returns the list of alert channels for a user.
+  Returns the list of alert channels for an organization.
   """
-  def list_alert_channels(user_id) do
+  def list_alert_channels(organization_id) do
     AlertChannel
-    |> where([ac], ac.user_id == ^user_id)
+    |> where([ac], ac.organization_id == ^organization_id)
     |> order_by([ac], asc: ac.name)
     |> AppRepo.all()
   end
@@ -234,11 +232,11 @@ defmodule Uptrack.Monitoring do
   # Status Page functions
 
   @doc """
-  Returns the list of status pages for a user.
+  Returns the list of status pages for an organization.
   """
-  def list_status_pages(user_id) do
+  def list_status_pages(organization_id) do
     StatusPage
-    |> where([sp], sp.user_id == ^user_id)
+    |> where([sp], sp.organization_id == ^organization_id)
     |> order_by([sp], asc: sp.name)
     |> AppRepo.all()
   end
@@ -364,13 +362,11 @@ defmodule Uptrack.Monitoring do
   # Incident management functions
 
   @doc """
-  Returns the list of incidents for a user.
+  Returns the list of incidents for an organization.
   """
-  def list_incidents(user_id) do
+  def list_incidents(organization_id) do
     from(i in Incident,
-      join: m in Monitor,
-      on: i.monitor_id == m.id,
-      where: m.user_id == ^user_id,
+      where: i.organization_id == ^organization_id,
       order_by: [desc: i.started_at],
       preload: [:monitor, :incident_updates]
     )
@@ -378,13 +374,11 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
-  Returns the list of ongoing incidents for a user.
+  Returns the list of ongoing incidents for an organization.
   """
-  def list_ongoing_incidents(user_id) do
+  def list_ongoing_incidents(organization_id) do
     from(i in Incident,
-      join: m in Monitor,
-      on: i.monitor_id == m.id,
-      where: m.user_id == ^user_id and i.status == "ongoing",
+      where: i.organization_id == ^organization_id and i.status == "ongoing",
       order_by: [desc: i.started_at],
       preload: [:monitor, :incident_updates]
     )
@@ -473,33 +467,27 @@ defmodule Uptrack.Monitoring do
   # Dashboard functions
 
   @doc """
-  Returns dashboard stats for a user.
+  Returns dashboard stats for an organization.
   """
-  def get_dashboard_stats(user_id) do
+  def get_dashboard_stats(organization_id) do
     total_monitors =
       Monitor
-      |> where([m], m.user_id == ^user_id)
+      |> where([m], m.organization_id == ^organization_id)
       |> AppRepo.aggregate(:count, :id)
 
     active_monitors =
       Monitor
-      |> where([m], m.user_id == ^user_id and m.status == "active")
+      |> where([m], m.organization_id == ^organization_id and m.status == "active")
       |> AppRepo.aggregate(:count, :id)
 
     ongoing_incidents =
-      from(i in Incident,
-        join: m in Monitor,
-        on: i.monitor_id == m.id,
-        where: m.user_id == ^user_id and i.status == "ongoing"
-      )
+      Incident
+      |> where([i], i.organization_id == ^organization_id and i.status == "ongoing")
       |> AppRepo.aggregate(:count, :id)
 
     recent_incidents_count =
-      from(i in Incident,
-        join: m in Monitor,
-        on: i.monitor_id == m.id,
-        where: m.user_id == ^user_id and i.started_at >= ago(7, "day")
-      )
+      Incident
+      |> where([i], i.organization_id == ^organization_id and i.started_at >= ago(7, "day"))
       |> AppRepo.aggregate(:count, :id)
 
     %{
@@ -513,10 +501,10 @@ defmodule Uptrack.Monitoring do
   @doc """
   Returns monitors with their latest status for dashboard.
   """
-  def get_dashboard_monitors(user_id) do
+  def get_dashboard_monitors(organization_id) do
     monitors =
       Monitor
-      |> where([m], m.user_id == ^user_id)
+      |> where([m], m.organization_id == ^organization_id)
       |> order_by([m], desc: m.inserted_at)
       |> AppRepo.all()
 
@@ -661,16 +649,16 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
-  Returns overall uptime for all monitors of a user.
+  Returns overall uptime for all monitors of an organization.
   """
-  def get_user_overall_uptime(user_id, days \\ 30) do
+  def get_organization_overall_uptime(organization_id, days \\ 30) do
     cutoff_date = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
 
     query =
       from mc in MonitorCheck,
         join: m in Monitor,
         on: mc.monitor_id == m.id,
-        where: m.user_id == ^user_id and mc.checked_at >= ^cutoff_date,
+        where: m.organization_id == ^organization_id and mc.checked_at >= ^cutoff_date,
         select: %{
           total: count(mc.id),
           up: count(mc.id) |> filter(mc.status == "up")

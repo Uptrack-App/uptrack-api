@@ -12,14 +12,14 @@ defmodule UptrackWeb.AuthController do
       {:ok, user_params} ->
         case Accounts.get_user_by_email(user_params.email) do
           nil ->
-            case Accounts.create_user_from_oauth(user_params) do
+            case Accounts.create_user_from_oauth_with_organization(user_params) do
               {:ok, user} ->
                 conn
                 |> put_session(:user_id, user.id)
                 |> put_flash(:info, "Successfully signed up!")
                 |> redirect(to: ~p"/dashboard")
 
-              {:error, changeset} ->
+              {:error, _step, _changeset, _changes} ->
                 conn
                 |> put_flash(:error, "Something went wrong")
                 |> redirect(to: ~p"/auth/signup")

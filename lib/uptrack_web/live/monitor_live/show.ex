@@ -10,21 +10,19 @@ defmodule UptrackWeb.MonitorLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    # TODO: Get from session
-    user_id = 1
-    monitor_id = String.to_integer(id)
-    monitor = Monitoring.get_user_monitor!(user_id, id)
+    %{current_organization: org} = socket.assigns
+    monitor = Monitoring.get_organization_monitor!(org.id, id)
     recent_checks = Monitoring.get_recent_checks(id, 100)
     uptime = Monitoring.get_uptime_percentage(id)
 
     incidents =
-      Monitoring.list_recent_incidents(user_id, 10)
-      |> Enum.filter(&(&1.monitor_id == monitor_id))
+      Monitoring.list_recent_incidents(org.id, 10)
+      |> Enum.filter(&(&1.monitor_id == monitor.id))
 
     # Get analytics data
-    uptime_chart_data = Monitoring.get_uptime_chart_data(monitor_id, 30)
-    response_time_trends = Monitoring.get_response_time_trends(monitor_id, 30)
-    incident_stats = Monitoring.get_incident_stats(monitor_id, 30)
+    uptime_chart_data = Monitoring.get_uptime_chart_data(monitor.id, 30)
+    response_time_trends = Monitoring.get_response_time_trends(monitor.id, 30)
+    incident_stats = Monitoring.get_incident_stats(monitor.id, 30)
 
     socket =
       socket

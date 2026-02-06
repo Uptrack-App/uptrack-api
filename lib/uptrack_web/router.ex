@@ -14,6 +14,12 @@ defmodule UptrackWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :api_authenticated do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug UptrackWeb.Plugs.ApiAuth
+  end
+
   pipeline :health do
     plug :accepts, ["json"]
   end
@@ -23,43 +29,56 @@ defmodule UptrackWeb.Router do
     plug Ueberauth
   end
 
+  # Public routes (no authentication required)
   scope "/", UptrackWeb do
     pipe_through :browser
 
     get "/", PageController, :home
     live "/auth/signup", AuthLive.Signup, :new
 
-    # Dashboard routes
-    live "/dashboard", DashboardLive, :index
-    live "/dashboard/monitors/new", DashboardLive, :new_monitor
-
-    # Monitor routes
-    live "/dashboard/monitors/:id", MonitorLive.Show, :show
-    live "/dashboard/monitors/:id/edit", MonitorLive.Show, :edit
-
-    # Alert channel routes
-    live "/dashboard/alerts", AlertChannelLive, :index
-    live "/dashboard/alerts/new", AlertChannelLive, :new
-    live "/dashboard/alerts/:id/edit", AlertChannelLive, :edit
-
-    # Status page management routes
-    live "/dashboard/status-pages", StatusPageLive, :index
-    live "/dashboard/status-pages/new", StatusPageLive, :new
-    live "/dashboard/status-pages/:id/edit", StatusPageLive, :edit
-    live "/dashboard/status-pages/:id/widgets", StatusPageLive, :widgets
-
-    # Incident management routes
-    live "/dashboard/incidents", IncidentLive, :index
-    live "/dashboard/incidents/:id", IncidentLive, :show
-
-    # Settings routes
-    live "/dashboard/settings", SettingsLive, :index
+    # Session management
+    post "/auth/register", SessionController, :create
+    post "/auth/login", SessionController, :login
 
     # Public status page routes
     live "/status/:slug", StatusLive, :show
-    
+
     # Status widget routes
     live "/widget/:slug", StatusWidgetLive, :show
+  end
+
+  # Protected routes (authentication required)
+  scope "/", UptrackWeb do
+    pipe_through :browser
+
+    live_session :authenticated,
+      on_mount: [{UptrackWeb.UserAuth, :require_authenticated_user}] do
+      # Dashboard routes
+      live "/dashboard", DashboardLive, :index
+      live "/dashboard/monitors/new", DashboardLive, :new_monitor
+
+      # Monitor routes
+      live "/dashboard/monitors/:id", MonitorLive.Show, :show
+      live "/dashboard/monitors/:id/edit", MonitorLive.Show, :edit
+
+      # Alert channel routes
+      live "/dashboard/alerts", AlertChannelLive, :index
+      live "/dashboard/alerts/new", AlertChannelLive, :new
+      live "/dashboard/alerts/:id/edit", AlertChannelLive, :edit
+
+      # Status page management routes
+      live "/dashboard/status-pages", StatusPageLive, :index
+      live "/dashboard/status-pages/new", StatusPageLive, :new
+      live "/dashboard/status-pages/:id/edit", StatusPageLive, :edit
+      live "/dashboard/status-pages/:id/widgets", StatusPageLive, :widgets
+
+      # Incident management routes
+      live "/dashboard/incidents", IncidentLive, :index
+      live "/dashboard/incidents/:id", IncidentLive, :show
+
+      # Settings routes
+      live "/dashboard/settings", SettingsLive, :index
+    end
   end
 
   scope "/auth", UptrackWeb do
@@ -78,10 +97,29 @@ defmodule UptrackWeb.Router do
     get "/healthz", HealthController, :show
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", UptrackWeb do
-  #   pipe_through :api
-  # end
+  # API routes for TanStack Start frontend
+  scope "/api", UptrackWeb.Api do
+    pipe_through :api_authenticated
+
+    # Team management
+    scope "/organizations/:organization_id" do
+      resources "/members", TeamController, only: [:index, :update, :delete]
+      post "/members/transfer-ownership", TeamController, :transfer_ownership
+
+      resources "/invitations", InvitationController, only: [:index, :create, :delete]
+
+      resources "/audit-logs", AuditLogController, only: [:index]
+    end
+  end
+
+  # Public API routes (no authentication required)
+  scope "/api", UptrackWeb.Api do
+    pipe_through :api
+
+    # Invitation acceptance (token-based, may or may not be authenticated)
+    get "/invitations/:token", InvitationController, :show_by_token
+    post "/invitations/:token/accept", InvitationController, :accept
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:uptrack, :dev_routes) do

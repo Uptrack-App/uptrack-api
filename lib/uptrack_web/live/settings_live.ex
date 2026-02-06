@@ -6,10 +6,7 @@ defmodule UptrackWeb.SettingsLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    # TODO: Get user from session/auth
-    # Placeholder - will be replaced with actual auth
-    user_id = 1
-    user = Accounts.get_user!(user_id)
+    %{current_user: user} = socket.assigns
 
     preferences = User.get_notification_preferences(user)
     changeset = User.notification_preferences_changeset(user, %{})

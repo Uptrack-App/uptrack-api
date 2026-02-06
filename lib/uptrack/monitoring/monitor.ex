@@ -44,14 +44,16 @@ defmodule Uptrack.Monitoring.Monitor do
       :description,
       :alert_contacts,
       :settings,
+      :organization_id,
       :user_id
     ])
-    |> validate_required([:name, :url, :user_id])
+    |> validate_required([:name, :url, :organization_id, :user_id])
     |> validate_inclusion(:monitor_type, @monitor_types)
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:interval, greater_than: 60)
     |> validate_number(:timeout, greater_than: 5, less_than: 300)
     |> validate_url()
+    |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:user_id)
   end
 
