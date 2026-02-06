@@ -148,6 +148,11 @@ defmodule UptrackWeb.Router do
     # Status page embeddable widgets
     get "/widget/:slug/script.js", StatusWidgetController, :script
     get "/widget/:slug/data", StatusWidgetController, :data
+
+    # Status page subscriptions
+    post "/status/:slug/subscribe", SubscriberController, :subscribe
+    get "/subscribe/verify/:token", SubscriberController, :verify
+    get "/subscribe/unsubscribe/:token", SubscriberController, :unsubscribe
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

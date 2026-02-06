@@ -23,6 +23,12 @@ defmodule Uptrack.Monitoring.StatusPage do
     field :password_hash, :string
     field :password, :string, virtual: true
 
+    # Email subscription settings
+    field :allow_subscriptions, :boolean, default: false
+
+    # Multi-language support
+    field :default_language, :string, default: "en"
+
     belongs_to :organization, Organization
     belongs_to :user, User
     has_many :status_page_monitors, StatusPageMonitor, on_delete: :delete_all
@@ -44,6 +50,8 @@ defmodule Uptrack.Monitoring.StatusPage do
       :theme_config,
       :password_protected,
       :password,
+      :allow_subscriptions,
+      :default_language,
       :organization_id,
       :user_id
     ])
