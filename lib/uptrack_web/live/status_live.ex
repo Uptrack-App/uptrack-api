@@ -2,38 +2,71 @@ defmodule UptrackWeb.StatusLive do
   use UptrackWeb, :live_view
 
   alias Uptrack.Monitoring
+  alias Uptrack.Monitoring.StatusPage
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
+  def mount(%{"slug" => slug}, session, socket) do
     try do
       status_page = Monitoring.get_status_page_with_status!(slug)
 
-      # Calculate overall status
-      overall_status = calculate_overall_status(status_page.monitors)
+      # Check if password is required and if already authenticated
+      session_key = "status_page_auth_#{status_page.id}"
+      authenticated = Map.get(session, session_key, false)
 
-      # Get recent incidents for this status page's monitors
-      monitor_ids = Enum.map(status_page.monitors, & &1.id)
+      if StatusPage.requires_password?(status_page) && !authenticated do
+        # Show password form
+        socket =
+          socket
+          |> assign(:status_page, status_page)
+          |> assign(:password_required, true)
+          |> assign(:password_error, nil)
+          |> assign(:page_title, "#{status_page.name} - Password Required")
 
-      recent_incidents =
-        if Enum.any?(monitor_ids) do
-          # Use user_id 1 for now
-          Monitoring.list_recent_incidents(1, 10)
-          |> Enum.filter(&(&1.monitor_id in monitor_ids))
-        else
-          []
-        end
-
-      socket =
-        socket
-        |> assign(:status_page, status_page)
-        |> assign(:overall_status, overall_status)
-        |> assign(:recent_incidents, recent_incidents)
-        |> assign(:page_title, status_page.name)
-
-      {:ok, socket}
+        {:ok, socket}
+      else
+        # Show status page content
+        {:ok, mount_status_page(socket, status_page)}
+      end
     rescue
       Ecto.NoResultsError ->
         {:ok, redirect(socket, to: ~p"/")}
+    end
+  end
+
+  defp mount_status_page(socket, status_page) do
+    # Calculate overall status
+    overall_status = calculate_overall_status(status_page.monitors)
+
+    # Get recent incidents for this status page's monitors
+    monitor_ids = Enum.map(status_page.monitors, & &1.id)
+
+    recent_incidents =
+      if Enum.any?(monitor_ids) do
+        # Use user_id 1 for now
+        Monitoring.list_recent_incidents(1, 10)
+        |> Enum.filter(&(&1.monitor_id in monitor_ids))
+      else
+        []
+      end
+
+    socket
+    |> assign(:status_page, status_page)
+    |> assign(:password_required, false)
+    |> assign(:overall_status, overall_status)
+    |> assign(:recent_incidents, recent_incidents)
+    |> assign(:page_title, status_page.name)
+  end
+
+  @impl true
+  def handle_event("verify_password", %{"password" => password}, socket) do
+    status_page = socket.assigns.status_page
+
+    if StatusPage.verify_password(status_page, password) do
+      # Password correct - reload with full content
+      # Note: In production, you'd set a session cookie here
+      {:noreply, mount_status_page(socket, status_page)}
+    else
+      {:noreply, assign(socket, :password_error, "Incorrect password")}
     end
   end
 
@@ -42,16 +75,52 @@ defmodule UptrackWeb.StatusLive do
     ~H"""
     <div class="min-h-screen bg-base-200">
       <div class="container mx-auto px-4 py-8 max-w-4xl">
-        <!-- Header -->
-        <div class="text-center mb-8">
-          <%= if @status_page.logo_url do %>
-            <img src={@status_page.logo_url} alt={@status_page.name} class="h-16 mx-auto mb-4" />
-          <% end %>
-          <h1 class="text-4xl font-bold mb-2">{@status_page.name}</h1>
-          <%= if @status_page.description do %>
-            <p class="text-lg text-base-content/70">{@status_page.description}</p>
-          <% end %>
-        </div>
+        <%= if @password_required do %>
+          <!-- Password Protection -->
+          <div class="flex items-center justify-center min-h-[60vh]">
+            <div class="card bg-base-100 shadow-lg max-w-md w-full">
+              <div class="card-body text-center">
+                <%= if @status_page.logo_url do %>
+                  <img src={@status_page.logo_url} alt={@status_page.name} class="h-12 mx-auto mb-4" />
+                <% end %>
+                <h1 class="text-2xl font-bold mb-2">{@status_page.name}</h1>
+                <p class="text-base-content/70 mb-6">
+                  This status page is password protected.
+                </p>
+
+                <form phx-submit="verify_password" class="space-y-4">
+                  <div class="form-control">
+                    <input
+                      type="password"
+                      name="password"
+                      placeholder="Enter password"
+                      class={"input input-bordered w-full #{if @password_error, do: "input-error"}"}
+                      required
+                    />
+                    <%= if @password_error do %>
+                      <label class="label">
+                        <span class="label-text-alt text-error">{@password_error}</span>
+                      </label>
+                    <% end %>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-full">
+                    View Status
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        <% else %>
+          <!-- Header -->
+          <div class="text-center mb-8">
+            <%= if @status_page.logo_url do %>
+              <img src={@status_page.logo_url} alt={@status_page.name} class="h-16 mx-auto mb-4" />
+            <% end %>
+            <h1 class="text-4xl font-bold mb-2">{@status_page.name}</h1>
+            <%= if @status_page.description do %>
+              <p class="text-lg text-base-content/70">{@status_page.description}</p>
+            <% end %>
+          </div>
         
     <!-- Overall Status -->
         <div class="card bg-base-100 shadow-lg mb-8">
@@ -147,14 +216,15 @@ defmodule UptrackWeb.StatusLive do
         <% end %>
         
     <!-- Footer -->
-        <div class="text-center text-sm text-base-content/50">
-          <p>Last updated: {DateTime.utc_now() |> format_datetime()}</p>
-          <%= if @status_page.theme_config["show_powered_by"] != false do %>
-            <p class="mt-2">
-              Powered by <a href="/" class="link">Uptrack</a>
-            </p>
-          <% end %>
-        </div>
+          <div class="text-center text-sm text-base-content/50">
+            <p>Last updated: {DateTime.utc_now() |> format_datetime()}</p>
+            <%= if @status_page.theme_config["show_powered_by"] != false do %>
+              <p class="mt-2">
+                Powered by <a href="/" class="link">Uptrack</a>
+              </p>
+            <% end %>
+          </div>
+        <% end %>
       </div>
     </div>
     """
