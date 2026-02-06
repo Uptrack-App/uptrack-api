@@ -183,7 +183,7 @@ defmodule UptrackWeb.Features.OAuthTest do
       |> click(link("Logout"))
       |> assert_has(css("h1", text: "Welcome to Uptrack"))
       |> visit("/dashboard")
-      |> assert_has(text("Please sign in to access"))
+      |> assert_has(Wallaby.Query.text("Please sign in to access"))
     end
   end
 end

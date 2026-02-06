@@ -47,7 +47,7 @@ defmodule Uptrack.Monitoring.StatusPageSubscriber do
     |> change(%{
       verified: true,
       verification_token: nil,
-      subscribed_at: DateTime.utc_now()
+      subscribed_at: DateTime.utc_now() |> DateTime.truncate(:second)
     })
   end
 
@@ -58,7 +58,7 @@ defmodule Uptrack.Monitoring.StatusPageSubscriber do
       changeset
       |> put_change(:verification_token, generate_token())
       |> put_change(:unsubscribe_token, generate_token())
-      |> put_change(:verification_sent_at, DateTime.utc_now())
+      |> put_change(:verification_sent_at, DateTime.utc_now() |> DateTime.truncate(:second))
     end
   end
 
