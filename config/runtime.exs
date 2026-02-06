@@ -66,8 +66,8 @@ if config_env() == :prod do
       Oban.Plugins.Repeater,
       {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(10)},
       {Oban.Plugins.Cron, crontab: [
-        # Run monitor scheduling every 30 seconds
-        {"*/30 * * * * *", Uptrack.Monitoring.SchedulerWorker}
+        # Run monitor scheduling every minute (scheduler handles sub-minute intervals)
+        {"* * * * *", Uptrack.Monitoring.SchedulerWorker}
       ]}
     ]
 
