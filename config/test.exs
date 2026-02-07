@@ -40,15 +40,6 @@ config :uptrack, UptrackWeb.Endpoint,
   secret_key_base: "REMOVED_TEST_SECRET_KEY_BASE",
   server: false
 
-# Configure Wallaby for E2E testing
-config :wallaby,
-  driver: Wallaby.Chrome,
-  base_url: "http://localhost:4002",
-  screenshot_on_failure: true,
-  chrome: [
-    headless: true
-  ]
-
 # In test we don't send emails
 config :uptrack, Uptrack.Mailer, adapter: Swoosh.Adapters.Test
 
