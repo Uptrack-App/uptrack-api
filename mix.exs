@@ -73,7 +73,6 @@ defmodule Uptrack.MixProject do
       {:oban, "~> 2.20"},
       {:uniq, "~> 0.6"},
       {:tidewave, "~> 0.5.0", only: :dev},
-      {:wallaby, "~> 0.30", only: :test},
       {:bypass, "~> 2.1", only: :test}
     ]
   end
