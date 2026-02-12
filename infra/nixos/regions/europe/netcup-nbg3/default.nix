@@ -14,6 +14,7 @@ in {
     ../../../modules/services/tailscale.nix
     ../../../modules/services/etcd.nix
     ../../../modules/services/patroni.nix
+    ../../../modules/services/node-exporter.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/victoria-metrics.nix
   ];

@@ -124,10 +124,10 @@ defmodule UptrackWeb.HealthController do
   defp check_idle_prevention do
     case Uptrack.Health.IdlePrevention.get_stats() do
       %{} = stats -> stats
-      {:error, _} -> %{error: "IdlePrevention not running"}
+      {:error, _} -> %{}
     end
-  rescue
-    _exception -> %{error: "IdlePrevention not available"}
+  catch
+    :exit, _ -> %{}
   end
 
   defp app_version do

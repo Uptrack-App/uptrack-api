@@ -35,6 +35,10 @@ uptrack-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Log files
+*.log
+!/priv/repo/*.log
+
 # Ignore macOS system files
 .DS_Store
 .DS_Store?

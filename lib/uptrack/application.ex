@@ -7,31 +7,39 @@ defmodule Uptrack.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      UptrackWeb.Telemetry,
-      # Database repos - AppRepo handles migrations, ObanRepo has separate pool
-      Uptrack.AppRepo,
-      Uptrack.ObanRepo,
-      {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Uptrack.PubSub},
-      # In-app cache for expensive queries
-      {Cachex, name: :uptrack_cache},
-      # Oban job processing
-      {Oban, Application.fetch_env!(:uptrack, Oban)},
-      # Task supervisor for monitoring checks
-      {Task.Supervisor, name: Uptrack.TaskSupervisor},
-      # Idle prevention for Oracle Always Free instances
-      Uptrack.Health.IdlePrevention,
-      # OAuth state storage for Slack/Discord integrations
-      Uptrack.Integrations.OAuthState,
-      # Start to serve requests, typically the last entry
-      UptrackWeb.Endpoint
-    ]
+    children =
+      [
+        UptrackWeb.Telemetry,
+        # Database repos - AppRepo handles migrations, ObanRepo has separate pool
+        Uptrack.AppRepo,
+        Uptrack.ObanRepo,
+        {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: Uptrack.PubSub},
+        # In-app cache for expensive queries
+        {Cachex, name: :uptrack_cache},
+        # Oban job processing
+        {Oban, Application.fetch_env!(:uptrack, Oban)},
+        # Task supervisor for monitoring checks
+        {Task.Supervisor, name: Uptrack.TaskSupervisor},
+        # OAuth state storage for Slack/Discord integrations
+        Uptrack.Integrations.OAuthState,
+        # Start to serve requests, typically the last entry
+        UptrackWeb.Endpoint
+      ] ++ idle_prevention_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Uptrack.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Only run idle prevention on Oracle Cloud instances to prevent reclamation
+  defp idle_prevention_children do
+    if System.get_env("NODE_PROVIDER") == "oracle" do
+      [Uptrack.Health.IdlePrevention]
+    else
+      []
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

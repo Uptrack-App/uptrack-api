@@ -78,6 +78,10 @@ in lib.mkIf isPgBouncerNode {
         log_disconnections = 1;
         log_pooler_errors = 1;
 
+        # Set search_path on every new server connection so Ecto resolves
+        # custom types in the app schema (e.g. team_role) through PgBouncer
+        server_reset_query = "DISCARD ALL; SET search_path TO app, public";
+
         # Ignore Ecto startup params
         ignore_startup_parameters = "extra_float_digits";
       };
