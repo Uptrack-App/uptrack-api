@@ -1,0 +1,38 @@
+meta {
+  name: Monitor Analytics
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/analytics/monitors/1?days=30
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+docs {
+  # Monitor-Specific Analytics
+
+  Returns detailed analytics for a specific monitor:
+  - Uptime chart data (daily breakdown)
+  - Response time trends (min/max/avg per day)
+  - Incident statistics (count, MTTR)
+
+  ## Path Parameters
+
+  - `monitor_id` - ID of the monitor
+
+  ## Query Parameters
+
+  - `days` - Analysis period (1-365, default: 30)
+
+  ## Response
+
+  - `200 OK` - Monitor analytics
+  - `401 Unauthorized` - Not authenticated
+  - `404 Not Found` - Monitor doesn't exist or not owned
+}

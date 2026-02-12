@@ -1,0 +1,35 @@
+meta {
+  name: Verify Subscription
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/subscribe/verify/{{verificationToken}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Verify Subscription
+
+  Verifies an email subscription using the token from the verification email.
+
+  ## URL Parameters
+
+  - `token` - Verification token from email
+
+  ## Response
+
+  ```json
+  {
+    "success": true,
+    "message": "Email verified successfully. You'll now receive incident notifications."
+  }
+  ```
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+}

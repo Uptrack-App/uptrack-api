@@ -1,0 +1,36 @@
+meta {
+  name: Get Uptime Badge
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/badge/my-status-page/uptime
+  body: none
+  auth: none
+}
+
+query {
+  style: flat
+  label: uptime
+}
+
+docs {
+  # Get Uptime Badge
+
+  Returns an SVG badge showing the uptime percentage.
+
+  ## Query Parameters
+
+  - `style` - Badge style: `flat`, `flat-square`, `for-the-badge`
+  - `label` - Custom label (default: "uptime")
+
+  ## Example
+
+  Shows uptime like: "uptime | 99.9%"
+}
+
+assert {
+  res.status: eq 200
+  res.headers['content-type']: contains image/svg+xml
+}

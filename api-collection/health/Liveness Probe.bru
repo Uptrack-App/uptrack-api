@@ -1,0 +1,32 @@
+meta {
+  name: Liveness Probe
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/healthz
+  body: none
+  auth: none
+}
+
+docs {
+  # Liveness Probe (/healthz)
+
+  Lightweight health check for liveness probes.
+  Returns 200 if the application process is running.
+  Does NOT check external dependencies (database, etc).
+
+  Use this for:
+  - Kubernetes liveness probes
+  - Basic uptime monitoring
+
+  ## Response
+
+  - `200 OK` - Application is running
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq alive
+}

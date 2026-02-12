@@ -1,0 +1,54 @@
+meta {
+  name: Create Monitor
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/monitors
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: _uptrack_key={{sessionCookie}}
+}
+
+body:json {
+  {
+    "name": "Production API",
+    "monitor_type": "http",
+    "url": "https://api.example.com/health",
+    "method": "GET",
+    "interval_seconds": 60,
+    "timeout_seconds": 30
+  }
+}
+
+docs {
+  # Create Monitor
+
+  Creates a new monitor for the authenticated user's organization.
+
+  ## Authentication
+
+  Requires session cookie authentication.
+
+  ## Request Body
+
+  - `name` (required) - Monitor display name
+  - `monitor_type` (required) - Type: `http`, `heartbeat`, `tcp`, `dns`
+  - `url` - URL to monitor (required for http type)
+  - `method` - HTTP method: `GET`, `POST`, `HEAD` (default: GET)
+  - `interval_seconds` - Check interval in seconds (default: 60)
+  - `timeout_seconds` - Request timeout in seconds (default: 30)
+  - `settings` - Type-specific settings object
+
+  ## Response
+
+  Returns the created monitor object.
+}
+
+assert {
+  res.status: eq 201
+}

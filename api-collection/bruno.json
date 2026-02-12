@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Uptrack API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

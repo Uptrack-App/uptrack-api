@@ -1,0 +1,29 @@
+meta {
+  name: Send Heartbeat (Minimal)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/heartbeat/{{heartbeatToken}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Send Heartbeat (Minimal)
+
+  Minimal heartbeat ping without any payload.
+  Simply confirms the service is running.
+
+  ## Example cURL
+
+  ```bash
+  curl -X POST https://api.uptrack.dev/api/heartbeat/YOUR_TOKEN
+  ```
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: eq true
+}

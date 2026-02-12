@@ -1,0 +1,46 @@
+meta {
+  name: Verify Domain
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/status-pages/{{statusPageId}}/domain/verify
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+docs {
+  # Verify Domain Ownership
+
+  Triggers DNS verification for the custom domain.
+  Checks for:
+
+  1. **TXT Record** - `_uptrack-verification.yourdomain.com` with the verification token
+  2. **CNAME Record** - `yourdomain.com` pointing to `status.uptrack.dev`
+
+  ## Response
+
+  On success:
+  ```json
+  {
+    "verified": true,
+    "domain": "status.example.com",
+    "verified_at": "2024-01-01T00:00:00Z",
+    "message": "Domain verified successfully"
+  }
+  ```
+
+  On failure:
+  ```json
+  {
+    "verified": false,
+    "error": "TXT record not found...",
+    "dns_records": { ... }
+  }
+  ```
+}

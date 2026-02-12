@@ -1,0 +1,82 @@
+meta {
+  name: Create Webhook Channel
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/alert-channels
+  body: json
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "My Webhook",
+    "type": "webhook",
+    "config": {
+      "url": "https://example.com/webhook",
+      "secret": "my-secure-secret-key-at-least-16-chars",
+      "headers": {
+        "Authorization": "Bearer my-token"
+      }
+    }
+  }
+}
+
+docs {
+  # Create Webhook Alert Channel
+
+  Creates a webhook alert channel that receives POST requests for incidents.
+
+  ## Configuration
+
+  - `url` (required) - The URL to POST to
+  - `secret` (optional, min 16 chars) - Secret for HMAC-SHA256 signature
+  - `headers` (optional) - Additional headers to send
+
+  ## Webhook Payload
+
+  ```json
+  {
+    "event": "incident.created" | "incident.resolved" | "test",
+    "monitor": {
+      "id": "uuid",
+      "name": "My API",
+      "url": "https://api.example.com",
+      "type": "http"
+    },
+    "incident": {
+      "id": "uuid",
+      "started_at": "2024-01-01T00:00:00Z",
+      "resolved_at": "2024-01-01T00:05:00Z",
+      "duration": 300,
+      "cause": "Connection timeout",
+      "status": "resolved"
+    },
+    "timestamp": "2024-01-01T00:05:00Z"
+  }
+  ```
+
+  ## Security: Signature Verification
+
+  When `secret` is configured, requests include `X-Uptrack-Signature` header:
+
+  ```
+  X-Uptrack-Signature: sha256=<hex-encoded-hmac>
+  ```
+
+  To verify in your receiver:
+  ```python
+  import hmac
+  import hashlib
+
+  expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+  valid = hmac.compare_digest(f"sha256={expected}", signature_header)
+  ```
+}

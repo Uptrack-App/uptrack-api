@@ -1,0 +1,31 @@
+meta {
+  name: Remove Domain
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/status-pages/{{statusPageId}}/domain
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+docs {
+  # Remove Custom Domain
+
+  Removes the custom domain from a status page.
+  The status page will only be accessible via its slug on the main domain.
+
+  ## Response
+
+  ```json
+  {
+    "success": true,
+    "message": "Custom domain removed"
+  }
+  ```
+}

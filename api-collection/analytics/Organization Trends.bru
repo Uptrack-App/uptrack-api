@@ -1,0 +1,33 @@
+meta {
+  name: Organization Trends
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/analytics/organization/trends?days=30
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+docs {
+  # Organization-Wide Trends
+
+  Returns aggregated analytics across all monitors:
+  - Overall uptime and daily trends
+  - Incident frequency by day
+  - Top offenders (monitors with most incidents)
+
+  ## Query Parameters
+
+  - `days` - Analysis period (1-365, default: 30)
+
+  ## Response
+
+  - `200 OK` - Organization trends
+  - `401 Unauthorized` - Not authenticated
+}

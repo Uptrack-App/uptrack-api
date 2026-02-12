@@ -1,0 +1,45 @@
+meta {
+  name: List Monitors
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/monitors
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: _uptrack_key={{sessionCookie}}
+}
+
+docs {
+  # List Monitors
+
+  Returns all monitors for the authenticated user's organization.
+
+  ## Authentication
+
+  Requires session cookie authentication.
+
+  ## Response
+
+  ```json
+  {
+    "data": [
+      {
+        "id": "uuid",
+        "name": "API Health Check",
+        "monitor_type": "http",
+        "status": "active",
+        "url": "https://api.example.com/health"
+      }
+    ]
+  }
+  ```
+}
+
+assert {
+  res.status: eq 200
+}

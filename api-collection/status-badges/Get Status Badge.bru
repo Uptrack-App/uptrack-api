@@ -1,0 +1,47 @@
+meta {
+  name: Get Status Badge
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/badge/my-status-page
+  body: none
+  auth: none
+}
+
+query {
+  style: flat
+  label: status
+}
+
+docs {
+  # Get Status Badge
+
+  Returns an SVG badge showing the current status of a status page.
+  Perfect for embedding in README files.
+
+  ## URL Parameters
+
+  - `slug` - The status page slug
+
+  ## Query Parameters
+
+  - `style` - Badge style: `flat` (default), `flat-square`, `for-the-badge`
+  - `label` - Custom label text (default: "status")
+
+  ## Response
+
+  Returns an SVG image with appropriate cache headers.
+
+  ## Example Markdown
+
+  ```markdown
+  ![Status](https://api.uptrack.dev/api/badge/my-status-page)
+  ```
+}
+
+assert {
+  res.status: eq 200
+  res.headers['content-type']: contains image/svg+xml
+}

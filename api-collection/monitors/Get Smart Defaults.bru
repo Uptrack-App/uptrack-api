@@ -1,0 +1,52 @@
+meta {
+  name: Get Smart Defaults
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/monitors/smart-defaults
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: _uptrack_key={{sessionCookie}}
+}
+
+body:json {
+  {
+    "url": "https://api.example.com"
+  }
+}
+
+docs {
+  # Get Smart Defaults
+
+  Analyzes a URL and returns smart default configuration values.
+  Useful for auto-populating monitor creation forms.
+
+  ## Authentication
+
+  Requires session cookie authentication.
+
+  ## Request Body
+
+  - `url` (required) - URL to analyze
+
+  ## Response
+
+  ```json
+  {
+    "name": "api.example.com",
+    "url": "https://api.example.com",
+    "method": "GET",
+    "expected_status_code": 200,
+    "interval_seconds": 60
+  }
+  ```
+}
+
+assert {
+  res.status: eq 200
+}
