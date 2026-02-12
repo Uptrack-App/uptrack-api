@@ -55,6 +55,8 @@ defmodule Uptrack.MonitoringFixtures do
           {user_id, org_id}
       end
 
+    desired_status = attrs[:status] || "active"
+
     {:ok, monitor} =
       attrs
       |> Enum.into(%{
@@ -72,7 +74,13 @@ defmodule Uptrack.MonitoringFixtures do
       })
       |> Uptrack.Monitoring.create_monitor()
 
-    monitor
+    # create_changeset forces status to "active", so update if a different status was requested
+    if desired_status != "active" do
+      {:ok, monitor} = Uptrack.Monitoring.update_monitor(monitor, %{status: desired_status})
+      monitor
+    else
+      monitor
+    end
   end
 
   @doc """
@@ -124,9 +132,9 @@ defmodule Uptrack.MonitoringFixtures do
       attrs
       |> Enum.into(%{
         name: "Test Alert Channel",
-        channel_type: "email",
+        type: "email",
         config: %{"email" => "test@example.com"},
-        enabled: true,
+        is_active: true,
         organization_id: org_id,
         user_id: user_id
       })

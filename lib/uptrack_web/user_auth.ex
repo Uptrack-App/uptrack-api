@@ -39,12 +39,9 @@ defmodule UptrackWeb.UserAuth do
     end
   end
 
-  @doc """
-  LiveView on_mount hook for optionally authenticated routes.
-
-  Loads user and organization if authenticated, but doesn't redirect if not.
-  Useful for public pages that show additional info for logged-in users.
-  """
+  # LiveView on_mount hook for optionally authenticated routes.
+  # Loads user and organization if authenticated, but doesn't redirect if not.
+  # Useful for public pages that show additional info for logged-in users.
   def on_mount(:fetch_current_user, _params, session, socket) do
     case session["user_id"] do
       nil ->

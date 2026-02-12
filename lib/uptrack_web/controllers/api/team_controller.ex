@@ -21,7 +21,7 @@ defmodule UptrackWeb.Api.TeamController do
   Updates a member's role.
   PATCH /api/organizations/:org_id/members/:user_id
   """
-  def update(conn, %{"organization_id" => org_id, "user_id" => user_id, "role" => role}) do
+  def update(conn, %{"organization_id" => org_id, "id" => user_id, "role" => role}) do
     current_user = conn.assigns.current_user
 
     with :ok <- authorize_manage(conn, org_id),
@@ -35,7 +35,7 @@ defmodule UptrackWeb.Api.TeamController do
   Removes a member from the organization.
   DELETE /api/organizations/:org_id/members/:user_id
   """
-  def delete(conn, %{"organization_id" => org_id, "user_id" => user_id}) do
+  def delete(conn, %{"organization_id" => org_id, "id" => user_id}) do
     current_user = conn.assigns.current_user
 
     with :ok <- authorize_manage(conn, org_id),

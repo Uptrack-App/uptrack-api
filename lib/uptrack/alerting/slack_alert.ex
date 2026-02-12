@@ -105,7 +105,7 @@ defmodule Uptrack.Alerting.SlackAlert do
             %{
               type: "button",
               text: "View Details",
-              url: "http://localhost:4000/dashboard/monitors/#{monitor.id}"
+              url: "#{app_url()}/dashboard/monitors/#{monitor.id}"
             }
           ]
         }
@@ -147,7 +147,7 @@ defmodule Uptrack.Alerting.SlackAlert do
             %{
               type: "button",
               text: "View Details",
-              url: "http://localhost:4000/dashboard/monitors/#{monitor.id}"
+              url: "#{app_url()}/dashboard/monitors/#{monitor.id}"
             }
           ]
         }
@@ -170,6 +170,8 @@ defmodule Uptrack.Alerting.SlackAlert do
         {:error, reason}
     end
   end
+
+  defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
   defp format_duration(nil), do: "Unknown"
 

@@ -52,13 +52,12 @@ defmodule Uptrack.Monitoring.Heartbeat do
         # Create a successful check record
         check_attrs = %{
           monitor_id: monitor.id,
-          organization_id: monitor.organization_id,
-          status: :up,
+          status: "up",
           response_time: metadata["execution_time"] || 0,
           status_code: 200,
           response_body: Jason.encode!(metadata),
           error_message: nil,
-          checked_at: DateTime.utc_now()
+          checked_at: DateTime.utc_now() |> DateTime.truncate(:second)
         }
 
         case Monitoring.create_check(check_attrs) do
@@ -141,13 +140,12 @@ defmodule Uptrack.Monitoring.Heartbeat do
     # Create a failed check record
     check_attrs = %{
       monitor_id: monitor.id,
-      organization_id: monitor.organization_id,
-      status: :down,
+      status: "down",
       response_time: 0,
       status_code: 0,
       response_body: nil,
       error_message: "Heartbeat missed - last seen #{format_duration(DateTime.diff(now, last_heartbeat))} ago",
-      checked_at: now
+      checked_at: now |> DateTime.truncate(:second)
     }
 
     case Monitoring.create_check(check_attrs) do

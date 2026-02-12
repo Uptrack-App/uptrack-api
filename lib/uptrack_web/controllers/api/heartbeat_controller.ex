@@ -1,7 +1,28 @@
 defmodule UptrackWeb.Api.HeartbeatController do
   use UptrackWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias Uptrack.Monitoring.Heartbeat
+  alias UptrackWeb.Schemas.Heartbeat, as: HeartbeatSchemas
+
+  tags ["Heartbeat"]
+
+  operation :ping,
+    summary: "Record heartbeat",
+    description: "Receives a heartbeat ping from a monitored service. Used for cron job and scheduled task monitoring.",
+    parameters: [
+      token: [
+        in: :path,
+        type: :string,
+        required: true,
+        description: "Unique heartbeat token for the monitor"
+      ]
+    ],
+    request_body: {"Heartbeat payload", "application/json", HeartbeatSchemas.PingRequest, required: false},
+    responses: [
+      ok: {"Heartbeat recorded", "application/json", HeartbeatSchemas.PingResponse},
+      not_found: {"Invalid token", "application/json", HeartbeatSchemas.ErrorResponse}
+    ]
 
   @doc """
   Receives a heartbeat ping from a monitored service.
@@ -47,6 +68,22 @@ defmodule UptrackWeb.Api.HeartbeatController do
         |> json(%{ok: false, error: "Failed to record heartbeat"})
     end
   end
+
+  operation :head_ping,
+    summary: "Lightweight heartbeat ping",
+    description: "HEAD request for heartbeat - useful for curl-based monitoring scripts.",
+    parameters: [
+      token: [
+        in: :path,
+        type: :string,
+        required: true,
+        description: "Unique heartbeat token for the monitor"
+      ]
+    ],
+    responses: [
+      ok: "Heartbeat recorded",
+      not_found: "Invalid token"
+    ]
 
   @doc """
   HEAD request for heartbeat (lightweight ping).

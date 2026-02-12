@@ -6,6 +6,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Monitor, MonitorCheck, Events}
   alias Uptrack.Alerting
+  alias Uptrack.Metrics.Writer, as: MetricsWriter
   require Logger
 
   @user_agent "Uptrack Monitor/1.0"
@@ -63,6 +64,9 @@ defmodule Uptrack.Monitoring.CheckWorker do
 
         # Broadcast the check completion event
         Events.broadcast_check_completed(check, monitor)
+
+        # Publish metrics to VictoriaMetrics
+        MetricsWriter.write_check_result(monitor, check)
 
         {:ok, check}
 

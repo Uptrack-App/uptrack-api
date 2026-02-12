@@ -73,7 +73,10 @@ defmodule Uptrack.MixProject do
       {:oban, "~> 2.20"},
       {:uniq, "~> 0.6"},
       {:tidewave, "~> 0.5.0", only: :dev},
-      {:bypass, "~> 2.1", only: :test}
+      {:bypass, "~> 2.1", only: :test},
+      {:open_api_spex, "~> 3.21"},
+      {:hammer, "~> 6.2"},
+      {:cachex, "~> 4.0"}
     ]
   end
 

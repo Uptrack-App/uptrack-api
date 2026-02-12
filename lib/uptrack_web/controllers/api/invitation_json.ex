@@ -49,7 +49,7 @@ defmodule UptrackWeb.Api.InvitationJSON do
       expires_at: invitation.expires_at,
       invited_at: invitation.inserted_at,
       invited_by:
-        if invitation.invited_by do
+        if Ecto.assoc_loaded?(invitation.invited_by) and invitation.invited_by do
           %{
             id: invitation.invited_by.id,
             name: invitation.invited_by.name,
@@ -57,7 +57,7 @@ defmodule UptrackWeb.Api.InvitationJSON do
           }
         end,
       organization:
-        if invitation.organization do
+        if Ecto.assoc_loaded?(invitation.organization) and invitation.organization do
           %{
             id: invitation.organization.id,
             name: invitation.organization.name

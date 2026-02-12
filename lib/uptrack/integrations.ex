@@ -18,7 +18,7 @@ defmodule Uptrack.Integrations do
 
   @slack_client_id System.get_env("SLACK_CLIENT_ID")
   @slack_client_secret System.get_env("SLACK_CLIENT_SECRET")
-  @slack_redirect_uri System.get_env("SLACK_REDIRECT_URI", "http://localhost:4000/api/integrations/slack/callback")
+
 
   @doc """
   Generates a Slack OAuth authorization URL.
@@ -106,7 +106,7 @@ defmodule Uptrack.Integrations do
 
   @discord_client_id System.get_env("DISCORD_CLIENT_ID")
   @discord_client_secret System.get_env("DISCORD_CLIENT_SECRET")
-  @discord_redirect_uri System.get_env("DISCORD_REDIRECT_URI", "http://localhost:4000/api/integrations/discord/callback")
+
 
   @doc """
   Generates a Discord OAuth authorization URL.
@@ -233,9 +233,16 @@ defmodule Uptrack.Integrations do
 
   defp slack_client_id, do: Application.get_env(:uptrack, :slack_client_id) || @slack_client_id
   defp slack_client_secret, do: Application.get_env(:uptrack, :slack_client_secret) || @slack_client_secret
-  defp slack_redirect_uri, do: Application.get_env(:uptrack, :slack_redirect_uri) || @slack_redirect_uri
+  defp slack_redirect_uri do
+    Application.get_env(:uptrack, :slack_redirect_uri) ||
+      Application.get_env(:uptrack, :app_url, "http://localhost:4000") <> "/api/integrations/slack/callback"
+  end
 
   defp discord_client_id, do: Application.get_env(:uptrack, :discord_client_id) || @discord_client_id
   defp discord_client_secret, do: Application.get_env(:uptrack, :discord_client_secret) || @discord_client_secret
-  defp discord_redirect_uri, do: Application.get_env(:uptrack, :discord_redirect_uri) || @discord_redirect_uri
+
+  defp discord_redirect_uri do
+    Application.get_env(:uptrack, :discord_redirect_uri) ||
+      Application.get_env(:uptrack, :app_url, "http://localhost:4000") <> "/api/integrations/discord/callback"
+  end
 end

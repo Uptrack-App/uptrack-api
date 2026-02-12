@@ -1,7 +1,7 @@
 # Netcup Nuremberg Node 4 (nbg4) - Citus Worker Standby
 # IP: 159.195.56.242
 # Tailscale: 100.64.1.4
-# Services: PostgreSQL Worker Standby, Patroni (worker), vmstorage
+# Services: PostgreSQL Worker Standby, Patroni (worker), victoria-metrics
 { config, pkgs, lib, ... }:
 
 let
@@ -13,6 +13,7 @@ in {
     ../../../modules/services/tailscale.nix
     ../../../modules/services/patroni.nix
     ../../../modules/services/postgres-exporter.nix
+    ../../../modules/services/victoria-metrics.nix
   ];
 
   # Hostname
@@ -33,6 +34,13 @@ in {
     hostname = "nbg4";
     acceptRoutes = true;
     tags = [ "tag:infrastructure" ];
+  };
+
+  # VictoriaMetrics single-node instance
+  # HA: independent instance, vmagent writes to both nbg3+nbg4
+  services.uptrack.victoria-metrics = {
+    enable = true;
+    retentionPeriod = "15";
   };
 
   # User configuration

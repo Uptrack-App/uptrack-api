@@ -14,7 +14,10 @@ defmodule Uptrack.Teams do
   alias Uptrack.AppRepo
   alias Uptrack.Accounts
   alias Uptrack.Accounts.User
+  alias Uptrack.Organizations
   alias Uptrack.Teams.{TeamInvitation, AuditLog}
+  alias Uptrack.Emails.InvitationEmail
+  alias Uptrack.Mailer
 
   # ============================================================================
   # Team Members
@@ -211,8 +214,7 @@ defmodule Uptrack.Teams do
             metadata: %{"email" => email, "role" => to_string(role)}
           )
 
-          # TODO: Send invitation email
-          # Uptrack.Mailer.deliver_invitation(invitation)
+          send_invitation_email(invitation, organization_id, invited_by_user_id)
 
           {:ok, invitation}
 
@@ -226,6 +228,19 @@ defmodule Uptrack.Teams do
     %TeamInvitation{}
     |> TeamInvitation.changeset(attrs)
     |> AppRepo.insert()
+  end
+
+  defp send_invitation_email(invitation, organization_id, invited_by_user_id) do
+    org = Organizations.get_organization!(organization_id)
+    inviter = Accounts.get_user!(invited_by_user_id)
+
+    invitation
+    |> InvitationEmail.invitation_email(org.name, inviter.name)
+    |> Mailer.deliver()
+  rescue
+    e ->
+      require Logger
+      Logger.error("Failed to send invitation email to #{invitation.email}: #{inspect(e)}")
   end
 
   @doc """

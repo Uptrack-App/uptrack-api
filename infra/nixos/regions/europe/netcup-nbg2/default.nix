@@ -2,7 +2,7 @@
 # IP: 152.53.183.208
 # Tailscale: 100.64.1.2
 # Services: Phoenix API, cloudflared, PostgreSQL Coordinator Standby,
-#           Patroni (coordinator), etcd (2/3), vminsert, vmselect, vmagent
+#           Patroni (coordinator), etcd (2/3), vmagent
 { config, pkgs, lib, ... }:
 
 let
@@ -16,6 +16,9 @@ in {
     ../../../modules/services/patroni.nix
     ../../../modules/services/pgbouncer.nix
     ../../../modules/services/postgres-exporter.nix
+    ../../../modules/services/uptrack-app.nix
+    ../../../modules/services/cloudflared.nix
+    ../../../modules/services/vmagent.nix
   ];
 
   # Hostname
@@ -38,6 +41,48 @@ in {
     tags = [ "tag:infrastructure" ];
     # Advertise Phoenix API for Tailscale Services load balancing
     servePort = 4000;
+  };
+
+  # Phoenix API application
+  services.uptrack = {
+    enable = true;
+    port = 4000;
+    host = "api.uptrack.app";
+    poolSize = 10;
+    obanPoolSize = 20;
+    runMigrations = false; # Only nbg1 runs migrations to avoid race conditions
+    environmentFile = config.age.secrets.uptrack-env.path;
+  };
+
+  # VictoriaMetrics monitoring
+  # vmagent writes to both nbg3+nbg4 for replication
+  services.uptrack.vmagent = {
+    enable = true;
+    remoteWriteUrls = [
+      "http://100.64.1.3:8428/api/v1/write"
+      "http://100.64.1.4:8428/api/v1/write"
+    ];
+  };
+
+  # Cloudflare Tunnel for public API access
+  services.uptrack.cloudflared = {
+    enable = true;
+    tunnelTokenFile = config.age.secrets.cloudflared-tunnel-token.path;
+  };
+
+  # Agenix secrets
+  age.secrets.cloudflared-tunnel-token = {
+    file = ../../../secrets/cloudflared-tunnel-token.age;
+    owner = "cloudflared";
+    group = "cloudflared";
+    mode = "0400";
+  };
+
+  age.secrets.uptrack-env = {
+    file = ../../../secrets/uptrack-env.age;
+    owner = "uptrack";
+    group = "uptrack";
+    mode = "0400";
   };
 
   # User configuration

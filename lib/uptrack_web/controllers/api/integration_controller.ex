@@ -23,26 +23,26 @@ defmodule UptrackWeb.Api.IntegrationController do
   def slack_callback(conn, %{"code" => code, "state" => state}) do
     case Integrations.handle_slack_callback(code, state) do
       {:ok, alert_channel} ->
-        # Redirect to dashboard with success message
-        redirect(conn, to: "/dashboard/alerts?connected=slack&channel=#{alert_channel.id}")
+        redirect(conn,
+          external: "#{frontend_url()}/dashboard/alerts?connected=slack&channel=#{alert_channel.id}"
+        )
 
       {:error, :invalid_state} ->
-        redirect(conn, to: "/dashboard/alerts?error=invalid_state")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=invalid_state")
 
       {:error, :state_expired} ->
-        redirect(conn, to: "/dashboard/alerts?error=expired")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=expired")
 
       {:error, {:slack_error, error}} ->
-        redirect(conn, to: "/dashboard/alerts?error=#{error}")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=#{error}")
 
       {:error, _} ->
-        redirect(conn, to: "/dashboard/alerts?error=connection_failed")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=connection_failed")
     end
   end
 
   def slack_callback(conn, %{"error" => error}) do
-    # User denied access or other OAuth error
-    redirect(conn, to: "/dashboard/alerts?error=#{error}")
+    redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=#{error}")
   end
 
   @doc """
@@ -63,23 +63,30 @@ defmodule UptrackWeb.Api.IntegrationController do
   def discord_callback(conn, %{"code" => code, "state" => state}) do
     case Integrations.handle_discord_callback(code, state) do
       {:ok, alert_channel} ->
-        redirect(conn, to: "/dashboard/alerts?connected=discord&channel=#{alert_channel.id}")
+        redirect(conn,
+          external:
+            "#{frontend_url()}/dashboard/alerts?connected=discord&channel=#{alert_channel.id}"
+        )
 
       {:error, :invalid_state} ->
-        redirect(conn, to: "/dashboard/alerts?error=invalid_state")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=invalid_state")
 
       {:error, :state_expired} ->
-        redirect(conn, to: "/dashboard/alerts?error=expired")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=expired")
 
       {:error, {:discord_error, _status, _body}} ->
-        redirect(conn, to: "/dashboard/alerts?error=discord_error")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=discord_error")
 
       {:error, _} ->
-        redirect(conn, to: "/dashboard/alerts?error=connection_failed")
+        redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=connection_failed")
     end
   end
 
   def discord_callback(conn, %{"error" => error}) do
-    redirect(conn, to: "/dashboard/alerts?error=#{error}")
+    redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=#{error}")
+  end
+
+  defp frontend_url do
+    Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
   end
 end

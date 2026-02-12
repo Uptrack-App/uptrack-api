@@ -6,7 +6,7 @@ defmodule Uptrack.Alerting do
   import Ecto.Query, warn: false
   alias Uptrack.AppRepo
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
-  alias Uptrack.Alerting.{EmailAlert, SlackAlert, DiscordAlert, TelegramAlert, TeamsAlert, TwilioAlert, WebhookAlert}
+  alias Uptrack.Alerting.{EmailAlert, SlackAlert, DiscordAlert, TelegramAlert, TeamsAlert, TwilioAlert, WebhookAlert, AlertDeliveryWorker}
   alias Uptrack.Monitoring.{StatusPage, StatusPageMonitor, StatusPageSubscriber}
   alias Uptrack.Emails.SubscriberEmail
   alias Uptrack.Accounts.User
@@ -35,7 +35,7 @@ defmodule Uptrack.Alerting do
         alert_channels = list_active_alert_channels(monitor.organization_id)
 
         # Get monitor-specific alert settings
-        monitor_alert_contacts = monitor.alert_contacts || %{}
+        monitor_alert_contacts = if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
 
         # Send alerts through all configured channels
         results =
@@ -79,7 +79,7 @@ defmodule Uptrack.Alerting do
       alert_channels = list_active_alert_channels(monitor.organization_id)
 
       # Get monitor-specific alert settings
-      monitor_alert_contacts = monitor.alert_contacts || %{}
+      monitor_alert_contacts = if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
 
       # Send resolution alerts through configured channels
       results =
@@ -221,76 +221,44 @@ defmodule Uptrack.Alerting do
 
   defp parse_time(_), do: nil
 
-  defp send_alert(channel, incident, monitor, user) do
-    case channel.type do
-      "email" ->
-        EmailAlert.send_incident_alert(channel, incident, monitor, user)
+  defp send_alert(channel, incident, monitor, _user) do
+    %{
+      channel_id: channel.id,
+      incident_id: incident.id,
+      monitor_id: monitor.id,
+      event_type: "incident_created"
+    }
+    |> AlertDeliveryWorker.new()
+    |> Oban.insert()
+    |> case do
+      {:ok, _job} ->
+        Logger.info("Enqueued alert delivery via #{channel.type} for incident #{incident.id}")
+        {:ok, :enqueued}
 
-      "slack" ->
-        SlackAlert.send_incident_alert(channel, incident, monitor)
-
-      "discord" ->
-        DiscordAlert.send_incident_alert(channel, incident, monitor)
-
-      "telegram" ->
-        TelegramAlert.send_incident_alert(channel, incident, monitor)
-
-      "teams" ->
-        TeamsAlert.send_incident_alert(channel, incident, monitor)
-
-      "webhook" ->
-        WebhookAlert.send_incident_alert(channel, incident, monitor)
-
-      "sms" ->
-        TwilioAlert.send_sms_incident_alert(channel, incident, monitor)
-
-      "phone" ->
-        TwilioAlert.send_phone_incident_alert(channel, incident, monitor)
-
-      type ->
-        Logger.error("Unknown alert channel type: #{type}")
-        {:error, :unknown_type}
+      {:error, reason} ->
+        Logger.error("Failed to enqueue alert delivery: #{inspect(reason)}")
+        {:error, reason}
     end
-  rescue
-    e ->
-      Logger.error("Error sending alert via #{channel.type}: #{Exception.message(e)}")
-      {:error, Exception.message(e)}
   end
 
-  defp send_resolution_alert(channel, incident, monitor, user) do
-    case channel.type do
-      "email" ->
-        EmailAlert.send_resolution_alert(channel, incident, monitor, user)
+  defp send_resolution_alert(channel, incident, monitor, _user) do
+    %{
+      channel_id: channel.id,
+      incident_id: incident.id,
+      monitor_id: monitor.id,
+      event_type: "incident_resolved"
+    }
+    |> AlertDeliveryWorker.new()
+    |> Oban.insert()
+    |> case do
+      {:ok, _job} ->
+        Logger.info("Enqueued resolution alert via #{channel.type} for incident #{incident.id}")
+        {:ok, :enqueued}
 
-      "slack" ->
-        SlackAlert.send_resolution_alert(channel, incident, monitor)
-
-      "discord" ->
-        DiscordAlert.send_resolution_alert(channel, incident, monitor)
-
-      "telegram" ->
-        TelegramAlert.send_resolution_alert(channel, incident, monitor)
-
-      "teams" ->
-        TeamsAlert.send_resolution_alert(channel, incident, monitor)
-
-      "webhook" ->
-        WebhookAlert.send_resolution_alert(channel, incident, monitor)
-
-      "sms" ->
-        TwilioAlert.send_sms_resolution_alert(channel, incident, monitor)
-
-      "phone" ->
-        TwilioAlert.send_phone_resolution_alert(channel, incident, monitor)
-
-      type ->
-        Logger.error("Unknown alert channel type: #{type}")
-        {:error, :unknown_type}
+      {:error, reason} ->
+        Logger.error("Failed to enqueue resolution alert: #{inspect(reason)}")
+        {:error, reason}
     end
-  rescue
-    e ->
-      Logger.error("Error sending resolution alert via #{channel.type}: #{Exception.message(e)}")
-      {:error, Exception.message(e)}
   end
 
   @doc """
@@ -427,4 +395,5 @@ defmodule Uptrack.Alerting do
         {:error, reason}
     end
   end
+
 end

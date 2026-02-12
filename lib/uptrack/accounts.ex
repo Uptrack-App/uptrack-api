@@ -8,7 +8,6 @@ defmodule Uptrack.Accounts do
   alias Ecto.Multi
 
   alias Uptrack.Accounts.User
-  alias Uptrack.Organizations
   alias Uptrack.Organizations.Organization
 
   @doc """
@@ -212,7 +211,7 @@ defmodule Uptrack.Accounts do
     Multi.new()
     |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name}))
     |> Multi.insert(:user, fn %{organization: org} ->
-      user_attrs = Map.put(attrs, "organization_id", org.id)
+      user_attrs = Map.put(attrs, :organization_id, org.id)
 
       %User{}
       |> User.oauth_changeset(user_attrs)
@@ -285,5 +284,45 @@ defmodule Uptrack.Accounts do
   """
   def change_user_preferences(%User{} = user, attrs \\ %{}) do
     User.notification_preferences_changeset(user, attrs)
+  end
+
+  @doc """
+  Changes a user's password after verifying the current password.
+
+  Returns `{:error, :invalid_password}` if the current password is wrong.
+  """
+  def change_password(%User{} = user, current_password, new_password) do
+    if User.valid_password?(user, current_password) do
+      user
+      |> User.password_changeset(%{password: new_password})
+      |> AppRepo.update()
+    else
+      {:error, :invalid_password}
+    end
+  end
+
+  @doc """
+  Deletes a user and their organization in a single transaction.
+
+  For email/password users, requires password verification.
+  For OAuth users, password can be nil (skips verification).
+  """
+  def delete_user_and_organization(%User{} = user, password) do
+    # Verify password for email/password users
+    if user.provider == nil && !User.valid_password?(user, password) do
+      {:error, :invalid_password}
+    else
+      Multi.new()
+      |> Multi.delete(:user, user)
+      |> Multi.run(:organization, fn _repo, _changes ->
+        org = Uptrack.Organizations.get_organization!(user.organization_id)
+        AppRepo.delete(org)
+      end)
+      |> AppRepo.transaction()
+      |> case do
+        {:ok, result} -> {:ok, result}
+        {:error, _step, changeset, _} -> {:error, changeset}
+      end
+    end
   end
 end

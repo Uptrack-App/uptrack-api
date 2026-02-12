@@ -9,13 +9,22 @@ import Config
 
 config :uptrack,
   ecto_repos: [Uptrack.AppRepo, Uptrack.ObanRepo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  app_url: "http://localhost:4000",
+  frontend_url: "http://localhost:3000",
+  cors_origins: ["http://localhost:3000"],
+  victoriametrics_vminsert_url: nil,
+  victoriametrics_vmselect_url: nil
 
 # AppRepo handles all migrations (app schema + oban schema)
 # ObanRepo uses same database but separate connection pool
 # This prevents job queue from starving app queries
 config :uptrack, Uptrack.AppRepo,
   migration_lock: :pg_advisory_lock
+
+# Rate limiting configuration
+config :hammer,
+  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60, cleanup_interval_ms: 60_000 * 10]}
 
 # Configures the endpoint
 config :uptrack, UptrackWeb.Endpoint,
@@ -87,6 +96,7 @@ config :tesla, disable_deprecated_builder_warning: true
 # Configure Oban for background jobs
 config :uptrack, Oban,
   repo: Uptrack.ObanRepo,
+  prefix: "oban",
   plugins: [
     {Oban.Plugins.Pruner, max_age: 300},
     {Oban.Plugins.Cron, crontab: [
@@ -95,7 +105,9 @@ config :uptrack, Oban,
       # Check for missed heartbeats every minute
       {"* * * * *", Uptrack.Monitoring.HeartbeatCheckerWorker},
       # Run idle prevention every 3 hours to prevent Oracle Always Free reclamation
-      {"0 */3 * * *", Uptrack.Monitoring.IdlePreventionWorker}
+      {"0 */3 * * *", Uptrack.Monitoring.IdlePreventionWorker},
+      # Process batched notification digests every hour
+      {"0 * * * *", Uptrack.Alerting.NotificationBatchWorker}
     ]}
   ],
   queues: [

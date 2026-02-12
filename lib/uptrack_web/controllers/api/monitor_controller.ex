@@ -115,6 +115,24 @@ defmodule UptrackWeb.Api.MonitorController do
     end
   end
 
+  @doc """
+  Lists recent checks for a monitor.
+  GET /api/monitors/:monitor_id/checks
+  """
+  def checks(conn, %{"monitor_id" => monitor_id} = params) do
+    org = conn.assigns.current_organization
+    limit = params |> Map.get("limit", "20") |> String.to_integer() |> min(100)
+
+    case Monitoring.get_organization_monitor(org.id, monitor_id) do
+      nil ->
+        {:error, :not_found}
+
+      _monitor ->
+        checks = Monitoring.get_recent_checks(monitor_id, limit)
+        render(conn, :checks, checks: checks)
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------

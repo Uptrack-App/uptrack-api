@@ -54,7 +54,7 @@ defmodule Uptrack.Monitoring.SmartDefaults do
     %{
       name: extract_name(parsed, monitor_type),
       url: normalize_url(parsed, monitor_type),
-      monitor_type: monitor_type,
+      monitor_type: to_string(monitor_type),
       settings: settings,
       interval: default_interval(monitor_type),
       timeout: default_timeout(monitor_type)
@@ -186,33 +186,8 @@ defmodule Uptrack.Monitoring.SmartDefaults do
     }
   end
 
-  defp default_settings(:ssl, _parsed) do
-    %{
-      "warn_days_before_expiry" => 30,
-      "check_chain" => true
-    }
-  end
-
-  defp default_settings(:ping, _parsed) do
-    %{
-      "packet_count" => 3
-    }
-  end
-
-  defp default_settings(:keyword, parsed) do
-    %{
-      "method" => "GET",
-      "keyword" => "",
-      "keyword_type" => "contains",
-      "verify_ssl" => parsed.scheme == "https"
-    }
-  end
-
-  defp default_settings(:heartbeat, _parsed) do
-    %{
-      "grace_period_seconds" => 300
-    }
-  end
+  # Note: :ssl, :ping, :keyword, :heartbeat types are not auto-detected from URLs
+  # They require explicit user configuration
 
   defp default_settings(_, _), do: %{}
 
@@ -221,11 +196,11 @@ defmodule Uptrack.Monitoring.SmartDefaults do
   # ---------------------------------------------------------------------------
 
   @type_intervals %{
-    http: 60,
-    tcp: 60,
+    http: 300,
+    tcp: 300,
     ssl: 3600,
-    ping: 60,
-    keyword: 60,
+    ping: 300,
+    keyword: 300,
     heartbeat: 3600
   }
 

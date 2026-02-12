@@ -8,13 +8,13 @@ defmodule Uptrack.Emails.SubscriberEmail do
   require Logger
 
   @from_email {"Uptrack Status", "status@uptrack.dev"}
-  @base_url Application.compile_env(:uptrack, :base_url, "http://localhost:4000")
+  defp base_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
   @doc """
   Sends a verification email to confirm subscription.
   """
   def verification_email(%StatusPageSubscriber{} = subscriber, %StatusPage{} = status_page) do
-    verify_url = "#{@base_url}/api/subscribe/verify/#{subscriber.verification_token}"
+    verify_url = "#{base_url()}/api/subscribe/verify/#{subscriber.verification_token}"
 
     new()
     |> to(subscriber.email)
@@ -28,8 +28,8 @@ defmodule Uptrack.Emails.SubscriberEmail do
   Sends an incident notification to a subscriber.
   """
   def incident_email(%StatusPageSubscriber{} = subscriber, %StatusPage{} = status_page, %Incident{} = incident, %Monitor{} = monitor) do
-    status_url = "#{@base_url}/status/#{status_page.slug}"
-    unsubscribe_url = "#{@base_url}/api/subscribe/unsubscribe/#{subscriber.unsubscribe_token}"
+    status_url = "#{base_url()}/status/#{status_page.slug}"
+    unsubscribe_url = "#{base_url()}/api/subscribe/unsubscribe/#{subscriber.unsubscribe_token}"
 
     new()
     |> to(subscriber.email)
@@ -43,8 +43,8 @@ defmodule Uptrack.Emails.SubscriberEmail do
   Sends a resolution notification to a subscriber.
   """
   def resolution_email(%StatusPageSubscriber{} = subscriber, %StatusPage{} = status_page, %Incident{} = incident, %Monitor{} = monitor) do
-    status_url = "#{@base_url}/status/#{status_page.slug}"
-    unsubscribe_url = "#{@base_url}/api/subscribe/unsubscribe/#{subscriber.unsubscribe_token}"
+    status_url = "#{base_url()}/status/#{status_page.slug}"
+    unsubscribe_url = "#{base_url()}/api/subscribe/unsubscribe/#{subscriber.unsubscribe_token}"
     duration_text = format_duration(incident.duration)
 
     new()

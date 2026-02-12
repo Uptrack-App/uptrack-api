@@ -2,7 +2,7 @@ defmodule UptrackWeb.IncidentLive do
   use UptrackWeb, :live_view
 
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.{Incident, IncidentUpdate}
+  alias Uptrack.Monitoring.IncidentUpdate
 
   @impl true
   def mount(_params, _session, socket) do
