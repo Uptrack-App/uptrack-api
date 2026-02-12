@@ -1,0 +1,41 @@
+meta {
+  name: Set Domain
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/status-pages/{{statusPageId}}/domain
+  body: json
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "custom_domain": "status.example.com"
+  }
+}
+
+docs {
+  # Set Custom Domain
+
+  Sets or updates the custom domain for a status page.
+  This resets the verification status - you'll need to:
+
+  1. Add the TXT record for verification
+  2. Add the CNAME record pointing to status.uptrack.dev
+  3. Call the verify endpoint
+
+  ## Request Body
+
+  - `custom_domain` - Domain name (e.g., status.example.com)
+
+  ## Response
+
+  Returns the new domain configuration with required DNS records.
+}

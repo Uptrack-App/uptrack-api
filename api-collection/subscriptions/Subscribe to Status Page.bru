@@ -1,0 +1,46 @@
+meta {
+  name: Subscribe to Status Page
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/status/my-status-page/subscribe
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "user@example.com"
+  }
+}
+
+docs {
+  # Subscribe to Status Page
+
+  Subscribe an email address to receive incident notifications.
+
+  ## URL Parameters
+
+  - `slug` - The status page slug
+
+  ## Request Body
+
+  - `email` - Email address to subscribe
+
+  ## Response
+
+  ```json
+  {
+    "success": true,
+    "message": "Please check your email to verify your subscription."
+  }
+  ```
+
+  A verification email will be sent to the provided address.
+}
+
+assert {
+  res.status: in [200, 201]
+}

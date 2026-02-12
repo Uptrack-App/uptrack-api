@@ -1,0 +1,54 @@
+meta {
+  name: Send Heartbeat
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/heartbeat/{{heartbeatToken}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "status": "success",
+    "message": "Job completed successfully",
+    "execution_time": 1234
+  }
+}
+
+docs {
+  # Send Heartbeat
+
+  Records a heartbeat ping from a monitored service.
+  Used for cron job and scheduled task monitoring.
+
+  ## URL Parameters
+
+  - `token` - The unique heartbeat token for the monitor
+
+  ## Request Body (optional)
+
+  - `status` - Custom status message (e.g., "success", "warning")
+  - `message` - Optional details about the job execution
+  - `execution_time` - Execution time in milliseconds
+
+  ## Response
+
+  ```json
+  {
+    "ok": true,
+    "monitor": {
+      "id": "uuid",
+      "name": "Daily backup job",
+      "status": "active"
+    }
+  }
+  ```
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: eq true
+}

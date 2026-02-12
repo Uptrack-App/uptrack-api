@@ -1,0 +1,34 @@
+meta {
+  name: Dashboard Overview
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/analytics/dashboard?days=30
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+docs {
+  # Dashboard Analytics Overview
+
+  Returns dashboard statistics and overview data including:
+  - Monitor counts (total, active)
+  - Incident counts (ongoing, recent)
+  - Overall uptime percentage
+  - Daily uptime trend
+
+  ## Query Parameters
+
+  - `days` - Analysis period (1-365, default: 30)
+
+  ## Response
+
+  - `200 OK` - Analytics data
+  - `401 Unauthorized` - Not authenticated
+}

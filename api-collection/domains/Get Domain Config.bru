@@ -1,0 +1,31 @@
+meta {
+  name: Get Domain Config
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/status-pages/{{statusPageId}}/domain
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+docs {
+  # Get Custom Domain Configuration
+
+  Returns the custom domain configuration for a status page, including:
+  - Current domain (if set)
+  - Verification status
+  - SSL certificate status
+  - Required DNS records for verification
+
+  ## Response
+
+  - `200 OK` - Domain configuration
+  - `401 Unauthorized` - Not authenticated
+  - `404 Not Found` - Status page not found
+}

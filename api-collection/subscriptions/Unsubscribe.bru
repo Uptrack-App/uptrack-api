@@ -1,0 +1,36 @@
+meta {
+  name: Unsubscribe
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/subscribe/unsubscribe/{{unsubscribeToken}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Unsubscribe
+
+  Unsubscribe an email from status page notifications.
+  The unsubscribe token is included in the footer of notification emails.
+
+  ## URL Parameters
+
+  - `token` - Unsubscribe token from email footer
+
+  ## Response
+
+  ```json
+  {
+    "success": true,
+    "message": "Successfully unsubscribed"
+  }
+  ```
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+}

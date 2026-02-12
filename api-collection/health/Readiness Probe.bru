@@ -1,0 +1,35 @@
+meta {
+  name: Readiness Probe
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/ready
+  body: none
+  auth: none
+}
+
+docs {
+  # Readiness Probe (/ready)
+
+  Full health check for readiness probes.
+  Verifies all dependencies are healthy:
+  - Database connectivity (AppRepo)
+  - Background job system (Oban/ObanRepo)
+  - Idle prevention service
+
+  Use this for:
+  - Kubernetes readiness probes
+  - Load balancer health checks
+
+  ## Response
+
+  - `200 OK` - All dependencies healthy, ready to serve traffic
+  - `503 Service Unavailable` - One or more dependencies unhealthy
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq ready
+}

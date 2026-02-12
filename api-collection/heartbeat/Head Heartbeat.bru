@@ -1,0 +1,33 @@
+meta {
+  name: Head Heartbeat
+  type: http
+  seq: 3
+}
+
+head {
+  url: {{baseUrl}}/api/heartbeat/{{heartbeatToken}}
+  body: none
+  auth: none
+}
+
+docs {
+  # HEAD Heartbeat
+
+  Lightweight heartbeat using HEAD request.
+  Useful for simple cURL-based monitoring scripts.
+
+  ## Example cURL
+
+  ```bash
+  curl -I https://api.uptrack.dev/api/heartbeat/YOUR_TOKEN
+  ```
+
+  ## Response
+
+  - `200 OK` - Heartbeat recorded
+  - `404 Not Found` - Invalid token
+}
+
+assert {
+  res.status: eq 200
+}
