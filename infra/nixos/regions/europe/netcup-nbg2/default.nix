@@ -18,6 +18,7 @@ in {
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/uptrack-app.nix
     ../../../modules/services/cloudflared.nix
+    ../../../modules/services/node-exporter.nix
     ../../../modules/services/vmagent.nix
   ];
 

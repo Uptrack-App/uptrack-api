@@ -98,7 +98,7 @@ defmodule UptrackWeb.Router do
     delete "/logout", AuthController, :logout
   end
 
-  # Health check endpoints (for load balancers and Kubernetes)
+  # Health check endpoints (for load balancers and systemd)
   scope "/", UptrackWeb do
     pipe_through :health
 
@@ -107,6 +107,9 @@ defmodule UptrackWeb.Router do
 
     # Readiness probe - is the app ready to serve traffic?
     get "/ready", HealthController, :ready
+
+    # Convenience alias used by systemd postStart and external monitors
+    get "/api/health", HealthController, :ready
   end
 
   # API auth routes (no authentication required)

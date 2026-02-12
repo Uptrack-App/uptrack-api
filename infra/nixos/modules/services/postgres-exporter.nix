@@ -1,50 +1,32 @@
-# PostgreSQL Exporter - Prometheus metrics for PostgreSQL/Patroni/Citus
-# Exposes metrics on port 9187 for scraping by Prometheus/VictoriaMetrics
+# PostgreSQL Exporter - Prometheus metrics for PostgreSQL/Patroni
+# Exposes metrics on port 9187 for scraping by VictoriaMetrics
 #
 # Metrics include:
 # - PostgreSQL: connections, transactions, locks, replication lag
-# - Citus: distributed queries, shard stats, node health
-# - Custom: uptrack-specific queries
+# - Patroni: replication lag between primary and replicas
+# - Custom: table sizes for capacity planning
 #
 { config, pkgs, lib, ... }:
 
 let
   nodeName = config.networking.hostName;
 
+  # Tailscale IPs (must match patroni.nix)
+  nodes = {
+    nbg1 = "100.64.1.1";
+    nbg2 = "100.64.1.2";
+    nbg3 = "100.64.1.3";
+    nbg4 = "100.64.1.4";
+  };
+
+  nodeIP = if builtins.hasAttr nodeName nodes then nodes.${nodeName} else "127.0.0.1";
+
   # All Patroni nodes run the exporter
   patroniNodes = [ "nbg1" "nbg2" "nbg3" "nbg4" ];
   isExporterNode = builtins.elem nodeName patroniNodes;
 
-  # Custom queries for Citus and application metrics
+  # Custom queries for PostgreSQL metrics
   customQueries = pkgs.writeText "postgres-exporter-queries.yaml" ''
-    # Citus cluster health
-    citus_worker_nodes:
-      query: "SELECT nodename, nodeport, isactive::int as is_active FROM pg_dist_node"
-      metrics:
-        - nodename:
-            usage: "LABEL"
-            description: "Worker node hostname"
-        - nodeport:
-            usage: "LABEL"
-            description: "Worker node port"
-        - is_active:
-            usage: "GAUGE"
-            description: "Whether the worker node is active"
-
-    # Citus shard count per table
-    citus_shard_count:
-      query: |
-        SELECT logicalrelid::text as table_name, count(*) as shard_count
-        FROM pg_dist_shard
-        GROUP BY logicalrelid
-      metrics:
-        - table_name:
-            usage: "LABEL"
-            description: "Distributed table name"
-        - shard_count:
-            usage: "GAUGE"
-            description: "Number of shards for this table"
-
     # Patroni replication status
     patroni_replication_lag:
       query: |
@@ -132,20 +114,21 @@ in lib.mkIf isExporterNode {
   users.groups.postgres = {};
 
   # PostgreSQL exporter service
+  # Patroni runs PostgreSQL listening on the Tailscale IP only (no Unix socket).
+  # We connect via TCP with peer auth disabled (Patroni pg_hba allows local trust).
   services.prometheus.exporters.postgres = {
     enable = true;
     port = 9187;
 
-    # Connect to local Patroni-managed PostgreSQL
-    dataSourceName = "postgresql:///postgres?host=/run/patroni&user=postgres";
+    # Connect via TCP to Patroni-managed PostgreSQL on Tailscale IP
+    dataSourceName = "postgresql://postgres@${nodeIP}:5432/postgres?sslmode=disable";
 
-    # Use custom queries for Citus metrics
+    # Use custom queries for additional metrics
     extraFlags = [
       "--extend.query-path=${customQueries}"
-      "--auto-discover-databases"
     ];
 
-    # Run as postgres user to access socket
+    # Run as postgres user
     user = "postgres";
     group = "postgres";
   };
