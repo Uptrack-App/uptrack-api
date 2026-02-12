@@ -23,7 +23,6 @@ defmodule Uptrack.Health.IdlePrevention do
   @check_interval_ms 5 * 60 * 1000  # 5 minutes
   @cpu_work_duration_ms 30 * 1000   # 30 seconds of CPU work
   @memory_allocation_mb 100          # Allocate 100MB
-  @network_payload_kb 1024           # 1MB per request
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -114,10 +113,10 @@ defmodule Uptrack.Health.IdlePrevention do
 
     try do
       # Allocate memory
-      _data = allocate_memory(@memory_allocation_mb)
+      data = allocate_memory(@memory_allocation_mb)
 
-      # Do some work with it
-      _checksum = calculate_memory_checksum(_data)
+      # Do some work with it to prevent optimization
+      _checksum = calculate_memory_checksum(data)
 
       # Let it be garbage collected
       Map.put(stats, :memory_allocated_mb, @memory_allocation_mb)
@@ -163,7 +162,8 @@ defmodule Uptrack.Health.IdlePrevention do
   end
 
   defp fetch_health_data do
-    case Req.get("http://localhost:4000/api/health", receive_timeout: 25000) do
+    health_url = Application.get_env(:uptrack, :app_url, "http://localhost:4000") <> "/api/health"
+    case Req.get(health_url, receive_timeout: 25000) do
       {:ok, %Req.Response{status: status}} when status >= 200 and status < 300 ->
         {:ok, "health_check"}
 

@@ -99,6 +99,16 @@ defmodule Uptrack.Accounts.User do
     end
   end
 
+  @doc """
+  Returns a changeset for changing the user's password.
+  Validates the new password and hashes it.
+  """
+  def password_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:password])
+    |> validate_password(hash_password: true)
+  end
+
   def valid_password?(%__MODULE__{hashed_password: hashed_password}, password)
       when is_binary(hashed_password) and byte_size(password) > 0 do
     Bcrypt.verify_pass(password, hashed_password)

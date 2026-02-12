@@ -55,6 +55,7 @@ if config_env() == :prod do
   # Oban configuration with node identification
   config :uptrack, Oban,
     repo: Uptrack.AppRepo,
+    prefix: "oban",
     node: System.get_env("OBAN_NODE_NAME", "unknown-node"),
     queues: [
       checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "50")),
@@ -85,6 +86,23 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
+
+  config :uptrack, app_url: System.get_env("APP_URL") || "https://#{host}"
+  config :uptrack, frontend_url: System.get_env("FRONTEND_URL") || "https://#{host}"
+
+  # CORS allowed origins (comma-separated, e.g. "https://app.uptrack.dev,https://uptrack.dev")
+  if cors = System.get_env("CORS_ORIGINS") do
+    config :uptrack, cors_origins: String.split(cors, ",", trim: true)
+  end
+
+  # VictoriaMetrics cluster endpoints (nil = disabled)
+  if vminsert = System.get_env("VICTORIAMETRICS_VMINSERT_URL") do
+    config :uptrack, victoriametrics_vminsert_url: vminsert
+  end
+
+  if vmselect = System.get_env("VICTORIAMETRICS_VMSELECT_URL") do
+    config :uptrack, victoriametrics_vmselect_url: vmselect
+  end
 
   config :uptrack, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

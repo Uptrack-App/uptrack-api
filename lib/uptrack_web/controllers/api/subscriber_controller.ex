@@ -1,10 +1,33 @@
 defmodule UptrackWeb.Api.SubscriberController do
   use UptrackWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{StatusPage, StatusPageSubscriber}
   alias Uptrack.Mailer
   alias Uptrack.Emails.SubscriberEmail
+  alias UptrackWeb.Schemas.Subscriber, as: SubscriberSchemas
+
+  tags ["Subscriptions"]
+
+  operation :subscribe,
+    summary: "Subscribe to status page",
+    description: "Subscribe an email address to receive notifications about status page incidents.",
+    parameters: [
+      slug: [
+        in: :path,
+        type: :string,
+        required: true,
+        description: "Status page slug"
+      ]
+    ],
+    request_body: {"Subscription request", "application/json", SubscriberSchemas.SubscribeRequest},
+    responses: [
+      created: {"Subscription created", "application/json", SubscriberSchemas.SubscribeResponse},
+      ok: {"Already subscribed", "application/json", SubscriberSchemas.SubscribeResponse},
+      not_found: {"Status page not found", "application/json", SubscriberSchemas.ErrorResponse},
+      forbidden: {"Subscriptions disabled", "application/json", SubscriberSchemas.ErrorResponse}
+    ]
 
   @doc """
   Subscribe to a status page.
@@ -58,6 +81,22 @@ defmodule UptrackWeb.Api.SubscriberController do
     |> json(%{error: "Email is required"})
   end
 
+  operation :verify,
+    summary: "Verify email subscription",
+    description: "Verify an email subscription using the token sent via email.",
+    parameters: [
+      token: [
+        in: :path,
+        type: :string,
+        required: true,
+        description: "Verification token from email"
+      ]
+    ],
+    responses: [
+      ok: {"Email verified", "application/json", SubscriberSchemas.VerifyResponse},
+      not_found: {"Invalid token", "application/json", SubscriberSchemas.ErrorResponse}
+    ]
+
   @doc """
   Verify email subscription.
   GET /api/subscribe/verify/:token
@@ -88,6 +127,22 @@ defmodule UptrackWeb.Api.SubscriberController do
         end
     end
   end
+
+  operation :unsubscribe,
+    summary: "Unsubscribe from notifications",
+    description: "Unsubscribe an email from status page notifications.",
+    parameters: [
+      token: [
+        in: :path,
+        type: :string,
+        required: true,
+        description: "Unsubscribe token from email footer"
+      ]
+    ],
+    responses: [
+      ok: {"Unsubscribed", "application/json", SubscriberSchemas.UnsubscribeResponse},
+      not_found: {"Invalid token", "application/json", SubscriberSchemas.ErrorResponse}
+    ]
 
   @doc """
   Unsubscribe from notifications.

@@ -35,4 +35,28 @@ defmodule UptrackWeb.ConnCase do
     Uptrack.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  Sets up an authenticated API connection with a user and organization.
+
+  Returns the conn with the user_id in the session, plus the user and org.
+
+  ## Usage
+
+      setup %{conn: conn} do
+        %{conn: conn, user: user, org: org} = setup_api_auth(conn)
+        {:ok, conn: conn, user: user, org: org}
+      end
+  """
+  def setup_api_auth(conn) do
+    import Uptrack.MonitoringFixtures
+
+    {user, org} = user_with_org_fixture()
+
+    conn =
+      conn
+      |> Phoenix.ConnTest.init_test_session(user_id: user.id)
+
+    %{conn: conn, user: user, org: org}
+  end
 end

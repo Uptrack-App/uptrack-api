@@ -49,6 +49,7 @@ defmodule UptrackWeb.Endpoint do
 
   plug Plug.MethodOverride
   plug Plug.Head
+  plug UptrackWeb.Plugs.CORS
   plug Plug.Session, @session_options
   plug UptrackWeb.Router
 end

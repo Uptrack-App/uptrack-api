@@ -203,7 +203,7 @@ defmodule UptrackWeb.Api.StatusBadgeController do
     """
   end
 
-  defp for_the_badge(label, value, color, label_width, value_width, _total_width) do
+  defp for_the_badge(label, value, color, _label_width, _value_width, _total_width) do
     # for-the-badge style uses larger text and uppercase
     label = String.upcase(label)
     value = String.upcase(value)

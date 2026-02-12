@@ -288,12 +288,19 @@ defmodule UptrackWeb.StatusPageLive.FormComponent do
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
   defp monitor_status_badge(monitor) do
-    # TODO: Implement actual status checking
-    "badge-success"
+    cond do
+      monitor.status != "active" -> "badge-neutral"
+      Monitoring.get_active_incident(monitor.id) != nil -> "badge-error"
+      true -> "badge-success"
+    end
   end
 
   defp monitor_status_text(monitor) do
-    # TODO: Implement actual status checking
-    "Operational"
+    cond do
+      monitor.status == "paused" -> "Paused"
+      monitor.status == "disabled" -> "Disabled"
+      Monitoring.get_active_incident(monitor.id) != nil -> "Incident"
+      true -> "Operational"
+    end
   end
 end

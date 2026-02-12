@@ -15,6 +15,15 @@ defmodule Uptrack.Monitoring.StatusPage do
     field :description, :string
     field :is_public, :boolean, default: true
     field :custom_domain, :string
+    field :domain_verified, :boolean, default: false
+    field :domain_verification_token, :string
+    field :domain_verified_at, :utc_datetime
+
+    # SSL certificate status: pending, provisioning, active, expired, failed
+    field :ssl_status, :string, default: "pending"
+    field :ssl_expires_at, :utc_datetime
+    field :ssl_issued_at, :utc_datetime
+
     field :logo_url, :string
     field :theme_config, :map, default: %{}
 
@@ -62,11 +71,36 @@ defmodule Uptrack.Monitoring.StatusPage do
       message: "must contain only letters, numbers, and hyphens"
     )
     |> unique_constraint(:slug)
-    |> validate_url(:custom_domain)
+    |> validate_domain(:custom_domain)
     |> validate_url(:logo_url)
     |> maybe_generate_slug()
     |> maybe_hash_password()
+    |> maybe_reset_domain_verification()
     |> foreign_key_constraint(:organization_id)
+  end
+
+  @doc """
+  Changeset for setting domain verification status.
+  """
+  def domain_verification_changeset(status_page, attrs) do
+    status_page
+    |> cast(attrs, [:domain_verified, :domain_verification_token, :domain_verified_at])
+  end
+
+  @doc """
+  Changeset for updating SSL certificate status.
+  """
+  def ssl_changeset(status_page, attrs) do
+    status_page
+    |> cast(attrs, [:ssl_status, :ssl_expires_at, :ssl_issued_at])
+    |> validate_inclusion(:ssl_status, ~w(pending provisioning active expired failed))
+  end
+
+  @doc """
+  Generates a new domain verification token.
+  """
+  def generate_verification_token do
+    :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
   end
 
   @doc """
@@ -146,5 +180,52 @@ defmodule Uptrack.Monitoring.StatusPage do
           [{field, "must be a valid URL"}]
       end
     end)
+  end
+
+  defp validate_domain(changeset, field) do
+    validate_change(changeset, field, fn _, domain ->
+      case domain do
+        nil ->
+          []
+
+        "" ->
+          []
+
+        domain when is_binary(domain) ->
+          # Remove any protocol prefix if accidentally included
+          domain = domain
+            |> String.replace(~r/^https?:\/\//, "")
+            |> String.replace(~r/\/.*$/, "")
+            |> String.downcase()
+            |> String.trim()
+
+          # Validate domain format
+          domain_regex = ~r/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/
+
+          if String.match?(domain, domain_regex) do
+            []
+          else
+            [{field, "must be a valid domain name (e.g., status.example.com)"}]
+          end
+
+        _ ->
+          [{field, "must be a valid domain name"}]
+      end
+    end)
+  end
+
+  defp maybe_reset_domain_verification(changeset) do
+    # If custom_domain is changed, reset verification status
+    if get_change(changeset, :custom_domain) do
+      changeset
+      |> put_change(:domain_verified, false)
+      |> put_change(:domain_verified_at, nil)
+      |> put_change(:domain_verification_token, generate_verification_token())
+      |> put_change(:ssl_status, "pending")
+      |> put_change(:ssl_expires_at, nil)
+      |> put_change(:ssl_issued_at, nil)
+    else
+      changeset
+    end
   end
 end

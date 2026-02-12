@@ -48,7 +48,14 @@ defmodule Uptrack.Monitoring.MonitorCheck do
   def create_changeset(attrs) do
     %__MODULE__{}
     |> changeset(attrs)
-    |> put_change(:checked_at, DateTime.utc_now())
+    |> maybe_set_checked_at()
+  end
+
+  defp maybe_set_checked_at(changeset) do
+    case get_change(changeset, :checked_at) do
+      nil -> put_change(changeset, :checked_at, DateTime.utc_now() |> DateTime.truncate(:second))
+      _ -> changeset
+    end
   end
 
   def statuses, do: @statuses

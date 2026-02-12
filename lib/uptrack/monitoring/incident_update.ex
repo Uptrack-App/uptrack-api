@@ -34,7 +34,7 @@ defmodule Uptrack.Monitoring.IncidentUpdate do
 
   defp maybe_set_posted_at(changeset) do
     case get_change(changeset, :posted_at) do
-      nil -> put_change(changeset, :posted_at, DateTime.utc_now())
+      nil -> put_change(changeset, :posted_at, DateTime.utc_now() |> DateTime.truncate(:second))
       _ -> changeset
     end
   end

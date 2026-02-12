@@ -91,18 +91,14 @@ defmodule Uptrack.Monitoring.Scheduler do
       {:error, :not_found}
   end
 
-  @doc """
-  Gets all active monitors from all users.
-  """
+  # Gets all active monitors from all users.
   defp get_active_monitors do
     # This is a simplified version - in a real app you'd want to batch this
     # or use a more efficient query
     Monitoring.get_all_active_monitors()
   end
 
-  @doc """
-  Determines if a monitor should be checked based on its interval and last check time.
-  """
+  # Determines if a monitor should be checked based on its interval and last check time.
   defp should_check_monitor?(monitor) do
     case Monitoring.get_latest_check(monitor.id) do
       nil ->
@@ -116,9 +112,7 @@ defmodule Uptrack.Monitoring.Scheduler do
     end
   end
 
-  @doc """
-  Schedules the next monitoring check.
-  """
+  # Schedules the next monitoring check.
   defp schedule_next_check do
     Process.send_after(self(), :check_monitors, @check_interval)
   end

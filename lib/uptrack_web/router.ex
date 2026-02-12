@@ -12,12 +12,20 @@ defmodule UptrackWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug UptrackWeb.Plugs.RateLimit, max_requests: 100, interval_ms: 60_000, bucket: "api"
   end
 
   pipeline :api_authenticated do
     plug :accepts, ["json"]
     plug :fetch_session
     plug UptrackWeb.Plugs.ApiAuth
+    plug UptrackWeb.Plugs.RateLimit, max_requests: 200, interval_ms: 60_000, by: :user, bucket: "api_auth"
+  end
+
+  # Higher rate limit for heartbeat endpoints (services may ping frequently)
+  pipeline :api_heartbeat do
+    plug :accepts, ["json"]
+    plug UptrackWeb.Plugs.RateLimit, max_requests: 1000, interval_ms: 60_000, by: :token, bucket: "heartbeat"
   end
 
   pipeline :health do
@@ -90,16 +98,35 @@ defmodule UptrackWeb.Router do
     delete "/logout", AuthController, :logout
   end
 
-  # Health check endpoint (for load balancers)
+  # Health check endpoints (for load balancers and Kubernetes)
   scope "/", UptrackWeb do
     pipe_through :health
 
+    # Liveness probe - is the app running?
     get "/healthz", HealthController, :show
+
+    # Readiness probe - is the app ready to serve traffic?
+    get "/ready", HealthController, :ready
+  end
+
+  # API auth routes (no authentication required)
+  scope "/api/auth", UptrackWeb.Api do
+    pipe_through [:api, :fetch_session]
+
+    post "/register", AuthController, :register
+    post "/login", AuthController, :login
   end
 
   # API routes for TanStack Start frontend
   scope "/api", UptrackWeb.Api do
     pipe_through :api_authenticated
+
+    # Auth management (authenticated)
+    get "/auth/me", AuthController, :me
+    post "/auth/logout", AuthController, :logout
+    patch "/auth/profile", AuthController, :update_profile
+    patch "/auth/password", AuthController, :change_password
+    delete "/auth/account", AuthController, :delete_account
 
     # Team management
     scope "/organizations/:organization_id" do
@@ -111,9 +138,44 @@ defmodule UptrackWeb.Router do
       resources "/audit-logs", AuditLogController, only: [:index]
     end
 
+    # API key management
+    resources "/api-keys", ApiKeyController, only: [:index, :create, :delete]
+    post "/api-keys/:id/revoke", ApiKeyController, :revoke
+
     # Monitor API
     post "/monitors/smart-defaults", MonitorController, :smart_defaults
     resources "/monitors", MonitorController, only: [:index, :create, :show, :update, :delete]
+    get "/monitors/:monitor_id/checks", MonitorController, :checks
+
+    # Alert channel API
+    resources "/alert-channels", AlertChannelController, only: [:index, :create, :show, :update, :delete]
+    post "/alert-channels/:id/test", AlertChannelController, :test
+
+    # Incident API
+    resources "/incidents", IncidentController, only: [:index, :show, :create, :update] do
+      post "/updates", IncidentController, :create_update
+    end
+
+    # Status page API
+    resources "/status-pages", StatusPageController, only: [:index, :create, :show, :update, :delete]
+
+    # Dashboard stats API
+    get "/dashboard/stats", DashboardController, :stats
+
+    # Analytics API
+    get "/analytics/dashboard", AnalyticsController, :dashboard
+    get "/analytics/monitors/:monitor_id", AnalyticsController, :monitor_stats
+    get "/analytics/organization/trends", AnalyticsController, :organization_trends
+
+    # Notification delivery history
+    get "/notification-deliveries", NotificationDeliveryController, :index
+    get "/notification-deliveries/stats", NotificationDeliveryController, :stats
+
+    # Custom domain management
+    get "/status-pages/:status_page_id/domain", DomainController, :show
+    put "/status-pages/:status_page_id/domain", DomainController, :update
+    post "/status-pages/:status_page_id/domain/verify", DomainController, :verify
+    delete "/status-pages/:status_page_id/domain", DomainController, :delete
 
     # Integration OAuth initiation (requires auth)
     get "/integrations/slack/auth", IntegrationController, :slack_auth
@@ -128,17 +190,27 @@ defmodule UptrackWeb.Router do
     get "/discord/callback", IntegrationController, :discord_callback
   end
 
+  # Heartbeat endpoints (higher rate limit for services)
+  scope "/api", UptrackWeb.Api do
+    pipe_through :api_heartbeat
+
+    post "/heartbeat/:token", HeartbeatController, :ping
+    head "/heartbeat/:token", HeartbeatController, :head_ping
+  end
+
   # Public API routes (no authentication required)
   scope "/api", UptrackWeb.Api do
     pipe_through :api
+
+    # OpenAPI specification
+    get "/openapi", OpenApiController, :spec
 
     # Invitation acceptance (token-based, may or may not be authenticated)
     get "/invitations/:token", InvitationController, :show_by_token
     post "/invitations/:token/accept", InvitationController, :accept
 
-    # Heartbeat receiver (passive monitoring)
-    post "/heartbeat/:token", HeartbeatController, :ping
-    head "/heartbeat/:token", HeartbeatController, :head_ping
+    # Public status page API (no auth required)
+    get "/status/:slug", StatusPageController, :show_public
 
     # Status page badges (public, no auth required)
     get "/badge/:slug", StatusBadgeController, :show
@@ -155,7 +227,7 @@ defmodule UptrackWeb.Router do
     get "/subscribe/unsubscribe/:token", SubscriberController, :unsubscribe
   end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # Enable LiveDashboard, Swoosh mailbox preview, and SwaggerUI in development
   if Application.compile_env(:uptrack, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
@@ -169,6 +241,13 @@ defmodule UptrackWeb.Router do
 
       live_dashboard "/dashboard", metrics: UptrackWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+
+    # Swagger UI for API documentation
+    scope "/api" do
+      pipe_through :browser
+
+      get "/docs", OpenApiSpex.Plug.SwaggerUI, path: "/api/openapi"
     end
   end
 end

@@ -11,7 +11,8 @@ config :uptrack, Uptrack.AppRepo,
   password: "postgres",
   hostname: "localhost",
   database: "uptrack_test#{System.get_env("MIX_TEST_PARTITION")}",
-  parameters: [search_path: "app,public"],
+  # public first so Ecto finds schema_migrations in public (not the app schema copy)
+  parameters: [search_path: "public,app"],
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
@@ -45,6 +46,9 @@ config :uptrack, Uptrack.Mailer, adapter: Swoosh.Adapters.Test
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
+
+# Disable Oban queues and plugins in test, stub job insertion
+config :uptrack, Oban, testing: :manual, queues: false, plugins: false
 
 # Print only warnings and errors during test
 config :logger, level: :warning

@@ -1,13 +1,16 @@
 defmodule UptrackWeb.AuthController do
   use UptrackWeb, :controller
   alias Uptrack.Accounts
-  alias Uptrack.Accounts.User
 
+  # The request action is called before Ueberauth redirects to the OAuth provider.
+  # Ueberauth handles the redirect automatically via the plug, so we just return the conn.
   def request(conn, _params) do
-    redirect(conn, external: Ueberauth.request_url(:github, conn))
+    conn
   end
 
-  def callback(%{assigns: %{ueberauth_auth: auth}} = conn, params) do
+  def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
+    frontend = frontend_url()
+
     case auth_params_from_ueberauth(auth) do
       {:ok, user_params} ->
         case Accounts.get_user_by_email(user_params.email) do
@@ -16,40 +19,38 @@ defmodule UptrackWeb.AuthController do
               {:ok, user} ->
                 conn
                 |> put_session(:user_id, user.id)
-                |> put_flash(:info, "Successfully signed up!")
-                |> redirect(to: ~p"/dashboard")
+                |> redirect(external: "#{frontend}/dashboard")
 
               {:error, _step, _changeset, _changes} ->
                 conn
-                |> put_flash(:error, "Something went wrong")
-                |> redirect(to: ~p"/auth/signup")
+                |> redirect(external: "#{frontend}/login?error=signup_failed")
             end
 
           user ->
             conn
             |> put_session(:user_id, user.id)
-            |> put_flash(:info, "Welcome back!")
-            |> redirect(to: ~p"/dashboard")
+            |> redirect(external: "#{frontend}/dashboard")
         end
 
-      {:error, reason} ->
+      {:error, _reason} ->
         conn
-        |> put_flash(:error, reason)
-        |> redirect(to: ~p"/auth/signup")
+        |> redirect(external: "#{frontend}/login?error=no_email")
     end
   end
 
   def callback(conn, _params) do
+    frontend = frontend_url()
+
     conn
-    |> put_flash(:error, "Authentication failed")
-    |> redirect(to: ~p"/auth/signup")
+    |> redirect(external: "#{frontend}/login?error=auth_failed")
   end
 
   def logout(conn, _params) do
+    frontend = frontend_url()
+
     conn
     |> clear_session()
-    |> put_flash(:info, "Successfully logged out")
-    |> redirect(to: ~p"/")
+    |> redirect(external: frontend)
   end
 
   defp auth_params_from_ueberauth(%{provider: provider, info: info, uid: uid}) do
@@ -70,4 +71,8 @@ defmodule UptrackWeb.AuthController do
   end
 
   defp auth_params_from_ueberauth(_), do: {:error, "Invalid authentication data"}
+
+  defp frontend_url do
+    Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
+  end
 end

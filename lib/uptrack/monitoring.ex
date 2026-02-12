@@ -5,7 +5,6 @@ defmodule Uptrack.Monitoring do
 
   import Ecto.Query, warn: false
   alias Uptrack.AppRepo
-  alias Uptrack.ResultsRepo
 
   alias Uptrack.Monitoring.{
     Monitor,
@@ -75,25 +74,44 @@ defmodule Uptrack.Monitoring do
   Creates a monitor.
   """
   def create_monitor(attrs) do
-    %Monitor{}
-    |> Monitor.create_changeset(attrs)
-    |> AppRepo.insert()
+    result =
+      %Monitor{}
+      |> Monitor.create_changeset(attrs)
+      |> AppRepo.insert()
+
+    with {:ok, monitor} <- result do
+      invalidate_org_cache(monitor.organization_id)
+      {:ok, monitor}
+    end
   end
 
   @doc """
   Updates a monitor.
   """
   def update_monitor(%Monitor{} = monitor, attrs) do
-    monitor
-    |> Monitor.changeset(attrs)
-    |> AppRepo.update()
+    result =
+      monitor
+      |> Monitor.changeset(attrs)
+      |> AppRepo.update()
+
+    with {:ok, updated} <- result do
+      invalidate_org_cache(updated.organization_id)
+      invalidate_monitor_cache(updated.id)
+      {:ok, updated}
+    end
   end
 
   @doc """
   Deletes a monitor.
   """
   def delete_monitor(%Monitor{} = monitor) do
-    AppRepo.delete(monitor)
+    result = AppRepo.delete(monitor)
+
+    with {:ok, deleted} <- result do
+      invalidate_org_cache(deleted.organization_id)
+      invalidate_monitor_cache(deleted.id)
+      {:ok, deleted}
+    end
   end
 
   @doc """
@@ -166,17 +184,31 @@ defmodule Uptrack.Monitoring do
   Creates an incident.
   """
   def create_incident(attrs) do
-    Incident.create_changeset(attrs)
-    |> AppRepo.insert()
+    result =
+      Incident.create_changeset(attrs)
+      |> AppRepo.insert()
+
+    with {:ok, incident} <- result do
+      invalidate_org_cache(incident.organization_id)
+      invalidate_monitor_cache(incident.monitor_id)
+      {:ok, incident}
+    end
   end
 
   @doc """
   Resolves an incident.
   """
   def resolve_incident(%Incident{} = incident, attrs \\ %{}) do
-    incident
-    |> Incident.resolve_changeset(attrs)
-    |> AppRepo.update()
+    result =
+      incident
+      |> Incident.resolve_changeset(attrs)
+      |> AppRepo.update()
+
+    with {:ok, resolved} <- result do
+      invalidate_org_cache(resolved.organization_id)
+      invalidate_monitor_cache(resolved.monitor_id)
+      {:ok, resolved}
+    end
   end
 
   @doc """
@@ -322,7 +354,21 @@ defmodule Uptrack.Monitoring do
   @doc """
   Gets a single status page.
   """
-  def get_status_page!(id), do: AppRepo.get!(StatusPage, id)
+  def get_status_page!(id) do
+    StatusPage
+    |> preload(status_page_monitors: :monitor)
+    |> AppRepo.get!(id)
+  end
+
+  @doc """
+  Gets a status page for an organization.
+  Returns nil if not found or doesn't belong to the organization.
+  """
+  def get_organization_status_page(organization_id, status_page_id) do
+    StatusPage
+    |> where([sp], sp.id == ^status_page_id and sp.organization_id == ^organization_id)
+    |> AppRepo.one()
+  end
 
   @doc """
   Creates a status page.
@@ -376,6 +422,34 @@ defmodule Uptrack.Monitoring do
     StatusPageMonitor
     |> where([spm], spm.status_page_id == ^status_page.id)
     |> AppRepo.all()
+  end
+
+  @doc """
+  Syncs the monitors assigned to a status page.
+  Removes monitors not in the list and adds new ones.
+  """
+  def sync_status_page_monitors(%StatusPage{} = status_page, monitor_ids) when is_list(monitor_ids) do
+    current_ids =
+      StatusPageMonitor
+      |> where([spm], spm.status_page_id == ^status_page.id)
+      |> select([spm], spm.monitor_id)
+      |> AppRepo.all()
+      |> Enum.map(&to_string/1)
+
+    monitor_ids = Enum.map(monitor_ids, &to_string/1)
+
+    to_remove = current_ids -- monitor_ids
+    to_add = monitor_ids -- current_ids
+
+    for mid <- to_remove, do: remove_monitor_from_status_page(status_page.id, mid)
+
+    to_add
+    |> Enum.with_index()
+    |> Enum.each(fn {mid, idx} ->
+      add_monitor_to_status_page(status_page.id, mid, %{sort_order: length(current_ids) + idx})
+    end)
+
+    :ok
   end
 
   @doc """
@@ -650,32 +724,36 @@ defmodule Uptrack.Monitoring do
   Returns dashboard stats for an organization.
   """
   def get_dashboard_stats(organization_id) do
-    total_monitors =
-      Monitor
-      |> where([m], m.organization_id == ^organization_id)
-      |> AppRepo.aggregate(:count, :id)
+    alias Uptrack.Cache
 
-    active_monitors =
-      Monitor
-      |> where([m], m.organization_id == ^organization_id and m.status == "active")
-      |> AppRepo.aggregate(:count, :id)
+    Cache.fetch(Cache.dashboard_stats_key(organization_id), [ttl: Cache.ttl_short()], fn ->
+      total_monitors =
+        Monitor
+        |> where([m], m.organization_id == ^organization_id)
+        |> AppRepo.aggregate(:count, :id)
 
-    ongoing_incidents =
-      Incident
-      |> where([i], i.organization_id == ^organization_id and i.status == "ongoing")
-      |> AppRepo.aggregate(:count, :id)
+      active_monitors =
+        Monitor
+        |> where([m], m.organization_id == ^organization_id and m.status == "active")
+        |> AppRepo.aggregate(:count, :id)
 
-    recent_incidents_count =
-      Incident
-      |> where([i], i.organization_id == ^organization_id and i.started_at >= ago(7, "day"))
-      |> AppRepo.aggregate(:count, :id)
+      ongoing_incidents =
+        Incident
+        |> where([i], i.organization_id == ^organization_id and i.status == "ongoing")
+        |> AppRepo.aggregate(:count, :id)
 
-    %{
-      total_monitors: total_monitors,
-      active_monitors: active_monitors,
-      ongoing_incidents: ongoing_incidents,
-      recent_incidents: recent_incidents_count
-    }
+      recent_incidents_count =
+        Incident
+        |> where([i], i.organization_id == ^organization_id and i.started_at >= ago(7, "day"))
+        |> AppRepo.aggregate(:count, :id)
+
+      %{
+        total_monitors: total_monitors,
+        active_monitors: active_monitors,
+        ongoing_incidents: ongoing_incidents,
+        recent_incidents: recent_incidents_count
+      }
+    end)
   end
 
   @doc """
@@ -848,5 +926,19 @@ defmodule Uptrack.Monitoring do
       %{total: 0} -> 100.0
       %{total: total, up: up} -> (up / total * 100) |> Float.round(2)
     end
+  end
+
+  # Cache invalidation helpers
+
+  defp invalidate_org_cache(org_id) do
+    alias Uptrack.Cache
+    Cache.invalidate(Cache.dashboard_stats_key(org_id))
+    Cache.invalidate_prefix("dashboard_analytics:#{org_id}:")
+    Cache.invalidate_prefix("org_trends:#{org_id}:")
+  end
+
+  defp invalidate_monitor_cache(monitor_id) do
+    alias Uptrack.Cache
+    Cache.invalidate_prefix("monitor_analytics:#{monitor_id}:")
   end
 end

@@ -53,8 +53,8 @@ let
   # All nodes that need secrets
   allNodes = adminKeys ++ nbgNodes ++ indiaRworkerKey;
 
-  # API nodes only (nbg1 + nbg4 = coordinators with Phoenix API)
-  apiNodes = adminKeys ++ nbg1Key ++ nbg4Key;
+  # API nodes only (nbg1 + nbg2 = coordinators with Phoenix API)
+  apiNodes = adminKeys ++ nbg1Key ++ nbg2Key;
 
 in {
   # ========================================
@@ -98,9 +98,10 @@ in {
   "uptrack-app-password.age".publicKeys = adminKeys ++ nbgNodes;
 
   # ========================================
-  # API NODE SECRETS (nbg1, nbg4 only)
+  # API NODE SECRETS (nbg1 + nbg2)
   # ========================================
 
-  # Secrets only needed by Phoenix API nodes
-  # "api-secrets.age".publicKeys = apiNodes;
+  # Cloudflare Tunnel token for public API access
+  # Create with: agenix -e cloudflared-tunnel-token.age
+  "cloudflared-tunnel-token.age".publicKeys = apiNodes;
 }

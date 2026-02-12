@@ -52,11 +52,14 @@ defmodule Uptrack.Monitoring.AlertChannel do
           add_error(changeset, :config, "webhook_url must be a valid Slack webhook URL")
         end
 
-      {"webhook", %{"url" => url}} when is_binary(url) ->
+      {"webhook", %{"url" => url} = webhook_config} when is_binary(url) ->
         case URI.parse(url) do
           %URI{scheme: scheme, host: host}
           when scheme in ["http", "https"] and not is_nil(host) ->
+            # Validate optional secret and headers
             changeset
+            |> validate_webhook_secret(webhook_config["secret"])
+            |> validate_webhook_headers(webhook_config["headers"])
 
           _ ->
             add_error(changeset, :config, "url must be a valid HTTP or HTTPS URL")
@@ -96,4 +99,34 @@ defmodule Uptrack.Monitoring.AlertChannel do
   end
 
   def types, do: @types
+
+  # Webhook-specific validations
+
+  defp validate_webhook_secret(changeset, nil), do: changeset
+  defp validate_webhook_secret(changeset, secret) when is_binary(secret) do
+    if String.length(secret) < 16 do
+      add_error(changeset, :config, "webhook secret must be at least 16 characters for security")
+    else
+      changeset
+    end
+  end
+  defp validate_webhook_secret(changeset, _), do: changeset
+
+  defp validate_webhook_headers(changeset, nil), do: changeset
+  defp validate_webhook_headers(changeset, headers) when is_map(headers) do
+    # Validate headers is a map of string keys to string values
+    invalid_headers =
+      Enum.filter(headers, fn {key, value} ->
+        not (is_binary(key) and is_binary(value))
+      end)
+
+    if Enum.empty?(invalid_headers) do
+      changeset
+    else
+      add_error(changeset, :config, "webhook headers must be a map of string keys to string values")
+    end
+  end
+  defp validate_webhook_headers(changeset, _) do
+    add_error(changeset, :config, "webhook headers must be a map")
+  end
 end

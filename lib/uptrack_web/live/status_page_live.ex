@@ -345,14 +345,7 @@ defmodule UptrackWeb.StatusPageLive do
             </div>
             
             <div class="mockup-code">
-              <pre><code id="embed-code" class="text-sm">{"<iframe 
-  src=\"#{get_widget_url(@status_page.slug, @selected_widget_type, @selected_theme)}\"
-  width=\"#{get_widget_width(@selected_widget_type)}\" 
-  height=\"#{get_widget_height(@selected_widget_type)}\"
-  frameborder=\"0\"
-  scrolling=\"no\"
-  title=\"#{@status_page.name} Status Widget\">
-</iframe>"}</code></pre>
+              <pre><code id="embed-code" class="text-sm"><%= get_embed_code(@status_page, @selected_widget_type, @selected_theme) %></code></pre>
             </div>
             
             <div class="mt-4">
@@ -432,7 +425,7 @@ defmodule UptrackWeb.StatusPageLive do
   end
   
   defp get_widget_url(slug, type, theme) do
-    base_url = "http://localhost:4000"  # TODO: Use proper domain in production
+    base_url = Application.get_env(:uptrack, :app_url, "http://localhost:4000")
     "#{base_url}/widget/#{slug}?type=#{type}&theme=#{theme}"
   end
   
@@ -445,6 +438,17 @@ defmodule UptrackWeb.StatusPageLive do
   defp get_widget_height("compact"), do: "120"
   defp get_widget_height("summary"), do: "300"
   defp get_widget_height("detailed"), do: "400"
+
+  defp get_embed_code(status_page, widget_type, theme) do
+    url = get_widget_url(status_page.slug, widget_type, theme)
+    width = get_widget_width(widget_type)
+    height = get_widget_height(widget_type)
+
+    """
+    <iframe src="#{url}" width="#{width}" height="#{height}" frameborder="0" scrolling="no" title="#{status_page.name} Status Widget"></iframe>
+    """
+    |> String.trim()
+  end
 
   defp format_date(datetime) do
     datetime

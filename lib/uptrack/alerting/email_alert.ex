@@ -5,6 +5,8 @@ defmodule Uptrack.Alerting.EmailAlert do
 
   import Swoosh.Email
   alias Uptrack.Mailer
+  alias Uptrack.AppRepo
+  alias Uptrack.Alerting.PendingNotification
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   alias Uptrack.Accounts.User
   require Logger
@@ -16,7 +18,7 @@ defmodule Uptrack.Alerting.EmailAlert do
         %AlertChannel{} = channel,
         %Incident{} = incident,
         %Monitor{} = monitor,
-        %User{} = user \\ nil
+        user \\ nil
       ) do
     email_config = channel.config
     recipient_email = email_config["email"]
@@ -30,7 +32,7 @@ defmodule Uptrack.Alerting.EmailAlert do
           "Delaying incident alert for user #{user.id} due to notification frequency settings"
         )
 
-        # TODO: Implement notification queuing for batched delivery
+        queue_pending_notification(user, incident, monitor, recipient_email, "incident_created")
         {:delayed, recipient_email}
       else
         email =
@@ -67,7 +69,7 @@ defmodule Uptrack.Alerting.EmailAlert do
         %AlertChannel{} = channel,
         %Incident{} = incident,
         %Monitor{} = monitor,
-        %User{} = user \\ nil
+        user \\ nil
       ) do
     email_config = channel.config
     recipient_email = email_config["email"]
@@ -81,7 +83,7 @@ defmodule Uptrack.Alerting.EmailAlert do
           "Delaying resolution alert for user #{user.id} due to notification frequency settings"
         )
 
-        # TODO: Implement notification queuing for batched delivery
+        queue_pending_notification(user, incident, monitor, recipient_email, "incident_resolved")
         {:delayed, recipient_email}
       else
         duration_text = format_duration(incident.duration)
@@ -237,7 +239,7 @@ defmodule Uptrack.Alerting.EmailAlert do
     end}
                 </table>
 
-                <a href="http://localhost:4000/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
+                <a href="#{app_url()}/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
 
                 <p style="margin-top: 24px; color: #666;">
                     This is an automated alert from Uptrack Monitoring. You'll receive another notification when the service is restored.
@@ -265,7 +267,7 @@ defmodule Uptrack.Alerting.EmailAlert do
     Incident Started: #{Calendar.strftime(incident.started_at, "%B %d, %Y at %I:%M %p UTC")}
     #{if incident.cause, do: "Cause: #{incident.cause}", else: ""}
 
-    You can view more details at: http://localhost:4000/dashboard/monitors/#{monitor.id}
+    You can view more details at: #{app_url()}/dashboard/monitors/#{monitor.id}
 
     This is an automated alert from Uptrack Monitoring. You'll receive another notification when the service is restored.
 
@@ -330,7 +332,7 @@ defmodule Uptrack.Alerting.EmailAlert do
                     </tr>
                 </table>
 
-                <a href="http://localhost:4000/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
+                <a href="#{app_url()}/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
 
                 <p style="margin-top: 24px; color: #666;">
                     This incident has been automatically resolved. Thank you for your patience.
@@ -359,7 +361,7 @@ defmodule Uptrack.Alerting.EmailAlert do
     Resolved: #{Calendar.strftime(incident.resolved_at, "%B %d, %Y at %I:%M %p UTC")}
     Total Downtime: #{duration_text}
 
-    You can view more details at: http://localhost:4000/dashboard/monitors/#{monitor.id}
+    You can view more details at: #{app_url()}/dashboard/monitors/#{monitor.id}
 
     This incident has been automatically resolved. Thank you for your patience.
 
@@ -384,6 +386,8 @@ defmodule Uptrack.Alerting.EmailAlert do
     end
   end
 
+  defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
+
   defp format_duration(nil), do: "Unknown"
 
   defp format_duration(seconds) when is_integer(seconds) do
@@ -400,6 +404,26 @@ defmodule Uptrack.Alerting.EmailAlert do
         hours = div(seconds, 3600)
         remaining_minutes = div(rem(seconds, 3600), 60)
         "#{hours} hours, #{remaining_minutes} minutes"
+    end
+  end
+
+  defp queue_pending_notification(user, incident, monitor, recipient_email, event_type) do
+    %PendingNotification{}
+    |> PendingNotification.changeset(%{
+      event_type: event_type,
+      recipient_email: recipient_email,
+      incident_id: incident.id,
+      monitor_id: monitor.id,
+      user_id: user.id,
+      organization_id: monitor.organization_id
+    })
+    |> AppRepo.insert()
+    |> case do
+      {:ok, _} ->
+        Logger.info("Queued pending #{event_type} notification for #{recipient_email}")
+
+      {:error, reason} ->
+        Logger.error("Failed to queue pending notification: #{inspect(reason)}")
     end
   end
 end

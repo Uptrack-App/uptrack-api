@@ -14,6 +14,8 @@ defmodule Uptrack.Application do
       Uptrack.ObanRepo,
       {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Uptrack.PubSub},
+      # In-app cache for expensive queries
+      {Cachex, name: :uptrack_cache},
       # Oban job processing
       {Oban, Application.fetch_env!(:uptrack, Oban)},
       # Task supervisor for monitoring checks
@@ -22,7 +24,6 @@ defmodule Uptrack.Application do
       Uptrack.Health.IdlePrevention,
       # OAuth state storage for Slack/Discord integrations
       Uptrack.Integrations.OAuthState,
-      # TODO: Add VictoriaMetrics client
       # Start to serve requests, typically the last entry
       UptrackWeb.Endpoint
     ]

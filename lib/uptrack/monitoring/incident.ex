@@ -52,15 +52,22 @@ defmodule Uptrack.Monitoring.Incident do
 
   @doc false
   def create_changeset(attrs) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    # Normalize all keys to strings to avoid Ecto mixed-key errors
+    normalized = Map.new(attrs, fn {k, v} -> {to_string(k), v} end)
+
+    defaults = %{"started_at" => now, "status" => "ongoing"}
+
+    merged = Map.merge(defaults, normalized)
+
     %__MODULE__{}
-    |> changeset(attrs)
-    |> put_change(:started_at, DateTime.utc_now())
-    |> put_change(:status, "ongoing")
+    |> changeset(merged)
   end
 
   @doc false
   def resolve_changeset(incident, attrs \\ %{}) do
-    resolved_at = DateTime.utc_now()
+    resolved_at = DateTime.utc_now() |> DateTime.truncate(:second)
 
     duration =
       case incident.started_at do
