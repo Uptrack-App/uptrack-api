@@ -53,6 +53,8 @@ in {
     poolSize = 10;
     obanPoolSize = 20;
     runMigrations = true;
+    nodeRegion = "europe";
+    nodeProvider = "netcup";
     environmentFile = config.age.secrets.uptrack-env.path;
   };
 
