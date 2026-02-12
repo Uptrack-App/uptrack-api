@@ -79,6 +79,18 @@ in
       default = false;
       description = "Enable periodic health check to prevent idle shutdown (Oracle Always Free)";
     };
+
+    nodeRegion = mkOption {
+      type = types.str;
+      default = "unknown";
+      description = "Region identifier for health endpoint (e.g. europe, asia)";
+    };
+
+    nodeProvider = mkOption {
+      type = types.str;
+      default = "unknown";
+      description = "Infrastructure provider (e.g. netcup, oracle)";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -139,6 +151,9 @@ in
         OBAN_POOL_SIZE = toString cfg.obanPoolSize;
         RELEASE_TMP = "${cfg.workDir}/tmp";
         RELEASE_COOKIE = "uptrack_prod_cookie";
+        NODE_NAME = config.networking.hostName;
+        NODE_REGION = cfg.nodeRegion;
+        NODE_PROVIDER = cfg.nodeProvider;
       };
 
       serviceConfig = {

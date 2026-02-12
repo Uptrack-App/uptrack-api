@@ -98,7 +98,7 @@ defmodule UptrackWeb.HealthController do
       version: app_version(),
       checks: checks,
       node_region: System.get_env("NODE_REGION", "unknown"),
-      node_name: System.get_env("OBAN_NODE_NAME", "unknown"),
+      node_name: System.get_env("NODE_NAME", "unknown"),
       timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
     })
   end
@@ -182,7 +182,7 @@ defmodule UptrackWeb.HealthController.ReadinessResponse do
         }
       },
       node_region: %Schema{type: :string, description: "Node region"},
-      node_name: %Schema{type: :string, description: "Oban node name"},
+      node_name: %Schema{type: :string, description: "Node hostname"},
       timestamp: %Schema{type: :string, format: :"date-time", description: "Check timestamp"}
     }
   })
