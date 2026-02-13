@@ -1,13 +1,12 @@
 defmodule UptrackWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :uptrack
 
-  # The session will be stored in the cookie and signed,
-  # this means its contents can be read but not tampered with.
-  # Set :encryption_salt if you would also like to encrypt it.
+  # The session will be stored in the cookie, signed and encrypted.
   @session_options [
     store: :cookie,
     key: "_uptrack_key",
     signing_salt: "UTz/hMyF",
+    encryption_salt: "x8Rk3nPq",
     same_site: "Lax"
   ]
 
@@ -33,11 +32,11 @@ defmodule UptrackWeb.Endpoint do
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :uptrack
-  end
 
-  plug Phoenix.LiveDashboard.RequestLogger,
-    param_key: "request_logger",
-    cookie_key: "request_logger"
+    plug Phoenix.LiveDashboard.RequestLogger,
+      param_key: "request_logger",
+      cookie_key: "request_logger"
+  end
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]

@@ -3,6 +3,11 @@
 #     mix run priv/repo/seeds.exs
 #
 # Idempotent: safe to run multiple times (checks for existing data first).
+# Skipped in test environment to avoid interfering with test isolation.
+
+if Mix.env() == :test do
+  IO.puts("Skipping seeds in test environment.")
+else
 
 alias Uptrack.{Accounts, Organizations, Monitoring, Alerting}
 alias Uptrack.AppRepo
@@ -51,7 +56,7 @@ if Organizations.list_organizations() == [] do
         name: "API Server",
         url: "https://api.example.com/health",
         monitor_type: "http",
-        interval: 60,
+        interval: 120,
         timeout: 10,
         status: "active",
         description: "REST API health endpoint",
@@ -175,3 +180,5 @@ if Organizations.list_organizations() == [] do
 else
   IO.puts("Database already seeded, skipping.")
 end
+
+end # Mix.env() != :test guard
