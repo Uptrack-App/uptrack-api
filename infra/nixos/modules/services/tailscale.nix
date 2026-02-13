@@ -235,8 +235,7 @@ in {
         RemainAfterExit = true;
         ExecStart = "${pkgs.tailscale}/bin/tailscale serve --bg tcp:${toString cfg.servePort}";
         ExecStop = "${pkgs.tailscale}/bin/tailscale serve off";
-        Restart = "on-failure";
-        RestartSec = "10s";
+        TimeoutStartSec = "30s";
       };
 
       # Wait for Tailscale to be fully connected before serving
