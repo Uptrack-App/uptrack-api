@@ -41,8 +41,9 @@ in {
     hostname = "nbg1";
     acceptRoutes = true;
     tags = [ "tag:infrastructure" ];
-    # Advertise Phoenix API for Tailscale Services load balancing
-    servePort = 4000;
+    # servePort requires Tailscale Serve to be enabled on the tailnet
+    # Enable via: https://login.tailscale.com/admin/settings/features
+    # servePort = 4000;
   };
 
   # Phoenix API application
