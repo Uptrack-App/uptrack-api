@@ -8,6 +8,40 @@ defmodule UptrackWeb.Api.AuthController do
   action_fallback UptrackWeb.Api.FallbackController
 
   @doc """
+  Returns which authentication providers are available.
+  GET /api/auth/providers
+  """
+  def providers(conn, _params) do
+    github_configured? =
+      case Application.get_env(:ueberauth, Ueberauth.Strategy.Github.OAuth) do
+        config when is_list(config) ->
+          id = Keyword.get(config, :client_id)
+          id != nil and id != "" and id != "not-set"
+
+        _ ->
+          false
+      end
+
+    google_configured? =
+      case Application.get_env(:ueberauth, Ueberauth.Strategy.Google.OAuth) do
+        config when is_list(config) ->
+          id = Keyword.get(config, :client_id)
+          id != nil and id != "" and id != "not-set"
+
+        _ ->
+          false
+      end
+
+    json(conn, %{
+      providers: %{
+        email: true,
+        github: github_configured?,
+        google: google_configured?
+      }
+    })
+  end
+
+  @doc """
   Registers a new user with an organization and creates a session.
   POST /api/auth/register
   """
