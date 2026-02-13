@@ -163,21 +163,27 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
-  # ## Configuring the mailer
-  #
-  # In production you need to configure the mailer to use a different adapter.
-  # Here is an example configuration for Mailgun:
-  #
-  #     config :uptrack, Uptrack.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
-  # and Finch out-of-the-box. This configuration is typically done at
-  # compile-time in your config/prod.exs:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
-  #
-  # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  # Production mailer: configurable via MAILER_ADAPTER env var.
+  # Supported: "mailgun", "postmark", "sendgrid". Falls back to logger.
+  case System.get_env("MAILER_ADAPTER") do
+    "mailgun" ->
+      config :uptrack, Uptrack.Mailer,
+        adapter: Swoosh.Adapters.Mailgun,
+        api_key: System.get_env("MAILGUN_API_KEY"),
+        domain: System.get_env("MAILGUN_DOMAIN")
+
+    "postmark" ->
+      config :uptrack, Uptrack.Mailer,
+        adapter: Swoosh.Adapters.Postmark,
+        api_key: System.get_env("POSTMARK_API_KEY")
+
+    "sendgrid" ->
+      config :uptrack, Uptrack.Mailer,
+        adapter: Swoosh.Adapters.Sendgrid,
+        api_key: System.get_env("SENDGRID_API_KEY")
+
+    _ ->
+      # Log emails to stdout (visible in journalctl) until a real adapter is configured
+      config :uptrack, Uptrack.Mailer, adapter: Swoosh.Adapters.Logger
+  end
 end
