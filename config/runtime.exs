@@ -106,6 +106,19 @@ if config_env() == :prod do
 
   config :uptrack, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # OAuth provider credentials (read at runtime from env vars)
+  if github_id = System.get_env("GITHUB_CLIENT_ID") do
+    config :ueberauth, Ueberauth.Strategy.Github.OAuth,
+      client_id: github_id,
+      client_secret: System.get_env("GITHUB_CLIENT_SECRET")
+  end
+
+  if google_id = System.get_env("GOOGLE_CLIENT_ID") do
+    config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+      client_id: google_id,
+      client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
+  end
+
   config :uptrack, UptrackWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
