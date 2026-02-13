@@ -116,6 +116,7 @@ defmodule UptrackWeb.Router do
   scope "/api/auth", UptrackWeb.Api do
     pipe_through [:api, :fetch_session]
 
+    get "/providers", AuthController, :providers
     post "/register", AuthController, :register
     post "/login", AuthController, :login
   end
