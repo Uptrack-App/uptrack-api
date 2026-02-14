@@ -23,9 +23,16 @@ defmodule Uptrack.Monitoring do
   Returns the list of monitors for an organization.
   """
   def list_monitors(organization_id) do
+    latest_check_query =
+      from(c in MonitorCheck,
+        distinct: c.monitor_id,
+        order_by: [desc: c.checked_at]
+      )
+
     Monitor
     |> where([m], m.organization_id == ^organization_id)
     |> order_by([m], desc: m.inserted_at)
+    |> preload(monitor_checks: ^latest_check_query)
     |> AppRepo.all()
   end
 

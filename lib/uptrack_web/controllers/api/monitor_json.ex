@@ -30,7 +30,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
   end
 
   defp monitor_data(%Monitor{} = monitor) do
-    %{
+    base = %{
       id: monitor.id,
       name: monitor.name,
       url: monitor.url,
@@ -43,5 +43,20 @@ defmodule UptrackWeb.Api.MonitorJSON do
       created_at: monitor.inserted_at,
       updated_at: monitor.updated_at
     }
+
+    case monitor.monitor_checks do
+      %Ecto.Association.NotLoaded{} ->
+        base
+
+      [latest | _] ->
+        Map.put(base, :last_check, %{
+          status: latest.status,
+          response_time: latest.response_time,
+          checked_at: latest.checked_at
+        })
+
+      _ ->
+        base
+    end
   end
 end
