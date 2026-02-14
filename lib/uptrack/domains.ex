@@ -11,7 +11,7 @@ defmodule Uptrack.Domains do
   require Logger
 
   @verification_prefix "_uptrack-verification"
-  @uptrack_cname "status.uptrack.dev"
+  @uptrack_cname "status.uptrack.app"
 
   @doc """
   Returns the DNS records needed for domain verification.
@@ -28,7 +28,7 @@ defmodule Uptrack.Domains do
         cname_record: %{
           name: "status.example.com",
           type: "CNAME",
-          value: "status.uptrack.dev"
+          value: "status.uptrack.app"
         }
       }
   """
