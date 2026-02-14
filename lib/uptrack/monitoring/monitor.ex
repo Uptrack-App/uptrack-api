@@ -50,7 +50,7 @@ defmodule Uptrack.Monitoring.Monitor do
     |> validate_required([:name, :url, :organization_id, :user_id])
     |> validate_inclusion(:monitor_type, @monitor_types)
     |> validate_inclusion(:status, @statuses)
-    |> validate_number(:interval, greater_than_or_equal_to: 60)
+    |> validate_number(:interval, greater_than_or_equal_to: 30)
     |> validate_number(:timeout, greater_than_or_equal_to: 5, less_than_or_equal_to: 300)
     |> validate_url()
     |> foreign_key_constraint(:organization_id)
