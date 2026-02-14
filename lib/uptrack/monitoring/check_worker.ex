@@ -104,7 +104,8 @@ defmodule Uptrack.Monitoring.CheckWorker do
            connect_options: [timeout: monitor.timeout * 1000],
            receive_timeout: monitor.timeout * 1000,
            redirect: true,
-           max_redirects: 5
+           max_redirects: 5,
+           retry: false
          ) do
       {:ok, %Req.Response{status: status, headers: response_headers, body: body}} ->
         {:ok, status, Map.new(response_headers), body}
@@ -362,6 +363,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
             # Create new incident
             incident_attrs = %{
               monitor_id: monitor.id,
+              organization_id: monitor.organization_id,
               first_check_id: check.id,
               cause: check.error_message
             }
