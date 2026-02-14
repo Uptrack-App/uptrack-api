@@ -38,7 +38,7 @@ defmodule Uptrack.Alerting.EmailAlert do
         email =
           new()
           |> to(recipient_email)
-          |> from({"Uptrack Monitoring", "alerts@uptrack.dev"})
+          |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
           |> subject("🚨 Alert: #{monitor.name} is DOWN")
           |> html_body(incident_html_body(incident, monitor))
           |> text_body(incident_text_body(incident, monitor))
@@ -91,7 +91,7 @@ defmodule Uptrack.Alerting.EmailAlert do
         email =
           new()
           |> to(recipient_email)
-          |> from({"Uptrack Monitoring", "alerts@uptrack.dev"})
+          |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
           |> subject("✅ Resolved: #{monitor.name} is back UP")
           |> html_body(resolution_html_body(incident, monitor, duration_text))
           |> text_body(resolution_text_body(incident, monitor, duration_text))
@@ -128,7 +128,7 @@ defmodule Uptrack.Alerting.EmailAlert do
       email =
         new()
         |> to(recipient_email)
-        |> from({"Uptrack Monitoring", "alerts@uptrack.dev"})
+        |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
         |> subject("Test Alert from Uptrack")
         |> html_body(test_html_body())
         |> text_body("This is a test notification from Uptrack. If you received this, your email integration is working correctly!")
@@ -176,7 +176,7 @@ defmodule Uptrack.Alerting.EmailAlert do
                 <p>You can now receive incident alerts at this email address.</p>
             </div>
             <div class="footer">
-                <p>Sent by <a href="https://uptrack.dev">Uptrack</a> Monitoring</p>
+                <p>Sent by <a href="https://uptrack.app">Uptrack</a> Monitoring</p>
             </div>
         </div>
     </body>

@@ -10,7 +10,7 @@ defmodule UptrackWeb.ApiSpec do
   def spec do
     %OpenApi{
       servers: [
-        %Server{url: "https://api.uptrack.dev", description: "Production"},
+        %Server{url: "https://api.uptrack.app", description: "Production"},
         %Server{url: Application.get_env(:uptrack, :app_url, "http://localhost:4000"), description: "Development"}
       ],
       info: %Info{

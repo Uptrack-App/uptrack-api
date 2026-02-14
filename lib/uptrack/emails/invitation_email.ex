@@ -6,7 +6,7 @@ defmodule Uptrack.Emails.InvitationEmail do
   import Swoosh.Email
   alias Uptrack.Teams.TeamInvitation
 
-  @from_email {"Uptrack", "team@uptrack.dev"}
+  @from_email {"Uptrack", "team@uptrack.app"}
 
   defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
@@ -83,7 +83,7 @@ defmodule Uptrack.Emails.InvitationEmail do
                 </p>
             </div>
             <div class="footer">
-                <p>Powered by <a href="https://uptrack.dev">Uptrack</a></p>
+                <p>Powered by <a href="https://uptrack.app">Uptrack</a></p>
             </div>
         </div>
     </body>

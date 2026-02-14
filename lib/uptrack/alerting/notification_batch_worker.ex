@@ -55,7 +55,7 @@ defmodule Uptrack.Alerting.NotificationBatchWorker do
     email =
       new()
       |> to(recipient_email)
-      |> from({"Uptrack Monitoring", "alerts@uptrack.dev"})
+      |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
       |> subject(subject)
       |> html_body(digest_html_body(notifications))
       |> text_body(digest_text_body(notifications))

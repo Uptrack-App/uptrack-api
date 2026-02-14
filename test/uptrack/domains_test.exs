@@ -24,7 +24,7 @@ defmodule Uptrack.DomainsTest do
 
       assert records.cname_record.type == "CNAME"
       assert records.cname_record.name == "status.example.com"
-      assert records.cname_record.value == "status.uptrack.dev"
+      assert records.cname_record.value == "status.uptrack.app"
     end
   end
 

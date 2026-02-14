@@ -164,8 +164,13 @@ if config_env() == :prod do
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
   # Production mailer: configurable via MAILER_ADAPTER env var.
-  # Supported: "mailgun", "postmark", "sendgrid". Falls back to logger.
+  # Supported: "brevo", "mailgun", "postmark", "sendgrid". Falls back to logger.
   case System.get_env("MAILER_ADAPTER") do
+    "brevo" ->
+      config :uptrack, Uptrack.Mailer,
+        adapter: Swoosh.Adapters.Brevo,
+        api_key: System.get_env("BREVO_API_KEY")
+
     "mailgun" ->
       config :uptrack, Uptrack.Mailer,
         adapter: Swoosh.Adapters.Mailgun,

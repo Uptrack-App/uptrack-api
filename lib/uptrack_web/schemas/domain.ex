@@ -91,7 +91,7 @@ defmodule UptrackWeb.Schemas.Domain do
           cname_record: %{
             name: "status.example.com",
             type: "CNAME",
-            value: "status.uptrack.dev"
+            value: "status.uptrack.app"
           }
         }
       }
