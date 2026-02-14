@@ -21,7 +21,9 @@ defmodule UptrackWeb.AuthController do
                 |> put_session(:user_id, user.id)
                 |> redirect(external: "#{frontend}/dashboard")
 
-              {:error, _step, _changeset, _changes} ->
+              {:error, step, changeset, _changes} ->
+                require Logger
+                Logger.error("OAuth signup failed at step #{inspect(step)}: #{inspect(changeset.errors)}, params: #{inspect(Map.drop(user_params, [:provider_id]))}")
                 conn
                 |> redirect(external: "#{frontend}/login?error=signup_failed")
             end
@@ -55,15 +57,19 @@ defmodule UptrackWeb.AuthController do
 
   defp auth_params_from_ueberauth(%{provider: provider, info: info, uid: uid}) do
     email = info.email
-    name = info.name || "#{info.first_name} #{info.last_name}"
+
+    name =
+      [info.name, "#{info.first_name} #{info.last_name}", info.nickname, email]
+      |> Enum.map(fn s -> if is_binary(s), do: String.trim(s), else: nil end)
+      |> Enum.find(& &1 != nil and &1 != "")
 
     if email do
       {:ok,
        %{
          email: email,
-         name: name,
+         name: name || "User",
          provider: Atom.to_string(provider),
-         provider_id: uid
+         provider_id: to_string(uid)
        }}
     else
       {:error, "No email address provided"}

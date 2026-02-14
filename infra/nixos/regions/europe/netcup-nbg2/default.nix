@@ -1,8 +1,9 @@
 # Netcup Nuremberg Node 2 (nbg2) - Coordinator Standby + API
 # IP: 152.53.183.208
 # Tailscale: 100.64.1.2
-# Services: Phoenix API, cloudflared, PostgreSQL Coordinator Standby,
+# Services: Phoenix API, PostgreSQL Coordinator Standby,
 #           Patroni (coordinator), etcd (2/3), vmagent
+# Note: No cloudflared - standby has read-only DB, can't handle writes (OAuth, etc.)
 { config, pkgs, lib, ... }:
 
 let
@@ -17,7 +18,6 @@ in {
     ../../../modules/services/pgbouncer.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/uptrack-app.nix
-    ../../../modules/services/cloudflared.nix
     ../../../modules/services/node-exporter.nix
     ../../../modules/services/vmagent.nix
   ];
@@ -67,20 +67,7 @@ in {
     ];
   };
 
-  # Cloudflare Tunnel for public API access
-  services.uptrack.cloudflared = {
-    enable = true;
-    tunnelTokenFile = config.age.secrets.cloudflared-tunnel-token.path;
-  };
-
   # Agenix secrets
-  age.secrets.cloudflared-tunnel-token = {
-    file = ../../../secrets/cloudflared-tunnel-token.age;
-    owner = "cloudflared";
-    group = "cloudflared";
-    mode = "0400";
-  };
-
   age.secrets.uptrack-env = {
     file = ../../../secrets/uptrack-env.age;
     owner = "uptrack";
