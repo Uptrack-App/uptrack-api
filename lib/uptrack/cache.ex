@@ -63,4 +63,6 @@ defmodule Uptrack.Cache do
   defp unwrap({:ok, val}), do: val
   defp unwrap({:commit, val}), do: val
   defp unwrap({:commit, val, _opts}), do: val
+  defp unwrap({:error, %Cachex.Error{} = err}), do: raise(err.message)
+  defp unwrap({:error, reason}), do: raise("Cache error: #{inspect(reason)}")
 end
