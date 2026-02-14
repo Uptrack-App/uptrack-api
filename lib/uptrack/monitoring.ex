@@ -864,7 +864,7 @@ defmodule Uptrack.Monitoring do
     |> Enum.map(fn stat ->
       %{
         date: stat.date,
-        avg: if(stat.avg_response_time, do: Float.round(stat.avg_response_time, 2), else: 0),
+        avg: to_float(stat.avg_response_time, 0) |> Float.round(2),
         min: stat.min_response_time || 0,
         max: stat.max_response_time || 0,
         total_checks: stat.total_checks
@@ -900,7 +900,7 @@ defmodule Uptrack.Monitoring do
         where: i.monitor_id == ^monitor_id and i.status == "resolved" and not is_nil(i.duration),
         select: avg(i.duration)
 
-    avg_duration = AppRepo.one(avg_duration_query) || 0
+    avg_duration = AppRepo.one(avg_duration_query) |> to_float(0)
 
     # MTTR (Mean Time To Recovery) in minutes
     mttr_minutes = if avg_duration > 0, do: Float.round(avg_duration / 60, 2), else: 0
@@ -948,4 +948,9 @@ defmodule Uptrack.Monitoring do
     alias Uptrack.Cache
     Cache.invalidate_prefix("monitor_analytics:#{monitor_id}:")
   end
+
+  defp to_float(%Decimal{} = d, _default), do: Decimal.to_float(d)
+  defp to_float(nil, default), do: default
+  defp to_float(f, _default) when is_float(f), do: f
+  defp to_float(i, _default) when is_integer(i), do: i * 1.0
 end
