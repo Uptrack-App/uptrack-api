@@ -57,7 +57,7 @@ defmodule UptrackWeb.Api.MonitorController do
         organization_id: org.id,
         user_id: user.id
       })
-      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "settings"]) |> atomize_keys())
+      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "settings", "monitor_type"]) |> atomize_keys())
 
     case Monitoring.create_monitor(attrs) do
       {:ok, monitor} ->
@@ -78,8 +78,13 @@ defmodule UptrackWeb.Api.MonitorController do
     org = conn.assigns.current_organization
 
     case Monitoring.get_organization_monitor(org.id, id) do
-      nil -> {:error, :not_found}
-      monitor -> render(conn, :show, monitor: monitor)
+      nil ->
+        {:error, :not_found}
+
+      monitor ->
+        uptime = Monitoring.get_uptime_percentage(monitor.id)
+        monitor = %{monitor | uptime_percentage: uptime}
+        render(conn, :show, monitor: monitor)
     end
   end
 
