@@ -22,6 +22,7 @@ defmodule Uptrack.Monitoring.Monitor do
     field :description, :string
     field :alert_contacts, {:array, :string}, default: []
     field :settings, :map, default: %{}
+    field :uptime_percentage, :float, virtual: true
 
     belongs_to :organization, Organization
     belongs_to :user, User

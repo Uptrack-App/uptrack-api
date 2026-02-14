@@ -44,19 +44,26 @@ defmodule UptrackWeb.Api.MonitorJSON do
       updated_at: monitor.updated_at
     }
 
-    case monitor.monitor_checks do
-      %Ecto.Association.NotLoaded{} ->
-        base
+    base =
+      case monitor.monitor_checks do
+        %Ecto.Association.NotLoaded{} ->
+          base
 
-      [latest | _] ->
-        Map.put(base, :last_check, %{
-          status: latest.status,
-          response_time: latest.response_time,
-          checked_at: latest.checked_at
-        })
+        [latest | _] ->
+          Map.put(base, :last_check, %{
+            status: latest.status,
+            response_time: latest.response_time,
+            checked_at: latest.checked_at
+          })
 
-      _ ->
-        base
+        _ ->
+          base
+      end
+
+    if monitor.uptime_percentage do
+      Map.put(base, :uptime_percentage, monitor.uptime_percentage)
+    else
+      base
     end
   end
 end
