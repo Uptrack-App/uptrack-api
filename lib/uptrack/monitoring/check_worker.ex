@@ -241,7 +241,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
   defp parse_certificate(der_cert) do
     # Decode the certificate
     otp_cert = :public_key.pkix_decode_cert(der_cert, :otp)
-    tbs = elem(otp_cert, 2)
+    tbs = elem(otp_cert, 1)
 
     # Extract validity period
     validity = elem(tbs, 5)
