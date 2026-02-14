@@ -99,14 +99,13 @@ defmodule Uptrack.Monitoring.CheckWorker do
           headers
       end
 
-    options = [
-      timeout: monitor.timeout * 1000,
-      recv_timeout: monitor.timeout * 1000,
-      follow_redirect: true,
-      max_redirect: 5
-    ]
-
-    case Req.get(monitor.url, headers: headers, options: options) do
+    case Req.get(monitor.url,
+           headers: headers,
+           connect_options: [timeout: monitor.timeout * 1000],
+           receive_timeout: monitor.timeout * 1000,
+           redirect: true,
+           max_redirects: 5
+         ) do
       {:ok, %Req.Response{status: status, headers: response_headers, body: body}} ->
         {:ok, status, Map.new(response_headers), body}
 
