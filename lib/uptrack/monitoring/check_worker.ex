@@ -8,6 +8,20 @@ defmodule Uptrack.Monitoring.CheckWorker do
   alias Uptrack.Alerting
   alias Uptrack.Metrics.Writer, as: MetricsWriter
   require Logger
+  require Record
+
+  # Extract OTP certificate record definitions for safe field access
+  Record.defrecordp(:otp_cert, :OTPCertificate,
+    Record.extract(:OTPCertificate, from_lib: "public_key/include/OTP-PUB-KEY.hrl")
+  )
+
+  Record.defrecordp(:otp_tbs, :OTPTBSCertificate,
+    Record.extract(:OTPTBSCertificate, from_lib: "public_key/include/OTP-PUB-KEY.hrl")
+  )
+
+  Record.defrecordp(:validity, :Validity,
+    Record.extract(:Validity, from_lib: "public_key/include/OTP-PUB-KEY.hrl")
+  )
 
   @user_agent "Uptrack Monitor/1.0"
 
@@ -239,20 +253,15 @@ defmodule Uptrack.Monitoring.CheckWorker do
   end
 
   defp parse_certificate(der_cert) do
-    # Decode the certificate
-    otp_cert = :public_key.pkix_decode_cert(der_cert, :otp)
-    tbs = elem(otp_cert, 1)
+    cert = :public_key.pkix_decode_cert(der_cert, :otp)
+    tbs = otp_cert(cert, :tbsCertificate)
+    val = otp_tbs(tbs, :validity)
 
-    # Extract validity period
-    validity = elem(tbs, 5)
-    not_before = parse_cert_time(elem(validity, 1))
-    not_after = parse_cert_time(elem(validity, 2))
+    not_before = parse_cert_time(validity(val, :notBefore))
+    not_after = parse_cert_time(validity(val, :notAfter))
+    subject = extract_cn(otp_tbs(tbs, :subject))
+    issuer = extract_cn(otp_tbs(tbs, :issuer))
 
-    # Extract subject and issuer
-    subject = extract_cn(elem(tbs, 6))
-    issuer = extract_cn(elem(tbs, 4))
-
-    # Calculate days until expiry
     now = DateTime.utc_now()
     days_until_expiry = DateTime.diff(not_after, now, :day)
 
