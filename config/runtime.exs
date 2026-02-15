@@ -58,9 +58,9 @@ if config_env() == :prod do
     prefix: "oban",
     node: System.get_env("OBAN_NODE_NAME", "unknown-node"),
     queues: [
-      checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "50")),
-      webhooks: String.to_integer(System.get_env("OBAN_WEBHOOKS_CONCURRENCY", "10")),
-      incidents: String.to_integer(System.get_env("OBAN_INCIDENTS_CONCURRENCY", "5"))
+      default: 10,
+      monitor_checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "50")),
+      alerts: String.to_integer(System.get_env("OBAN_ALERTS_CONCURRENCY", "5"))
     ],
     plugins: [
       {Oban.Plugins.Pruner, max_age: 604_800},  # 7 days

@@ -348,6 +348,9 @@ defmodule Uptrack.Monitoring.CheckWorker do
   defp handle_check_result(%Monitor{} = monitor, %MonitorCheck{} = check) do
     case check.status do
       "up" ->
+        # Reset consecutive failure counter on success
+        Monitoring.reset_consecutive_failures(monitor.id)
+
         # If monitor is up, resolve any ongoing incidents
         case Monitoring.get_ongoing_incident(monitor.id) do
           nil ->
@@ -366,37 +369,58 @@ defmodule Uptrack.Monitoring.CheckWorker do
         end
 
       "down" ->
-        # If monitor is down, create or update incident
         case Monitoring.get_ongoing_incident(monitor.id) do
           nil ->
-            # Create new incident
-            incident_attrs = %{
-              monitor_id: monitor.id,
-              organization_id: monitor.organization_id,
-              first_check_id: check.id,
-              cause: check.error_message
-            }
+            # Increment failure counter (atomic DB update)
+            Monitoring.increment_consecutive_failures(monitor.id)
+            current_failures = Monitoring.get_consecutive_failures(monitor.id)
 
-            case Monitoring.create_incident(incident_attrs) do
-              {:ok, incident} ->
-                Logger.warning("Created incident for monitor: #{monitor.name}")
-                Events.broadcast_incident_created(incident, monitor)
+            if current_failures >= monitor.confirmation_threshold do
+              # Threshold met — confirmed down, create incident
+              incident_attrs = %{
+                monitor_id: monitor.id,
+                organization_id: monitor.organization_id,
+                first_check_id: check.id,
+                cause: check.error_message
+              }
 
-                # Send alerts for the new incident
-                Task.start(fn ->
-                  Alerting.send_incident_alerts(incident, monitor)
-                  Alerting.notify_subscribers_incident(incident, monitor)
-                end)
+              case Monitoring.create_incident(incident_attrs) do
+                {:ok, incident} ->
+                  Logger.warning(
+                    "Confirmed DOWN (#{current_failures}/#{monitor.confirmation_threshold} checks failed) for monitor: #{monitor.name}"
+                  )
 
-              {:error, changeset} ->
-                Logger.error("Failed to create incident: #{inspect(changeset.errors)}")
+                  Events.broadcast_incident_created(incident, monitor)
+
+                  Task.start(fn ->
+                    Alerting.send_incident_alerts(incident, monitor)
+                    Alerting.notify_subscribers_incident(incident, monitor)
+                  end)
+
+                {:error, changeset} ->
+                  Logger.error("Failed to create incident: #{inspect(changeset.errors)}")
+              end
+            else
+              # Below threshold — schedule confirmation re-check
+              Logger.info(
+                "Check failed (#{current_failures}/#{monitor.confirmation_threshold}), scheduling confirmation for: #{monitor.name}"
+              )
+
+              schedule_confirmation_check(monitor)
             end
 
           _incident ->
-            # Update existing incident with latest check
             Logger.info("Ongoing incident for monitor: #{monitor.name}")
         end
     end
+  end
+
+  defp schedule_confirmation_check(monitor) do
+    %{monitor_id: monitor.id}
+    |> Uptrack.Monitoring.ConfirmationCheckWorker.new(
+      scheduled_at: DateTime.add(DateTime.utc_now(), 10, :second)
+    )
+    |> Oban.insert()
   end
 
   # Truncates response body to prevent storing very large responses.

@@ -57,7 +57,7 @@ defmodule UptrackWeb.Api.MonitorController do
         organization_id: org.id,
         user_id: user.id
       })
-      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "settings", "monitor_type"]) |> atomize_keys())
+      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "settings", "monitor_type", "confirmation_threshold"]) |> atomize_keys())
 
     case Monitoring.create_monitor(attrs) do
       {:ok, monitor} ->

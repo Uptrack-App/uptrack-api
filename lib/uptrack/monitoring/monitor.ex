@@ -22,6 +22,8 @@ defmodule Uptrack.Monitoring.Monitor do
     field :description, :string
     field :alert_contacts, {:array, :string}, default: []
     field :settings, :map, default: %{}
+    field :consecutive_failures, :integer, default: 0
+    field :confirmation_threshold, :integer, default: 2
     field :uptime_percentage, :float, virtual: true
 
     belongs_to :organization, Organization
@@ -45,6 +47,7 @@ defmodule Uptrack.Monitoring.Monitor do
       :description,
       :alert_contacts,
       :settings,
+      :confirmation_threshold,
       :organization_id,
       :user_id
     ])
@@ -53,6 +56,7 @@ defmodule Uptrack.Monitoring.Monitor do
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:interval, greater_than_or_equal_to: 30)
     |> validate_number(:timeout, greater_than_or_equal_to: 5, less_than_or_equal_to: 300)
+    |> validate_number(:confirmation_threshold, greater_than_or_equal_to: 1, less_than_or_equal_to: 5)
     |> validate_url()
     |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:user_id)

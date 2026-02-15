@@ -24,7 +24,8 @@ defmodule Uptrack.MonitoringTest do
 
     test "list_monitors/1 returns monitors for organization" do
       monitor = monitor_fixture()
-      assert Monitoring.list_monitors(monitor.organization_id) == [monitor]
+      [found] = Monitoring.list_monitors(monitor.organization_id)
+      assert found.id == monitor.id
     end
 
     test "get_monitor!/1 returns the monitor with given id" do

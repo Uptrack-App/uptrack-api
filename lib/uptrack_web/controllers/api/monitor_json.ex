@@ -40,6 +40,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
       timeout: monitor.timeout,
       settings: monitor.settings,
       description: monitor.description,
+      confirmation_threshold: monitor.confirmation_threshold,
       created_at: monitor.inserted_at,
       updated_at: monitor.updated_at
     }
