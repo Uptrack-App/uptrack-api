@@ -188,6 +188,34 @@ defmodule Uptrack.Monitoring do
     end
   end
 
+  # Alert confirmation functions
+
+  @doc """
+  Atomically increments the consecutive failure counter for a monitor.
+  Returns {count_updated, nil}.
+  """
+  def increment_consecutive_failures(monitor_id) do
+    from(m in Monitor, where: m.id == ^monitor_id)
+    |> AppRepo.update_all(inc: [consecutive_failures: 1])
+  end
+
+  @doc """
+  Resets the consecutive failure counter to 0.
+  Only updates if counter is already > 0 (avoids unnecessary writes).
+  """
+  def reset_consecutive_failures(monitor_id) do
+    from(m in Monitor, where: m.id == ^monitor_id and m.consecutive_failures > 0)
+    |> AppRepo.update_all(set: [consecutive_failures: 0])
+  end
+
+  @doc """
+  Returns the current consecutive failure count for a monitor.
+  """
+  def get_consecutive_failures(monitor_id) do
+    from(m in Monitor, where: m.id == ^monitor_id, select: m.consecutive_failures)
+    |> AppRepo.one()
+  end
+
   # Incident functions
 
   @doc """

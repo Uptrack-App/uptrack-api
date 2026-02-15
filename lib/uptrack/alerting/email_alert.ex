@@ -237,6 +237,10 @@ defmodule Uptrack.Alerting.EmailAlert do
     else
       ""
     end}
+                    <tr>
+                        <td>Confirmed:</td>
+                        <td>#{monitor.confirmation_threshold} consecutive checks failed</td>
+                    </tr>
                 </table>
 
                 <a href="#{app_url()}/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
@@ -266,6 +270,7 @@ defmodule Uptrack.Alerting.EmailAlert do
     URL: #{monitor.url}
     Incident Started: #{Calendar.strftime(incident.started_at, "%B %d, %Y at %I:%M %p UTC")}
     #{if incident.cause, do: "Cause: #{incident.cause}", else: ""}
+    Confirmed: #{monitor.confirmation_threshold} consecutive checks failed
 
     You can view more details at: #{app_url()}/dashboard/monitors/#{monitor.id}
 
