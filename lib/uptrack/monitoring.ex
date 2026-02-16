@@ -17,6 +17,23 @@ defmodule Uptrack.Monitoring do
     StatusPageSubscriber
   }
 
+  # Resource count functions (used by plan enforcement)
+
+  def count_monitors(organization_id) do
+    from(m in Monitor, where: m.organization_id == ^organization_id)
+    |> AppRepo.aggregate(:count)
+  end
+
+  def count_alert_channels(organization_id) do
+    from(a in AlertChannel, where: a.organization_id == ^organization_id)
+    |> AppRepo.aggregate(:count)
+  end
+
+  def count_status_pages(organization_id) do
+    from(s in StatusPage, where: s.organization_id == ^organization_id)
+    |> AppRepo.aggregate(:count)
+  end
+
   # Monitor functions
 
   @doc """

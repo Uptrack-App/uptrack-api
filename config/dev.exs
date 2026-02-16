@@ -117,3 +117,12 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Paddle billing (sandbox — always enabled in dev with sandbox credentials)
+config :uptrack, :paddle,
+  api_key: System.get_env("PADDLE_API_KEY", "pdl_sdbx_apikey_01khkczdjaxqarfk17jv77ycfd_cfWqzP0GYkFwaeg6RRH7m7_A6K"),
+  webhook_secret: System.get_env("PADDLE_WEBHOOK_SECRET", "pdl_ntfset_01khkdq69fbn5tsaq2agf9c49r_rpYogp57hMobtpvIbhjqLZRafei4qluk"),
+  base_url: System.get_env("PADDLE_BASE_URL", "https://sandbox-api.paddle.com"),
+  checkout_url: System.get_env("PADDLE_CHECKOUT_URL", "https://sandbox-checkout.paddle.com"),
+  price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO", "pri_01khkcqn8pv207r6j8qnjfmj5t"),
+  price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM", "pri_01khkcrv2b6a5kc9cftsh503gc")
