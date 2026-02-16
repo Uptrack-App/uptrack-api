@@ -73,4 +73,11 @@ defmodule UptrackWeb.Api.FallbackController do
     |> put_view(json: UptrackWeb.Api.ErrorJSON)
     |> render(:error, message: "Only the organization owner can perform this action")
   end
+
+  def call(conn, {:error, :plan_limit, message}) do
+    conn
+    |> put_status(:payment_required)
+    |> put_view(json: UptrackWeb.Api.ErrorJSON)
+    |> render(:error, message: message)
+  end
 end

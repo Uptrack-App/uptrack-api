@@ -119,6 +119,17 @@ if config_env() == :prod do
       client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
   end
 
+  # Paddle billing (optional — billing disabled if not set)
+  if paddle_api_key = System.get_env("PADDLE_API_KEY") do
+    config :uptrack, :paddle,
+      api_key: paddle_api_key,
+      webhook_secret: System.get_env("PADDLE_WEBHOOK_SECRET"),
+      base_url: System.get_env("PADDLE_BASE_URL", "https://api.paddle.com"),
+      checkout_url: System.get_env("PADDLE_CHECKOUT_URL", "https://checkout.paddle.com"),
+      price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO"),
+      price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM")
+  end
+
   config :uptrack, UptrackWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

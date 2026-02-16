@@ -1,6 +1,7 @@
 defmodule UptrackWeb.Api.MonitorController do
   use UptrackWeb, :controller
 
+  alias Uptrack.Billing
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.SmartDefaults
 
@@ -47,26 +48,27 @@ defmodule UptrackWeb.Api.MonitorController do
     user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
-    # Get smart defaults
+    # Build attrs from smart defaults + overrides
     defaults = SmartDefaults.from_url(url)
 
-    # Merge with any provided overrides
     attrs =
       defaults
-      |> Map.merge(%{
-        organization_id: org.id,
-        user_id: user.id
-      })
+      |> Map.merge(%{organization_id: org.id, user_id: user.id})
       |> Map.merge(params |> Map.take(["name", "interval", "timeout", "settings", "monitor_type", "confirmation_threshold"]) |> atomize_keys())
 
-    case Monitoring.create_monitor(attrs) do
-      {:ok, monitor} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, monitor: monitor)
+    interval = attrs[:interval] || defaults[:interval] || 300
 
-      {:error, changeset} ->
-        {:error, changeset}
+    with :ok <- check_limit(org, :monitors),
+         :ok <- check_interval(org, interval) do
+      case Monitoring.create_monitor(attrs) do
+        {:ok, monitor} ->
+          conn
+          |> put_status(:created)
+          |> render(:show, monitor: monitor)
+
+        {:error, changeset} ->
+          {:error, changeset}
+      end
     end
   end
 
@@ -95,11 +97,15 @@ defmodule UptrackWeb.Api.MonitorController do
   def update(conn, %{"id" => id} = params) do
     org = conn.assigns.current_organization
 
-    with monitor when not is_nil(monitor) <- Monitoring.get_organization_monitor(org.id, id),
+    interval = params["interval"]
+
+    with :ok <- if(interval, do: check_interval(org, interval), else: :ok),
+         monitor when not is_nil(monitor) <- Monitoring.get_organization_monitor(org.id, id),
          {:ok, updated} <- Monitoring.update_monitor(monitor, params) do
       render(conn, :show, monitor: updated)
     else
       nil -> {:error, :not_found}
+      {:error, :plan_limit, _} = err -> err
       {:error, changeset} -> {:error, changeset}
     end
   end
@@ -141,6 +147,27 @@ defmodule UptrackWeb.Api.MonitorController do
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  defp check_limit(org, resource) do
+    case Billing.check_plan_limit(org, resource) do
+      :ok -> :ok
+      {:error, message} -> {:error, :plan_limit, message}
+    end
+  end
+
+  defp check_interval(org, interval) when is_binary(interval) do
+    case Integer.parse(interval) do
+      {n, _} -> check_interval(org, n)
+      :error -> :ok
+    end
+  end
+
+  defp check_interval(org, interval) when is_integer(interval) do
+    case Billing.check_interval_limit(org, interval) do
+      :ok -> :ok
+      {:error, message} -> {:error, :plan_limit, message}
+    end
+  end
 
   defp atomize_keys(map) do
     Map.new(map, fn

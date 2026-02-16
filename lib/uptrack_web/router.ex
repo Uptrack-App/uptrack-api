@@ -184,6 +184,12 @@ defmodule UptrackWeb.Router do
     # Integration OAuth initiation (requires auth)
     get "/integrations/slack/auth", IntegrationController, :slack_auth
     get "/integrations/discord/auth", IntegrationController, :discord_auth
+
+    # Billing
+    post "/billing/checkout", BillingController, :checkout
+    get "/billing/subscription", BillingController, :subscription
+    post "/billing/cancel", BillingController, :cancel
+    post "/billing/change-plan", BillingController, :change_plan
   end
 
   # OAuth callbacks (no auth - redirects from OAuth providers)
@@ -200,6 +206,14 @@ defmodule UptrackWeb.Router do
 
     post "/heartbeat/:token", HeartbeatController, :ping
     head "/heartbeat/:token", HeartbeatController, :head_ping
+  end
+
+  # Webhook routes (no auth — signature verified in controller)
+  # Uses CacheBodyReader to preserve raw body for HMAC verification
+  scope "/api/webhooks", UptrackWeb.Api do
+    pipe_through :api
+
+    post "/paddle", WebhookController, :paddle
   end
 
   # Public API routes (no authentication required)

@@ -1,6 +1,7 @@
 defmodule UptrackWeb.Api.AlertChannelController do
   use UptrackWeb, :controller
 
+  alias Uptrack.Billing
   alias Uptrack.Monitoring
   alias Uptrack.Alerting
 
@@ -16,19 +17,28 @@ defmodule UptrackWeb.Api.AlertChannelController do
     user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
-    attrs =
-      params
-      |> Map.put("organization_id", org.id)
-      |> Map.put("user_id", user.id)
+    with :ok <- check_limit(org, :alert_channels) do
+      attrs =
+        params
+        |> Map.put("organization_id", org.id)
+        |> Map.put("user_id", user.id)
 
-    case Monitoring.create_alert_channel(attrs) do
-      {:ok, channel} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, alert_channel: channel)
+      case Monitoring.create_alert_channel(attrs) do
+        {:ok, channel} ->
+          conn
+          |> put_status(:created)
+          |> render(:show, alert_channel: channel)
 
-      {:error, changeset} ->
-        {:error, changeset}
+        {:error, changeset} ->
+          {:error, changeset}
+      end
+    end
+  end
+
+  defp check_limit(org, resource) do
+    case Billing.check_plan_limit(org, resource) do
+      :ok -> :ok
+      {:error, message} -> {:error, :plan_limit, message}
     end
   end
 
