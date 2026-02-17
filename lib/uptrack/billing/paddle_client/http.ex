@@ -30,6 +30,11 @@ defmodule Uptrack.Billing.PaddleClient.Http do
     post("/subscriptions/#{subscription_id}/cancel", body)
   end
 
+  @impl true
+  def create_portal_session(customer_id) do
+    post("/customers/#{customer_id}/portal-sessions", %{})
+  end
+
   # --- HTTP helpers ---
 
   defp get(path) do

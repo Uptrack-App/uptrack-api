@@ -107,6 +107,34 @@ defmodule UptrackWeb.Api.BillingController do
     |> json(%{error: %{message: "Invalid plan. Must be 'pro' or 'team'."}})
   end
 
+  @doc """
+  Creates a Paddle customer portal session.
+  POST /api/billing/portal
+  """
+  def portal(conn, _params) do
+    org = conn.assigns.current_organization
+
+    case Billing.create_portal_session(org) do
+      {:ok, url} ->
+        json(conn, %{portal_url: url})
+
+      {:error, :no_active_subscription} ->
+        conn
+        |> put_status(404)
+        |> json(%{error: %{message: "No active subscription."}})
+
+      {:error, :no_customer_id} ->
+        conn
+        |> put_status(404)
+        |> json(%{error: %{message: "No billing account found."}})
+
+      {:error, reason} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: %{message: format_error(reason)}})
+    end
+  end
+
   defp format_error(%{body: %{"error" => %{"detail" => msg}}}), do: msg
   defp format_error(%{body: %{"message" => msg}}), do: msg
   defp format_error(%{body: body}) when is_binary(body), do: body

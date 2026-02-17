@@ -2,12 +2,15 @@ defmodule UptrackWeb.Api.InvitationControllerTest do
   use UptrackWeb.ConnCase
 
   alias Uptrack.Teams
+  alias Uptrack.Organizations
   import Uptrack.AccountsFixtures
 
   @moduletag :capture_log
 
   setup %{conn: conn} do
     %{conn: conn, user: user, org: org} = setup_api_auth(conn)
+    # Upgrade to pro so invitation tests aren't blocked by team member limit
+    {:ok, org} = Organizations.update_organization(org, %{plan: "pro"})
     {:ok, conn: conn, user: user, org: org}
   end
 
@@ -74,6 +77,23 @@ defmodule UptrackWeb.Api.InvitationControllerTest do
     test "returns 404 for invalid token", %{conn: conn} do
       conn = get(conn, "/api/invitations/invalid-token-abc")
       assert json_response(conn, 404)
+    end
+  end
+
+  describe "plan enforcement" do
+    test "returns 402 when team member limit reached on free plan", %{conn: conn, org: org} do
+      # Downgrade to free (limit = 1 member, owner already counts)
+      {:ok, _} = Organizations.update_organization(org, %{plan: "free"})
+
+      conn =
+        post(conn, "/api/organizations/#{org.id}/invitations", %{
+          email: "blocked@example.com",
+          role: "editor"
+        })
+
+      response = json_response(conn, 402)
+      assert response["error"]["message"] =~ "team member"
+      assert response["error"]["message"] =~ "Upgrade"
     end
   end
 
