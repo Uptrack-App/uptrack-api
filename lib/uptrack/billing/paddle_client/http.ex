@@ -46,7 +46,7 @@ defmodule Uptrack.Billing.PaddleClient.Http do
         {:ok, data}
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error("Paddle GET #{path} failed: status=#{status}")
+        Logger.error("Paddle GET #{path} failed: status=#{status} body=#{inspect(body)}")
         {:error, %{status: status, body: body}}
 
       {:error, reason} ->
@@ -66,7 +66,7 @@ defmodule Uptrack.Billing.PaddleClient.Http do
         {:ok, data}
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error("Paddle POST #{path} failed: status=#{status}")
+        Logger.error("Paddle POST #{path} failed: status=#{status} body=#{inspect(body)}")
         {:error, %{status: status, body: body}}
 
       {:error, reason} ->
