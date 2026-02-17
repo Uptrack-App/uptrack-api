@@ -77,7 +77,7 @@ defmodule Uptrack.Billing do
   def get_active_subscription(organization_id) do
     from(s in Subscription,
       where: s.organization_id == ^organization_id,
-      where: s.status == "active",
+      where: s.status in ["active", "trialing"],
       order_by: [desc: s.inserted_at],
       limit: 1
     )
@@ -182,6 +182,10 @@ defmodule Uptrack.Billing do
     handle_subscription_activated(data)
   end
 
+  def handle_webhook_event("subscription.trialing", data) do
+    handle_subscription_activated(data)
+  end
+
   def handle_webhook_event("subscription.canceled", data) do
     case get_subscription_by_paddle_id(data["id"]) do
       nil ->
@@ -242,6 +246,7 @@ defmodule Uptrack.Billing do
     customer_id = data["customer_id"]
     custom_data = data["custom_data"] || %{}
     org_id = custom_data["organization_id"]
+    status = normalize_status(data["status"])
 
     # Extract price_id from items to determine plan
     price_id =
@@ -267,7 +272,7 @@ defmodule Uptrack.Billing do
             paddle_subscription_id: paddle_sub_id,
             paddle_customer_id: customer_id,
             plan: plan,
-            status: "active",
+            status: status,
             current_period_start: period_start,
             current_period_end: period_end
           })
@@ -282,7 +287,7 @@ defmodule Uptrack.Billing do
         existing
         |> Subscription.changeset(%{
           plan: plan,
-          status: "active",
+          status: status,
           current_period_start: period_start,
           current_period_end: period_end,
           cancelled_at: nil
@@ -321,6 +326,10 @@ defmodule Uptrack.Billing do
       true -> "pro"
     end
   end
+
+  # Paddle sends "trialing" status; map to our schema values
+  defp normalize_status("trialing"), do: "trialing"
+  defp normalize_status(_), do: "active"
 
   defp parse_billing_period(nil), do: {nil, nil}
 
