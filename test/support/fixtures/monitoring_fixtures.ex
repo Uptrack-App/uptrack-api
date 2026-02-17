@@ -115,6 +115,81 @@ defmodule Uptrack.MonitoringFixtures do
   end
 
   @doc """
+  Generate an escalation policy with 2 steps.
+  """
+  def escalation_policy_fixture(attrs \\ %{}) do
+    {user_id, org_id} =
+      case {attrs[:user_id], attrs[:organization_id]} do
+        {nil, nil} ->
+          {user, org} = user_with_org_fixture()
+          {user.id, org.id}
+
+        {user_id, org_id} ->
+          {user_id, org_id}
+      end
+
+    # Create two alert channels for the steps
+    ch1 = alert_channel_fixture(user_id: user_id, organization_id: org_id, name: "Escalation Email 1")
+    ch2 = alert_channel_fixture(user_id: user_id, organization_id: org_id, name: "Escalation Email 2")
+
+    {:ok, policy} =
+      attrs
+      |> Enum.into(%{
+        name: "Test Policy #{System.unique_integer([:positive])}",
+        organization_id: org_id
+      })
+      |> Uptrack.Escalation.create_policy()
+
+    {:ok, _step1} =
+      Uptrack.Escalation.add_step(%{
+        escalation_policy_id: policy.id,
+        alert_channel_id: ch1.id,
+        step_order: 1,
+        delay_minutes: 0
+      })
+
+    {:ok, _step2} =
+      Uptrack.Escalation.add_step(%{
+        escalation_policy_id: policy.id,
+        alert_channel_id: ch2.id,
+        step_order: 2,
+        delay_minutes: 5
+      })
+
+    Uptrack.Escalation.get_policy(policy.id)
+  end
+
+  @doc """
+  Generate a scheduled maintenance window.
+  """
+  def maintenance_window_fixture(attrs \\ %{}) do
+    org_id =
+      case attrs[:organization_id] do
+        nil ->
+          {_user, org} = user_with_org_fixture()
+          org.id
+
+        org_id ->
+          org_id
+      end
+
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    {:ok, window} =
+      attrs
+      |> Enum.into(%{
+        title: "Test Maintenance #{System.unique_integer([:positive])}",
+        start_time: DateTime.add(now, 3600, :second),
+        end_time: DateTime.add(now, 7200, :second),
+        recurrence: "none",
+        organization_id: org_id
+      })
+      |> Uptrack.Maintenance.create_maintenance_window()
+
+    window
+  end
+
+  @doc """
   Generate an alert channel.
   """
   def alert_channel_fixture(attrs \\ %{}) do
