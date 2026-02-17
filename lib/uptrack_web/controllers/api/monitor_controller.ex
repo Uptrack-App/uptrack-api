@@ -51,10 +51,19 @@ defmodule UptrackWeb.Api.MonitorController do
     # Build attrs from smart defaults + overrides
     defaults = SmartDefaults.from_url(url)
 
+    # Deep merge user-provided settings into smart defaults
+    user_settings = Map.get(params, "settings", %{})
+    # Merge type-specific defaults for non-auto-detected types (ssl, dns)
+    monitor_type = params["monitor_type"] || defaults[:monitor_type]
+    type_settings = SmartDefaults.type_defaults(to_string(monitor_type))
+
     attrs =
       defaults
       |> Map.merge(%{organization_id: org.id, user_id: user.id})
-      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "settings", "monitor_type", "confirmation_threshold"]) |> atomize_keys())
+      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "monitor_type", "confirmation_threshold"]) |> atomize_keys())
+      |> Map.update(:settings, %{}, fn default_settings ->
+        default_settings |> Map.merge(type_settings) |> Map.merge(user_settings)
+      end)
 
     interval = attrs[:interval] || defaults[:interval] || 300
 
@@ -100,9 +109,22 @@ defmodule UptrackWeb.Api.MonitorController do
     interval = params["interval"]
 
     with :ok <- if(interval, do: check_interval(org, interval), else: :ok),
-         monitor when not is_nil(monitor) <- Monitoring.get_organization_monitor(org.id, id),
-         {:ok, updated} <- Monitoring.update_monitor(monitor, params) do
-      render(conn, :show, monitor: updated)
+         monitor when not is_nil(monitor) <- Monitoring.get_organization_monitor(org.id, id) do
+      # Deep merge user-provided settings into existing monitor settings
+      params =
+        case Map.get(params, "settings") do
+          user_settings when is_map(user_settings) and user_settings != %{} ->
+            merged = Map.merge(monitor.settings || %{}, user_settings)
+            Map.put(params, "settings", merged)
+
+          _ ->
+            params
+        end
+
+      case Monitoring.update_monitor(monitor, params) do
+        {:ok, updated} -> render(conn, :show, monitor: updated)
+        {:error, changeset} -> {:error, changeset}
+      end
     else
       nil -> {:error, :not_found}
       {:error, :plan_limit, _} = err -> err

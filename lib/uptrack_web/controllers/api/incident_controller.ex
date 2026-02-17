@@ -91,6 +91,30 @@ defmodule UptrackWeb.Api.IncidentController do
     Ecto.NoResultsError -> {:error, :not_found}
   end
 
+  def acknowledge(conn, %{"incident_id" => incident_id}) do
+    org = conn.assigns.current_organization
+    user = conn.assigns.current_user
+
+    case Monitoring.get_incident(incident_id) do
+      nil ->
+        {:error, :not_found}
+
+      incident ->
+        if incident.organization_id != org.id do
+          {:error, :not_found}
+        else
+          case Monitoring.acknowledge_incident(incident, user.id) do
+            {:ok, updated} ->
+              updated = Monitoring.get_incident_with_updates!(updated.id)
+              render(conn, :show, incident: updated)
+
+            {:error, changeset} ->
+              {:error, changeset}
+          end
+        end
+    end
+  end
+
   def create_update(conn, %{"incident_id" => incident_id} = params) do
     org = conn.assigns.current_organization
     user = conn.assigns.current_user

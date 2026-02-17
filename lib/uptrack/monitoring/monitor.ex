@@ -6,7 +6,7 @@ defmodule Uptrack.Monitoring.Monitor do
   alias Uptrack.Organizations.Organization
   alias Uptrack.Monitoring.{MonitorCheck, Incident}
 
-  @monitor_types ~w(http https tcp ping keyword ssl heartbeat)
+  @monitor_types ~w(http https tcp ping keyword ssl heartbeat dns)
   @statuses ~w(active paused disabled)
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
@@ -25,6 +25,7 @@ defmodule Uptrack.Monitoring.Monitor do
     field :consecutive_failures, :integer, default: 0
     field :confirmation_threshold, :integer, default: 2
     field :uptime_percentage, :float, virtual: true
+    field :escalation_policy_id, Uniq.UUID
 
     belongs_to :organization, Organization
     belongs_to :user, User
@@ -48,6 +49,7 @@ defmodule Uptrack.Monitoring.Monitor do
       :alert_contacts,
       :settings,
       :confirmation_threshold,
+      :escalation_policy_id,
       :organization_id,
       :user_id
     ])
@@ -88,8 +90,8 @@ defmodule Uptrack.Monitoring.Monitor do
               [url: "must be a valid URL or hostname"]
           end
 
-        # TCP/Ping monitors accept host:port or just host
-        monitor_type in ["tcp", "ping"] ->
+        # TCP/Ping/DNS monitors accept host:port or just host
+        monitor_type in ["tcp", "ping", "dns"] ->
           if String.match?(url, ~r/^[a-zA-Z0-9\-\.]+(\:\d+)?$/) do
             []
           else

@@ -186,10 +186,15 @@ defmodule Uptrack.Monitoring.SmartDefaults do
     }
   end
 
-  # Note: :ssl, :ping, :keyword, :heartbeat types are not auto-detected from URLs
-  # They require explicit user configuration
-
   defp default_settings(_, _), do: %{}
+
+  @doc """
+  Returns type-specific default settings for non-auto-detected monitor types.
+  Called by controllers when users explicitly select a monitor type.
+  """
+  def type_defaults("ssl"), do: %{"expiry_threshold" => 30}
+  def type_defaults("dns"), do: %{"dns_record_type" => "A"}
+  def type_defaults(_), do: %{}
 
   # ---------------------------------------------------------------------------
   # Default Intervals and Timeouts

@@ -34,6 +34,8 @@ defmodule UptrackWeb.Api.IncidentJSON do
       started_at: i.started_at,
       resolved_at: i.resolved_at,
       duration: i.duration,
+      acknowledged_at: i.acknowledged_at,
+      acknowledged_by_id: i.acknowledged_by_id,
       updates: updates,
       inserted_at: i.inserted_at
     }

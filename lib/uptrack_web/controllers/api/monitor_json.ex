@@ -51,11 +51,20 @@ defmodule UptrackWeb.Api.MonitorJSON do
           base
 
         [latest | _] ->
-          Map.put(base, :last_check, %{
+          last_check = %{
             status: latest.status,
             response_time: latest.response_time,
             checked_at: latest.checked_at
-          })
+          }
+
+          last_check =
+            if latest.response_headers && latest.response_headers != %{} do
+              Map.put(last_check, :response_headers, latest.response_headers)
+            else
+              last_check
+            end
+
+          Map.put(base, :last_check, last_check)
 
         _ ->
           base

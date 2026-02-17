@@ -158,7 +158,14 @@ defmodule UptrackWeb.Router do
     # Incident API
     resources "/incidents", IncidentController, only: [:index, :show, :create, :update] do
       post "/updates", IncidentController, :create_update
+      post "/acknowledge", IncidentController, :acknowledge
     end
+
+    # Escalation policies API
+    resources "/escalation-policies", EscalationPolicyController, only: [:index, :create, :show, :update, :delete]
+
+    # Maintenance windows API
+    resources "/maintenance-windows", MaintenanceWindowController, only: [:index, :create, :show, :update, :delete]
 
     # Status page API
     resources "/status-pages", StatusPageController, only: [:index, :create, :show, :update, :delete]
@@ -170,6 +177,7 @@ defmodule UptrackWeb.Router do
     get "/analytics/dashboard", AnalyticsController, :dashboard
     get "/analytics/monitors/:monitor_id", AnalyticsController, :monitor_stats
     get "/analytics/organization/trends", AnalyticsController, :organization_trends
+    get "/analytics/export", ExportController, :export
 
     # Notification delivery history
     get "/notification-deliveries", NotificationDeliveryController, :index

@@ -6,6 +6,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Monitor, MonitorCheck, Events}
   alias Uptrack.Alerting
+  alias Uptrack.Maintenance
   alias Uptrack.Metrics.Writer, as: MetricsWriter
   require Logger
   require Record
@@ -41,6 +42,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
         "ping" -> check_ping(monitor)
         "keyword" -> check_keyword(monitor)
         "ssl" -> check_ssl(monitor)
+        "dns" -> check_dns(monitor)
         "heartbeat" -> {:ok, nil, %{}, ""}  # Heartbeat is passive, no active check
         _ -> {:error, "Unsupported monitor type: #{monitor.monitor_type}"}
       end
@@ -113,14 +115,32 @@ defmodule Uptrack.Monitoring.CheckWorker do
           headers
       end
 
-    case Req.get(monitor.url,
-           headers: headers,
-           connect_options: [timeout: monitor.timeout * 1000],
-           receive_timeout: monitor.timeout * 1000,
-           redirect: true,
-           max_redirects: 5,
-           retry: false
-         ) do
+    method = Map.get(monitor.settings, "method", "GET") |> String.downcase() |> String.to_atom()
+
+    req_opts = [
+      headers: headers,
+      connect_options: [timeout: monitor.timeout * 1000],
+      receive_timeout: monitor.timeout * 1000,
+      redirect: true,
+      max_redirects: 5,
+      retry: false
+    ]
+
+    # Add request body for methods that support it
+    req_opts =
+      case {method, Map.get(monitor.settings, "body")} do
+        {m, body} when m in [:post, :put, :patch] and is_binary(body) and body != "" ->
+          content_type = get_content_type(headers)
+          if content_type =~ "json" do
+            Keyword.put(req_opts, :json, Jason.decode!(body))
+          else
+            Keyword.put(req_opts, :body, body)
+          end
+        _ ->
+          req_opts
+      end
+
+    case Req.request([method: method, url: monitor.url] ++ req_opts) do
       {:ok, %Req.Response{status: status, headers: response_headers, body: body}} ->
         {:ok, status, Map.new(response_headers), body}
 
@@ -198,10 +218,9 @@ defmodule Uptrack.Monitoring.CheckWorker do
 
   # Performs SSL certificate check.
   defp check_ssl(%Monitor{} = monitor) do
-    # Parse host and port from URL
     {host, port} = parse_host_port(monitor.url, 443)
     settings = monitor.settings || %{}
-    warn_days = settings["warn_days_before_expiry"] || 30
+    expiry_threshold = settings["expiry_threshold"] || settings["warn_days_before_expiry"] || 30
 
     case :ssl.connect(String.to_charlist(host), port, [
            verify: :verify_none,
@@ -213,30 +232,23 @@ defmodule Uptrack.Monitoring.CheckWorker do
           {:ok, der_cert} ->
             :ssl.close(ssl_socket)
             cert_info = parse_certificate(der_cert)
-
             days_remaining = cert_info.days_until_expiry
 
-            if days_remaining < 0 do
-              {:error, "SSL certificate expired #{abs(days_remaining)} days ago"}
-            else if days_remaining < warn_days do
-              # Certificate expiring soon - still return OK but with warning
-              metadata = %{
-                "ssl_warning" => "Certificate expires in #{days_remaining} days",
-                "ssl_expiry" => cert_info.not_after,
-                "ssl_issuer" => cert_info.issuer,
-                "ssl_subject" => cert_info.subject,
-                "ssl_days_remaining" => days_remaining
-              }
-              {:ok, 200, metadata, Jason.encode!(cert_info)}
-            else
-              metadata = %{
-                "ssl_expiry" => cert_info.not_after,
-                "ssl_issuer" => cert_info.issuer,
-                "ssl_subject" => cert_info.subject,
-                "ssl_days_remaining" => days_remaining
-              }
-              {:ok, 200, metadata, Jason.encode!(cert_info)}
-            end
+            cond do
+              days_remaining < 0 ->
+                {:error, "SSL certificate expired on #{cert_info.not_after}"}
+
+              days_remaining <= expiry_threshold ->
+                {:error, "SSL certificate expires in #{days_remaining} days"}
+
+              true ->
+                metadata = %{
+                  "ssl_expiry" => cert_info.not_after,
+                  "ssl_issuer" => cert_info.issuer,
+                  "ssl_subject" => cert_info.subject,
+                  "ssl_days_remaining" => days_remaining
+                }
+                {:ok, nil, metadata, Jason.encode!(cert_info)}
             end
 
           {:error, reason} ->
@@ -250,6 +262,120 @@ defmodule Uptrack.Monitoring.CheckWorker do
   rescue
     e ->
       {:error, "SSL check error: #{Exception.message(e)}"}
+  end
+
+  # Performs DNS record check.
+  defp check_dns(%Monitor{} = monitor) do
+    settings = monitor.settings || %{}
+    record_type = settings["dns_record_type"] || "A"
+    expected = settings["dns_expected_value"] || ""
+    dns_server = settings["dns_server"]
+    host = monitor.url |> String.trim()
+
+    type_atom =
+      case String.upcase(record_type) do
+        "A" -> :a
+        "AAAA" -> :aaaa
+        "CNAME" -> :cname
+        "MX" -> :mx
+        "TXT" -> :txt
+        "NS" -> :ns
+        "SOA" -> :soa
+        _ -> :a
+      end
+
+    nameserver_opts =
+      case dns_server do
+        nil -> []
+        "" -> []
+        server ->
+          case :inet.parse_address(String.to_charlist(server)) do
+            {:ok, ip} -> [nameservers: [{ip, 53}]]
+            _ -> []
+          end
+      end
+
+    opts = [{:timeout, monitor.timeout * 1000} | nameserver_opts]
+
+    case :inet_res.resolve(String.to_charlist(host), :in, type_atom, opts) do
+      {:ok, msg} ->
+        answers = :inet_dns.msg(msg, :anlist)
+        values = Enum.map(answers, &format_dns_record(type_atom, &1))
+
+        if expected == "" do
+          # No expected value — just check we got any result
+          if values == [] do
+            {:error, "No #{record_type} records found for #{host}"}
+          else
+            {:ok, nil, %{"dns_records" => values}, Enum.join(values, "\n")}
+          end
+        else
+          if dns_matches?(type_atom, values, expected) do
+            {:ok, nil, %{"dns_records" => values}, Enum.join(values, "\n")}
+          else
+            {:error, "DNS #{record_type} mismatch: expected #{expected}, got #{Enum.join(values, ", ")}"}
+          end
+        end
+
+      {:error, :timeout} ->
+        {:error, "DNS query timeout"}
+
+      {:error, :nxdomain} ->
+        {:error, "DNS domain not found (NXDOMAIN)"}
+
+      {:error, reason} ->
+        {:error, "DNS query failed: #{inspect(reason)}"}
+    end
+  rescue
+    e ->
+      {:error, "DNS check error: #{Exception.message(e)}"}
+  end
+
+  defp format_dns_record(:a, rr) do
+    data = :inet_dns.rr(rr, :data)
+    data |> Tuple.to_list() |> Enum.join(".")
+  end
+
+  defp format_dns_record(:aaaa, rr) do
+    data = :inet_dns.rr(rr, :data)
+    data |> Tuple.to_list() |> Enum.map(&Integer.to_string(&1, 16)) |> Enum.join(":")
+  end
+
+  defp format_dns_record(:cname, rr) do
+    :inet_dns.rr(rr, :data) |> to_string()
+  end
+
+  defp format_dns_record(:mx, rr) do
+    {priority, exchange} = :inet_dns.rr(rr, :data)
+    "#{priority} #{to_string(exchange)}"
+  end
+
+  defp format_dns_record(:txt, rr) do
+    :inet_dns.rr(rr, :data) |> Enum.map(&to_string/1) |> Enum.join("")
+  end
+
+  defp format_dns_record(:ns, rr) do
+    :inet_dns.rr(rr, :data) |> to_string()
+  end
+
+  defp format_dns_record(:soa, rr) do
+    {mname, rname, serial, _, _, _, _} = :inet_dns.rr(rr, :data)
+    "#{to_string(mname)} #{to_string(rname)} #{serial}"
+  end
+
+  defp format_dns_record(_, rr) do
+    inspect(:inet_dns.rr(rr, :data))
+  end
+
+  defp dns_matches?(:txt, values, expected) do
+    # For TXT, check if any record contains the expected substring
+    Enum.any?(values, &String.contains?(&1, expected))
+  end
+
+  defp dns_matches?(_, values, expected) do
+    # For other types, check exact match against any record
+    expected_trimmed = String.trim(expected)
+    Enum.any?(values, fn v -> String.trim(v) == expected_trimmed end)
   end
 
   defp parse_certificate(der_cert) do
@@ -369,48 +495,53 @@ defmodule Uptrack.Monitoring.CheckWorker do
         end
 
       "down" ->
-        case Monitoring.get_ongoing_incident(monitor.id) do
-          nil ->
-            # Increment failure counter (atomic DB update)
-            Monitoring.increment_consecutive_failures(monitor.id)
-            current_failures = Monitoring.get_consecutive_failures(monitor.id)
+        # Skip incident creation during active maintenance
+        if Maintenance.under_maintenance?(monitor.id, monitor.organization_id) do
+          Logger.info("Monitor #{monitor.name} failed during maintenance — suppressing alerts")
+        else
+          case Monitoring.get_ongoing_incident(monitor.id) do
+            nil ->
+              # Increment failure counter (atomic DB update)
+              Monitoring.increment_consecutive_failures(monitor.id)
+              current_failures = Monitoring.get_consecutive_failures(monitor.id)
 
-            if current_failures >= monitor.confirmation_threshold do
-              # Threshold met — confirmed down, create incident
-              incident_attrs = %{
-                monitor_id: monitor.id,
-                organization_id: monitor.organization_id,
-                first_check_id: check.id,
-                cause: check.error_message
-              }
+              if current_failures >= monitor.confirmation_threshold do
+                # Threshold met — confirmed down, create incident
+                incident_attrs = %{
+                  monitor_id: monitor.id,
+                  organization_id: monitor.organization_id,
+                  first_check_id: check.id,
+                  cause: check.error_message
+                }
 
-              case Monitoring.create_incident(incident_attrs) do
-                {:ok, incident} ->
-                  Logger.warning(
-                    "Confirmed DOWN (#{current_failures}/#{monitor.confirmation_threshold} checks failed) for monitor: #{monitor.name}"
-                  )
+                case Monitoring.create_incident(incident_attrs) do
+                  {:ok, incident} ->
+                    Logger.warning(
+                      "Confirmed DOWN (#{current_failures}/#{monitor.confirmation_threshold} checks failed) for monitor: #{monitor.name}"
+                    )
 
-                  Events.broadcast_incident_created(incident, monitor)
+                    Events.broadcast_incident_created(incident, monitor)
 
-                  Task.start(fn ->
-                    Alerting.send_incident_alerts(incident, monitor)
-                    Alerting.notify_subscribers_incident(incident, monitor)
-                  end)
+                    Task.start(fn ->
+                      Alerting.send_incident_alerts(incident, monitor)
+                      Alerting.notify_subscribers_incident(incident, monitor)
+                    end)
 
-                {:error, changeset} ->
-                  Logger.error("Failed to create incident: #{inspect(changeset.errors)}")
+                  {:error, changeset} ->
+                    Logger.error("Failed to create incident: #{inspect(changeset.errors)}")
+                end
+              else
+                # Below threshold — schedule confirmation re-check
+                Logger.info(
+                  "Check failed (#{current_failures}/#{monitor.confirmation_threshold}), scheduling confirmation for: #{monitor.name}"
+                )
+
+                schedule_confirmation_check(monitor)
               end
-            else
-              # Below threshold — schedule confirmation re-check
-              Logger.info(
-                "Check failed (#{current_failures}/#{monitor.confirmation_threshold}), scheduling confirmation for: #{monitor.name}"
-              )
 
-              schedule_confirmation_check(monitor)
-            end
-
-          _incident ->
-            Logger.info("Ongoing incident for monitor: #{monitor.name}")
+            _incident ->
+              Logger.info("Ongoing incident for monitor: #{monitor.name}")
+          end
         end
     end
   end
@@ -435,4 +566,12 @@ defmodule Uptrack.Monitoring.CheckWorker do
   end
 
   defp truncate_body(_), do: nil
+
+  defp get_content_type(headers) do
+    Enum.find_value(headers, "text/plain", fn
+      {key, value} when is_binary(key) ->
+        if String.downcase(key) == "content-type", do: value
+      _ -> nil
+    end)
+  end
 end

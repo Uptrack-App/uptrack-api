@@ -267,6 +267,17 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
+  Acknowledges an incident (stops escalation but doesn't resolve).
+  """
+  def acknowledge_incident(%Incident{} = incident, user_id) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    incident
+    |> Incident.changeset(%{acknowledged_at: now, acknowledged_by_id: user_id})
+    |> AppRepo.update()
+  end
+
+  @doc """
   Returns ongoing incidents for a monitor.
   """
   def get_ongoing_incident(monitor_id) do
@@ -697,6 +708,7 @@ defmodule Uptrack.Monitoring do
   @doc """
   Gets a single incident.
   """
+  def get_incident(id), do: AppRepo.get(Incident, id)
   def get_incident!(id), do: AppRepo.get!(Incident, id)
 
   @doc """
