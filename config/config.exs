@@ -107,7 +107,9 @@ config :uptrack, Oban,
       # Run idle prevention every 3 hours to prevent Oracle Always Free reclamation
       {"0 */3 * * *", Uptrack.Monitoring.IdlePreventionWorker},
       # Process batched notification digests every hour
-      {"0 * * * *", Uptrack.Alerting.NotificationBatchWorker}
+      {"0 * * * *", Uptrack.Alerting.NotificationBatchWorker},
+      # Activate/complete maintenance windows every minute
+      {"* * * * *", Uptrack.Maintenance.MaintenanceWorker}
     ]}
   ],
   queues: [

@@ -8,6 +8,7 @@ defmodule Uptrack.Alerting do
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   alias Uptrack.Alerting.{EmailAlert, SlackAlert, DiscordAlert, TelegramAlert, TeamsAlert, TwilioAlert, WebhookAlert, AlertDeliveryWorker}
   alias Uptrack.Monitoring.{StatusPage, StatusPageMonitor, StatusPageSubscriber}
+  alias Uptrack.Escalation
   alias Uptrack.Emails.SubscriberEmail
   alias Uptrack.Accounts.User
   alias Uptrack.Mailer
@@ -15,6 +16,8 @@ defmodule Uptrack.Alerting do
 
   @doc """
   Sends alerts for a new incident based on the monitor's alert configuration.
+  If the monitor has an escalation policy, uses the policy.
+  Otherwise, fires all channels simultaneously (backward compatible).
   """
   def send_incident_alerts(%Incident{} = incident, %Monitor{} = monitor) do
     Logger.info("Sending alerts for incident #{incident.id} on monitor #{monitor.name}")
@@ -31,30 +34,76 @@ defmodule Uptrack.Alerting do
         Logger.info("Skipping incident alert for user #{user.id} due to quiet hours")
         [{:skipped_quiet_hours, user.id}]
       else
-        # Get organization's alert channels
-        alert_channels = list_active_alert_channels(monitor.organization_id)
+        case Escalation.get_monitor_policy(monitor) do
+          nil ->
+            # No escalation policy — fire all channels simultaneously (backward compatible)
+            send_all_channels(incident, monitor, user)
 
-        # Get monitor-specific alert settings
-        monitor_alert_contacts = if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
-
-        # Send alerts through all configured channels
-        results =
-          Enum.map(alert_channels, fn channel ->
-            if should_send_alert?(channel, monitor_alert_contacts, user) do
-              send_alert(channel, incident, monitor, user)
-            else
-              {:skipped, channel.id}
-            end
-          end)
-
-        # Log results
-        successful = Enum.count(results, &match?({:ok, _}, &1))
-        total = length(results)
-        Logger.info("Sent #{successful}/#{total} alerts for incident #{incident.id}")
-
-        results
+          policy ->
+            # Has escalation policy — fire step 1 immediately, schedule step 2+
+            send_with_escalation(incident, monitor, user, policy)
+        end
       end
     end
+  end
+
+  defp send_all_channels(incident, monitor, user) do
+    alert_channels = list_active_alert_channels(monitor.organization_id)
+    monitor_alert_contacts = if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
+
+    results =
+      Enum.map(alert_channels, fn channel ->
+        if should_send_alert?(channel, monitor_alert_contacts, user) do
+          send_alert(channel, incident, monitor, user)
+        else
+          {:skipped, channel.id}
+        end
+      end)
+
+    successful = Enum.count(results, &match?({:ok, _}, &1))
+    total = length(results)
+    Logger.info("Sent #{successful}/#{total} alerts for incident #{incident.id}")
+
+    results
+  end
+
+  defp send_with_escalation(incident, monitor, user, policy) do
+    # Fire step 1 immediately
+    step_1_steps = Escalation.get_steps_for_order(policy.id, 1)
+
+    results =
+      Enum.map(step_1_steps, fn step ->
+        channel = step.alert_channel
+        if channel && channel.is_active do
+          Logger.info("Escalation step 1: sending via #{channel.name}")
+          send_alert(channel, incident, monitor, user)
+        else
+          {:skipped, step.id}
+        end
+      end)
+
+    # Schedule step 2 if it exists
+    max_order = Escalation.max_step_order(policy.id)
+
+    if max_order > 1 do
+      step_2_steps = Escalation.get_steps_for_order(policy.id, 2)
+      delay = step_2_steps |> List.first() |> then(fn s -> if s, do: s.delay_minutes, else: 5 end)
+
+      %{
+        incident_id: incident.id,
+        policy_id: policy.id,
+        step_order: 2,
+        monitor_id: monitor.id
+      }
+      |> Uptrack.Escalation.EscalationWorker.new(
+        scheduled_at: DateTime.add(DateTime.utc_now(), delay * 60, :second)
+      )
+      |> Oban.insert()
+
+      Logger.info("Escalation: scheduled step 2 in #{delay}min for incident #{incident.id}")
+    end
+
+    results
   end
 
   @doc """

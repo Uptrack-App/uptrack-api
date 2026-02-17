@@ -16,6 +16,8 @@ defmodule Uptrack.Monitoring.Incident do
     field :status, :string, default: "ongoing"
     field :duration, :integer
     field :cause, :string
+    field :acknowledged_at, :utc_datetime
+    field :acknowledged_by_id, Uniq.UUID
 
     belongs_to :organization, Organization
     belongs_to :monitor, Monitor
@@ -35,6 +37,8 @@ defmodule Uptrack.Monitoring.Incident do
       :status,
       :duration,
       :cause,
+      :acknowledged_at,
+      :acknowledged_by_id,
       :organization_id,
       :monitor_id,
       :first_check_id,
