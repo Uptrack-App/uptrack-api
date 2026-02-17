@@ -5,7 +5,7 @@ defmodule Uptrack.Billing.Subscription do
   alias Uptrack.Organizations.Organization
 
   @valid_plans ~w(pro team)
-  @valid_statuses ~w(active cancelled past_due)
+  @valid_statuses ~w(active trialing cancelled past_due)
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
   @foreign_key_type Uniq.UUID
