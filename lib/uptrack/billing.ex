@@ -32,7 +32,7 @@ defmodule Uptrack.Billing do
   Checks if the organization can create a new resource of the given type.
   Returns :ok or {:error, message}.
   """
-  def check_plan_limit(%Organization{} = org, resource) when resource in [:monitors, :alert_channels, :status_pages] do
+  def check_plan_limit(%Organization{} = org, resource) when resource in [:monitors, :alert_channels, :status_pages, :team_members] do
     limit = plan_limit(org.plan, resource)
 
     if limit == :unlimited do
@@ -65,10 +65,12 @@ defmodule Uptrack.Billing do
   defp count_resource(org_id, :monitors), do: Uptrack.Monitoring.count_monitors(org_id)
   defp count_resource(org_id, :alert_channels), do: Uptrack.Monitoring.count_alert_channels(org_id)
   defp count_resource(org_id, :status_pages), do: Uptrack.Monitoring.count_status_pages(org_id)
+  defp count_resource(org_id, :team_members), do: Uptrack.Teams.count_members(org_id)
 
   defp resource_label(:monitors), do: "monitor"
   defp resource_label(:alert_channels), do: "alert channel"
   defp resource_label(:status_pages), do: "status page"
+  defp resource_label(:team_members), do: "team member"
 
   # --- Subscription queries ---
 
@@ -119,6 +121,34 @@ defmodule Uptrack.Billing do
   end
 
   def create_checkout_session(_organization, _plan), do: {:error, :invalid_plan}
+
+  @doc """
+  Creates a Paddle customer portal session for managing billing.
+  Returns {:ok, url} or {:error, reason}.
+  """
+  def create_portal_session(%Organization{} = organization) do
+    case get_active_subscription(organization.id) do
+      nil ->
+        {:error, :no_active_subscription}
+
+      %{paddle_customer_id: nil} ->
+        {:error, :no_customer_id}
+
+      subscription ->
+        case PaddleClient.create_portal_session(subscription.paddle_customer_id) do
+          {:ok, %{"urls" => %{"general" => %{"overview" => url}}}} ->
+            {:ok, url}
+
+          {:ok, data} ->
+            # Fallback: try different response shapes
+            url = get_in(data, ["urls", "general", "overview"]) || data["id"]
+            {:ok, url}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
+  end
 
   # --- Subscription management ---
 

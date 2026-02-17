@@ -23,6 +23,12 @@ defmodule Uptrack.Teams do
   # Team Members
   # ============================================================================
 
+  def count_members(organization_id) do
+    User
+    |> where([u], u.organization_id == ^organization_id)
+    |> AppRepo.aggregate(:count)
+  end
+
   @doc """
   Lists all members of an organization with their roles.
   """

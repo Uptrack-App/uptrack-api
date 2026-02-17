@@ -2,6 +2,7 @@ defmodule UptrackWeb.Api.InvitationController do
   use UptrackWeb, :controller
 
   alias Uptrack.Teams
+  alias Uptrack.Billing
   alias Uptrack.Accounts.User
 
   action_fallback UptrackWeb.Api.FallbackController
@@ -23,8 +24,10 @@ defmodule UptrackWeb.Api.InvitationController do
   """
   def create(conn, %{"organization_id" => org_id, "email" => email, "role" => role}) do
     current_user = conn.assigns.current_user
+    org = conn.assigns.current_organization
 
     with :ok <- authorize_manage(conn, org_id),
+         :ok <- check_limit(org),
          role_atom <- String.to_existing_atom(role),
          {:ok, invitation} <- Teams.invite_member(org_id, email, role_atom, current_user.id) do
       conn
@@ -97,6 +100,13 @@ defmodule UptrackWeb.Api.InvitationController do
       :ok
     else
       {:error, :forbidden}
+    end
+  end
+
+  defp check_limit(org) do
+    case Billing.check_plan_limit(org, :team_members) do
+      :ok -> :ok
+      {:error, msg} -> {:error, :plan_limit, msg}
     end
   end
 end
