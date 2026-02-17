@@ -41,6 +41,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
       settings: monitor.settings,
       description: monitor.description,
       confirmation_threshold: monitor.confirmation_threshold,
+      escalation_policy_id: monitor.escalation_policy_id,
       created_at: monitor.inserted_at,
       updated_at: monitor.updated_at
     }
