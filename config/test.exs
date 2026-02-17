@@ -50,6 +50,9 @@ config :swoosh, :api_client, false
 # Disable Oban queues and plugins in test, stub job insertion
 config :uptrack, Oban, testing: :manual, queues: false, plugins: false
 
+# Use mock Paddle client in tests
+config :uptrack, :paddle_client, Uptrack.Billing.PaddleClientMock
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 
