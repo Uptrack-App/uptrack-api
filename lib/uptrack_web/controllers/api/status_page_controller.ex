@@ -2,6 +2,7 @@ defmodule UptrackWeb.Api.StatusPageController do
   use UptrackWeb, :controller
 
   alias Uptrack.Billing
+  alias Uptrack.Maintenance
   alias Uptrack.Monitoring
   alias Uptrack.Teams
 
@@ -17,11 +18,15 @@ defmodule UptrackWeb.Api.StatusPageController do
       recent_incidents =
         Monitoring.list_recent_incidents(status_page.organization_id, 10)
 
+      maintenance_windows =
+        Maintenance.upcoming_maintenance(status_page.organization_id, days: 1)
+
       render(conn, :show_public,
         status_page: status_page,
         overall_status: overall_status,
         uptime: uptime,
-        recent_incidents: recent_incidents
+        recent_incidents: recent_incidents,
+        maintenance_windows: maintenance_windows
       )
     else
       {:error, :not_found}

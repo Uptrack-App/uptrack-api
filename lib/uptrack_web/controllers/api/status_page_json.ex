@@ -13,7 +13,8 @@ defmodule UptrackWeb.Api.StatusPageJSON do
         status_page: page,
         overall_status: overall_status,
         uptime: uptime,
-        recent_incidents: incidents
+        recent_incidents: incidents,
+        maintenance_windows: maintenance_windows
       }) do
     monitors_data =
       Enum.map(page.monitors, fn monitor ->
@@ -37,7 +38,8 @@ defmodule UptrackWeb.Api.StatusPageJSON do
         overall_status: overall_status,
         uptime_percentage: uptime,
         monitors: monitors_data,
-        recent_incidents: for(i <- incidents, do: public_incident_data(i))
+        recent_incidents: for(i <- incidents, do: public_incident_data(i)),
+        maintenance_windows: for(mw <- maintenance_windows, do: maintenance_data(mw))
       }
     }
   end
@@ -76,6 +78,15 @@ defmodule UptrackWeb.Api.StatusPageJSON do
 
   defp check_status(%MonitorCheck{status: status}), do: status
   defp check_status(_), do: "unknown"
+
+  defp maintenance_data(mw) do
+    %{
+      title: mw.title,
+      status: mw.status,
+      start_time: mw.start_time,
+      end_time: mw.end_time
+    }
+  end
 
   defp public_incident_data(%Incident{} = i) do
     monitor_name =
