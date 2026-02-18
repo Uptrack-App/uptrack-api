@@ -400,4 +400,49 @@ defmodule Uptrack.MonitoringTest do
       assert found.id == subscriber.id
     end
   end
+
+  describe "acknowledge_incident/2" do
+    import Uptrack.MonitoringFixtures
+
+    test "sets acknowledged_at and acknowledged_by_id" do
+      monitor = monitor_fixture()
+      user_id = monitor.user_id
+
+      {:ok, incident} =
+        Monitoring.create_incident(%{
+          monitor_id: monitor.id,
+          organization_id: monitor.organization_id,
+          cause: "Test failure"
+        })
+
+      assert is_nil(incident.acknowledged_at)
+
+      {:ok, acknowledged} = Monitoring.acknowledge_incident(incident, user_id)
+      assert acknowledged.acknowledged_at != nil
+      assert acknowledged.acknowledged_by_id == user_id
+    end
+
+    test "creates a timeline entry when acknowledging" do
+      monitor = monitor_fixture()
+      user_id = monitor.user_id
+
+      {:ok, incident} =
+        Monitoring.create_incident(%{
+          monitor_id: monitor.id,
+          organization_id: monitor.organization_id,
+          cause: "Test failure"
+        })
+
+      {:ok, _acknowledged} = Monitoring.acknowledge_incident(incident, user_id)
+
+      # Reload incident with updates
+      reloaded = Monitoring.get_incident_with_updates!(incident.id)
+      assert length(reloaded.incident_updates) == 1
+
+      [update] = reloaded.incident_updates
+      assert update.title == "Incident acknowledged"
+      assert update.status == "investigating"
+      assert update.user_id == user_id
+    end
+  end
 end
