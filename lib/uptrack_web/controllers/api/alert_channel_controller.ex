@@ -4,6 +4,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
   alias Uptrack.Billing
   alias Uptrack.Monitoring
   alias Uptrack.Alerting
+  alias Uptrack.Teams
 
   action_fallback UptrackWeb.Api.FallbackController
 
@@ -25,6 +26,10 @@ defmodule UptrackWeb.Api.AlertChannelController do
 
       case Monitoring.create_alert_channel(attrs) do
         {:ok, channel} ->
+          Teams.log_action(org.id, user.id, "alert_channel.created", "alert_channel", channel.id,
+            metadata: %{name: channel.name, type: channel.type}
+          )
+
           conn
           |> put_status(:created)
           |> render(:show, alert_channel: channel)
@@ -57,14 +62,22 @@ defmodule UptrackWeb.Api.AlertChannelController do
   end
 
   def update(conn, %{"id" => id} = params) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     channel = Monitoring.get_alert_channel!(id)
 
     if channel.organization_id == org.id do
       case Monitoring.update_alert_channel(channel, params) do
-        {:ok, updated} -> render(conn, :show, alert_channel: updated)
-        {:error, changeset} -> {:error, changeset}
+        {:ok, updated} ->
+          Teams.log_action(org.id, user.id, "alert_channel.updated", "alert_channel", updated.id,
+            metadata: %{name: updated.name}
+          )
+
+          render(conn, :show, alert_channel: updated)
+
+        {:error, changeset} ->
+          {:error, changeset}
       end
     else
       {:error, :not_found}
@@ -74,14 +87,22 @@ defmodule UptrackWeb.Api.AlertChannelController do
   end
 
   def delete(conn, %{"id" => id}) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     channel = Monitoring.get_alert_channel!(id)
 
     if channel.organization_id == org.id do
       case Monitoring.delete_alert_channel(channel) do
-        {:ok, _} -> send_resp(conn, :no_content, "")
-        {:error, reason} -> {:error, reason}
+        {:ok, _} ->
+          Teams.log_action(org.id, user.id, "alert_channel.deleted", "alert_channel", channel.id,
+            metadata: %{name: channel.name}
+          )
+
+          send_resp(conn, :no_content, "")
+
+        {:error, reason} ->
+          {:error, reason}
       end
     else
       {:error, :not_found}
@@ -91,13 +112,19 @@ defmodule UptrackWeb.Api.AlertChannelController do
   end
 
   def test(conn, %{"id" => id}) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     channel = Monitoring.get_alert_channel!(id)
 
     if channel.organization_id == org.id do
       case Alerting.send_test_alert(channel) do
-        {:ok, _} -> json(conn, %{ok: true})
+        {:ok, _} ->
+          Teams.log_action(org.id, user.id, "alert_channel.tested", "alert_channel", channel.id,
+            metadata: %{name: channel.name}
+          )
+
+          json(conn, %{ok: true})
         {:error, reason} -> {:error, reason}
       end
     else

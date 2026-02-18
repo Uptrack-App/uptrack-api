@@ -38,6 +38,7 @@ defmodule Uptrack.Teams.AuditLog do
     incident.created
     incident.updated
     incident.resolved
+    incident.acknowledged
     user.logged_in
     user.logged_out
     user.settings_updated

@@ -4,6 +4,7 @@ defmodule UptrackWeb.Api.MonitorController do
   alias Uptrack.Billing
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.SmartDefaults
+  alias Uptrack.Teams
 
   action_fallback UptrackWeb.Api.FallbackController
 
@@ -71,6 +72,10 @@ defmodule UptrackWeb.Api.MonitorController do
          :ok <- check_interval(org, interval) do
       case Monitoring.create_monitor(attrs) do
         {:ok, monitor} ->
+          Teams.log_action(org.id, user.id, "monitor.created", "monitor", monitor.id,
+            metadata: %{name: monitor.name, monitor_type: monitor.monitor_type}
+          )
+
           conn
           |> put_status(:created)
           |> render(:show, monitor: monitor)
@@ -104,6 +109,7 @@ defmodule UptrackWeb.Api.MonitorController do
   PATCH /api/monitors/:id
   """
   def update(conn, %{"id" => id} = params) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     interval = params["interval"]
@@ -122,8 +128,15 @@ defmodule UptrackWeb.Api.MonitorController do
         end
 
       case Monitoring.update_monitor(monitor, params) do
-        {:ok, updated} -> render(conn, :show, monitor: updated)
-        {:error, changeset} -> {:error, changeset}
+        {:ok, updated} ->
+          Teams.log_action(org.id, user.id, "monitor.updated", "monitor", updated.id,
+            metadata: %{name: updated.name}
+          )
+
+          render(conn, :show, monitor: updated)
+
+        {:error, changeset} ->
+          {:error, changeset}
       end
     else
       nil -> {:error, :not_found}
@@ -137,10 +150,15 @@ defmodule UptrackWeb.Api.MonitorController do
   DELETE /api/monitors/:id
   """
   def delete(conn, %{"id" => id}) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     with monitor when not is_nil(monitor) <- Monitoring.get_organization_monitor(org.id, id),
          {:ok, _} <- Monitoring.delete_monitor(monitor) do
+      Teams.log_action(org.id, user.id, "monitor.deleted", "monitor", monitor.id,
+        metadata: %{name: monitor.name}
+      )
+
       send_resp(conn, :no_content, "")
     else
       nil -> {:error, :not_found}
