@@ -352,7 +352,10 @@ defmodule Uptrack.Billing do
   defp price_id_for_plan("pro", config), do: config[:price_id_pro]
   defp price_id_for_plan("team", config), do: config[:price_id_team]
 
-  defp plan_for_price_id(nil), do: "pro"
+  defp plan_for_price_id(nil) do
+    Logger.warning("Paddle webhook received nil price_id, falling back to pro plan")
+    "pro"
+  end
 
   defp plan_for_price_id(price_id) do
     config = paddle_config()
@@ -360,7 +363,9 @@ defmodule Uptrack.Billing do
     cond do
       price_id == config[:price_id_pro] -> "pro"
       price_id == config[:price_id_team] -> "team"
-      true -> "pro"
+      true ->
+        Logger.warning("Unknown Paddle price_id #{inspect(price_id)}, falling back to pro plan")
+        "pro"
     end
   end
 
