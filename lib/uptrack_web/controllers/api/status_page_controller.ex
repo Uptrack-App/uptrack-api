@@ -3,6 +3,7 @@ defmodule UptrackWeb.Api.StatusPageController do
 
   alias Uptrack.Billing
   alias Uptrack.Monitoring
+  alias Uptrack.Teams
 
   action_fallback UptrackWeb.Api.FallbackController
 
@@ -47,6 +48,10 @@ defmodule UptrackWeb.Api.StatusPageController do
 
       case Monitoring.create_status_page(attrs) do
         {:ok, page} ->
+          Teams.log_action(org.id, user.id, "status_page.created", "status_page", page.id,
+            metadata: %{name: page.name, slug: page.slug}
+          )
+
           conn
           |> put_status(:created)
           |> render(:show, status_page: page)
@@ -79,6 +84,7 @@ defmodule UptrackWeb.Api.StatusPageController do
   end
 
   def update(conn, %{"id" => id} = params) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     page = Monitoring.get_status_page!(id)
@@ -89,6 +95,10 @@ defmodule UptrackWeb.Api.StatusPageController do
           if monitor_ids = params["monitor_ids"] do
             Monitoring.sync_status_page_monitors(updated, monitor_ids)
           end
+
+          Teams.log_action(org.id, user.id, "status_page.updated", "status_page", updated.id,
+            metadata: %{name: updated.name}
+          )
 
           updated = Monitoring.get_status_page!(updated.id)
           render(conn, :show, status_page: updated)
@@ -104,13 +114,19 @@ defmodule UptrackWeb.Api.StatusPageController do
   end
 
   def delete(conn, %{"id" => id}) do
+    user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     page = Monitoring.get_status_page!(id)
 
     if page.organization_id == org.id do
       case Monitoring.delete_status_page(page) do
-        {:ok, _} -> send_resp(conn, :no_content, "")
+        {:ok, _} ->
+          Teams.log_action(org.id, user.id, "status_page.deleted", "status_page", page.id,
+            metadata: %{name: page.name}
+          )
+
+          send_resp(conn, :no_content, "")
         {:error, reason} -> {:error, reason}
       end
     else

@@ -416,12 +416,7 @@ defmodule Uptrack.Teams do
       |> limit(^limit)
       |> offset(^offset)
 
-    query =
-      if action_filter do
-        where(query, [a], a.action == ^action_filter)
-      else
-        query
-      end
+    query = apply_action_filter(query, action_filter)
 
     query =
       if user_filter do
@@ -445,13 +440,20 @@ defmodule Uptrack.Teams do
       AuditLog
       |> where([a], a.organization_id == ^organization_id)
 
-    query =
-      if action_filter do
-        where(query, [a], a.action == ^action_filter)
-      else
-        query
-      end
+    query = apply_action_filter(query, action_filter)
 
     AppRepo.aggregate(query, :count)
+  end
+
+  # Supports both exact match ("team.member_added") and prefix match ("team.")
+  defp apply_action_filter(query, nil), do: query
+
+  defp apply_action_filter(query, filter) do
+    if String.ends_with?(filter, ".") do
+      prefix = filter <> "%"
+      where(query, [a], like(a.action, ^prefix))
+    else
+      where(query, [a], a.action == ^filter)
+    end
   end
 end
