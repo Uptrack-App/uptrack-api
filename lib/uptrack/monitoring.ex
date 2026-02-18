@@ -272,9 +272,21 @@ defmodule Uptrack.Monitoring do
   def acknowledge_incident(%Incident{} = incident, user_id) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    incident
-    |> Incident.changeset(%{acknowledged_at: now, acknowledged_by_id: user_id})
-    |> AppRepo.update()
+    with {:ok, updated} <-
+           incident
+           |> Incident.changeset(%{acknowledged_at: now, acknowledged_by_id: user_id})
+           |> AppRepo.update() do
+      create_incident_update(%{
+        incident_id: incident.id,
+        user_id: user_id,
+        status: "investigating",
+        title: "Incident acknowledged",
+        description: "Escalation paused — someone is looking into this.",
+        posted_at: now
+      })
+
+      {:ok, updated}
+    end
   end
 
   @doc """
