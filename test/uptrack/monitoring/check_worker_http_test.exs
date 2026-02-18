@@ -152,23 +152,8 @@ defmodule Uptrack.Monitoring.CheckWorkerHttpTest do
     end
   end
 
-  describe "status code recording" do
-    test "records actual status code in check result", %{user: user, org: org} do
-      monitor = monitor_fixture(
-        organization_id: org.id,
-        user_id: user.id,
-        monitor_type: "http",
-        url: "https://httpbin.org/status/201",
-        timeout: 15,
-        settings: %{"method" => "GET"}
-      )
-
-      assert {:ok, check} = CheckWorker.perform_check(monitor)
-      assert check.status == "up"
-      assert check.status_code == 201
-    end
-
-    test "records 404 status code", %{user: user, org: org} do
+  describe "expected status code" do
+    test "marks up when no expected_status_code is set", %{user: user, org: org} do
       monitor = monitor_fixture(
         organization_id: org.id,
         user_id: user.id,
@@ -181,6 +166,37 @@ defmodule Uptrack.Monitoring.CheckWorkerHttpTest do
       assert {:ok, check} = CheckWorker.perform_check(monitor)
       assert check.status == "up"
       assert check.status_code == 404
+    end
+
+    test "marks up when status code matches expected", %{user: user, org: org} do
+      monitor = monitor_fixture(
+        organization_id: org.id,
+        user_id: user.id,
+        monitor_type: "http",
+        url: "https://httpbin.org/status/201",
+        timeout: 15,
+        settings: %{"method" => "GET", "expected_status_code" => 201}
+      )
+
+      assert {:ok, check} = CheckWorker.perform_check(monitor)
+      assert check.status == "up"
+      assert check.status_code == 201
+    end
+
+    test "marks down when status code does not match expected", %{user: user, org: org} do
+      monitor = monitor_fixture(
+        organization_id: org.id,
+        user_id: user.id,
+        monitor_type: "http",
+        url: "https://httpbin.org/status/200",
+        timeout: 15,
+        settings: %{"method" => "GET", "expected_status_code" => 404}
+      )
+
+      assert {:ok, check} = CheckWorker.perform_check(monitor)
+      assert check.status == "down"
+      assert check.status_code == 200
+      assert check.error_message =~ "Expected status 404, got 200"
     end
   end
 end

@@ -54,15 +54,30 @@ defmodule Uptrack.Monitoring.CheckWorker do
     check_attrs =
       case result do
         {:ok, status_code, headers, body} ->
-          %{
-            monitor_id: monitor.id,
-            status: "up",
-            response_time: response_time,
-            status_code: status_code,
-            checked_at: DateTime.utc_now(),
-            response_headers: headers,
-            response_body: truncate_body(body)
-          }
+          expected = Map.get(monitor.settings, "expected_status_code")
+
+          if expected && status_code != expected do
+            %{
+              monitor_id: monitor.id,
+              status: "down",
+              response_time: response_time,
+              status_code: status_code,
+              checked_at: DateTime.utc_now(),
+              response_headers: headers,
+              response_body: truncate_body(body),
+              error_message: "Expected status #{expected}, got #{status_code}"
+            }
+          else
+            %{
+              monitor_id: monitor.id,
+              status: "up",
+              response_time: response_time,
+              status_code: status_code,
+              checked_at: DateTime.utc_now(),
+              response_headers: headers,
+              response_body: truncate_body(body)
+            }
+          end
 
         {:error, reason} ->
           %{
