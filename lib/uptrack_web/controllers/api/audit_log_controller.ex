@@ -11,15 +11,18 @@ defmodule UptrackWeb.Api.AuditLogController do
   """
   def index(conn, %{"organization_id" => org_id} = params) do
     with :ok <- authorize_admin(conn, org_id) do
+      since = parse_since(params["since"])
+
       opts = [
         limit: parse_int(params["limit"], 50),
         offset: parse_int(params["offset"], 0),
         action: params["action"],
-        user_id: params["user_id"]
+        user_id: params["user_id"],
+        since: since
       ]
 
       logs = Teams.list_audit_logs(org_id, opts)
-      total = Teams.count_audit_logs(org_id, action: params["action"])
+      total = Teams.count_audit_logs(org_id, action: params["action"], user_id: params["user_id"], since: since)
 
       render(conn, :index, logs: logs, total: total)
     end
@@ -44,4 +47,13 @@ defmodule UptrackWeb.Api.AuditLogController do
     end
   end
   defp parse_int(value, _default) when is_integer(value), do: value
+
+  defp parse_since(nil), do: nil
+
+  defp parse_since(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, dt, _offset} -> dt
+      _ -> nil
+    end
+  end
 end
