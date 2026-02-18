@@ -77,7 +77,7 @@ defmodule Uptrack.Organizations.Organization do
   end
 
   defp validate_plan(changeset) do
-    valid_plans = ["free", "starter", "pro", "enterprise"]
+    valid_plans = ["free", "pro", "team"]
     validate_inclusion(changeset, :plan, valid_plans)
   end
 
