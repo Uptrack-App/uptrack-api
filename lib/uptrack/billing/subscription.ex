@@ -40,7 +40,6 @@ defmodule Uptrack.Billing.Subscription do
     |> validate_inclusion(:plan, @valid_plans)
     |> validate_inclusion(:status, @valid_statuses)
     |> unique_constraint(:paddle_subscription_id)
-    |> unique_constraint(:paddle_customer_id)
     |> foreign_key_constraint(:organization_id)
   end
 end

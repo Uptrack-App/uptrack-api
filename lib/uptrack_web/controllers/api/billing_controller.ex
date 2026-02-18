@@ -3,6 +3,8 @@ defmodule UptrackWeb.Api.BillingController do
 
   alias Uptrack.Billing
 
+  require Logger
+
   @doc """
   Creates a Paddle checkout transaction and returns the checkout URL.
   POST /api/billing/checkout
@@ -87,17 +89,32 @@ defmodule UptrackWeb.Api.BillingController do
   def change_plan(conn, %{"plan" => plan}) when plan in ["pro", "team"] do
     org = conn.assigns.current_organization
 
-    # Cancel existing if present (ignore errors — may not have one)
-    Billing.cancel_active_subscription(org)
+    # Cancel existing subscription first — only proceed if cancel succeeds or no subscription exists
+    cancel_result =
+      case Billing.cancel_active_subscription(org) do
+        {:ok, _} -> :ok
+        {:error, :no_active_subscription} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
 
-    case Billing.create_checkout_session(org, plan) do
-      {:ok, %{checkout_url: url, transaction_id: txn_id}} ->
-        json(conn, %{checkout_url: url, transaction_id: txn_id})
+    case cancel_result do
+      :ok ->
+        case Billing.create_checkout_session(org, plan) do
+          {:ok, %{checkout_url: url, transaction_id: txn_id}} ->
+            json(conn, %{checkout_url: url, transaction_id: txn_id})
+
+          {:error, reason} ->
+            conn
+            |> put_status(422)
+            |> json(%{error: %{message: format_error(reason)}})
+        end
 
       {:error, reason} ->
+        Logger.warning("change_plan: cancel failed for org #{org.id}: #{inspect(reason)}")
+
         conn
         |> put_status(422)
-        |> json(%{error: %{message: format_error(reason)}})
+        |> json(%{error: %{message: "Failed to cancel current subscription. Please try again."}})
     end
   end
 

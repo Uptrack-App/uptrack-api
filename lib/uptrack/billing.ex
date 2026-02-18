@@ -205,6 +205,43 @@ defmodule Uptrack.Billing do
     end
   end
 
+  def handle_webhook_event("subscription.updated", data) do
+    case get_subscription_by_paddle_id(data["id"]) do
+      nil ->
+        Logger.warning("Webhook: subscription.updated for unknown subscription #{data["id"]}")
+        :ok
+
+      subscription ->
+        {period_start, period_end} = parse_billing_period(data["current_billing_period"])
+        status = normalize_status(data["status"])
+
+        # Extract plan from items if present (plan changes come through here too)
+        price_id =
+          case data["items"] do
+            [%{"price" => %{"id" => pid}} | _] -> pid
+            _ -> nil
+          end
+
+        plan = if price_id, do: plan_for_price_id(price_id), else: subscription.plan
+
+        subscription
+        |> Subscription.changeset(%{
+          plan: plan,
+          status: status,
+          current_period_start: period_start,
+          current_period_end: period_end
+        })
+        |> AppRepo.update()
+        |> tap(fn
+          {:ok, sub} ->
+            if sub.plan != subscription.plan do
+              update_organization_plan(sub.organization_id, sub.plan)
+            end
+          _ -> :ok
+        end)
+    end
+  end
+
   def handle_webhook_event("subscription.past_due", data) do
     case get_subscription_by_paddle_id(data["id"]) do
       nil ->
