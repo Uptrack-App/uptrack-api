@@ -408,6 +408,7 @@ defmodule Uptrack.Teams do
     offset = Keyword.get(opts, :offset, 0)
     action_filter = Keyword.get(opts, :action)
     user_filter = Keyword.get(opts, :user_id)
+    since = Keyword.get(opts, :since)
 
     query =
       AuditLog
@@ -417,13 +418,8 @@ defmodule Uptrack.Teams do
       |> offset(^offset)
 
     query = apply_action_filter(query, action_filter)
-
-    query =
-      if user_filter do
-        where(query, [a], a.user_id == ^user_filter)
-      else
-        query
-      end
+    query = apply_user_filter(query, user_filter)
+    query = apply_since_filter(query, since)
 
     query
     |> preload(:user)
@@ -435,12 +431,16 @@ defmodule Uptrack.Teams do
   """
   def count_audit_logs(organization_id, opts \\ []) do
     action_filter = Keyword.get(opts, :action)
+    user_filter = Keyword.get(opts, :user_id)
+    since = Keyword.get(opts, :since)
 
     query =
       AuditLog
       |> where([a], a.organization_id == ^organization_id)
 
     query = apply_action_filter(query, action_filter)
+    query = apply_user_filter(query, user_filter)
+    query = apply_since_filter(query, since)
 
     AppRepo.aggregate(query, :count)
   end
@@ -456,4 +456,10 @@ defmodule Uptrack.Teams do
       where(query, [a], a.action == ^filter)
     end
   end
+
+  defp apply_user_filter(query, nil), do: query
+  defp apply_user_filter(query, user_id), do: where(query, [a], a.user_id == ^user_id)
+
+  defp apply_since_filter(query, nil), do: query
+  defp apply_since_filter(query, %DateTime{} = since), do: where(query, [a], a.created_at >= ^since)
 end
