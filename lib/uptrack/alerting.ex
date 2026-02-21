@@ -6,7 +6,7 @@ defmodule Uptrack.Alerting do
   import Ecto.Query, warn: false
   alias Uptrack.AppRepo
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
-  alias Uptrack.Alerting.{EmailAlert, SlackAlert, DiscordAlert, TelegramAlert, TeamsAlert, TwilioAlert, WebhookAlert, AlertDeliveryWorker}
+  alias Uptrack.Alerting.{EmailAlert, SlackAlert, DiscordAlert, TelegramAlert, TeamsAlert, TelnyxAlert, WebhookAlert, AlertDeliveryWorker}
   alias Uptrack.Monitoring.{StatusPage, StatusPageMonitor, StatusPageSubscriber}
   alias Uptrack.Escalation
   alias Uptrack.Emails.SubscriberEmail
@@ -334,10 +334,10 @@ defmodule Uptrack.Alerting do
         WebhookAlert.send_test_alert(channel)
 
       "sms" ->
-        TwilioAlert.send_test_sms(channel)
+        TelnyxAlert.send_test_sms(channel)
 
       "phone" ->
-        TwilioAlert.send_test_call(channel)
+        TelnyxAlert.send_test_call(channel)
 
       type ->
         {:error, "Unknown alert channel type: #{type}"}
