@@ -19,7 +19,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
     DiscordAlert,
     TelegramAlert,
     TeamsAlert,
-    TwilioAlert,
+    TelnyxAlert,
     WebhookAlert,
     DeliveryTracker
   }
@@ -82,8 +82,8 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "telegram" -> TelegramAlert.send_incident_alert(channel, incident, monitor)
       "teams" -> TeamsAlert.send_incident_alert(channel, incident, monitor)
       "webhook" -> WebhookAlert.send_incident_alert(channel, incident, monitor)
-      "sms" -> TwilioAlert.send_sms_incident_alert(channel, incident, monitor)
-      "phone" -> TwilioAlert.send_phone_incident_alert(channel, incident, monitor)
+      "sms" -> TelnyxAlert.send_sms_incident_alert(channel, incident, monitor)
+      "phone" -> TelnyxAlert.send_phone_incident_alert(channel, incident, monitor)
       type ->
         Logger.error("Unknown alert channel type: #{type}")
         {:error, :unknown_type}
@@ -98,8 +98,8 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "telegram" -> TelegramAlert.send_resolution_alert(channel, incident, monitor)
       "teams" -> TeamsAlert.send_resolution_alert(channel, incident, monitor)
       "webhook" -> WebhookAlert.send_resolution_alert(channel, incident, monitor)
-      "sms" -> TwilioAlert.send_sms_resolution_alert(channel, incident, monitor)
-      "phone" -> TwilioAlert.send_phone_resolution_alert(channel, incident, monitor)
+      "sms" -> TelnyxAlert.send_sms_resolution_alert(channel, incident, monitor)
+      "phone" -> TelnyxAlert.send_phone_resolution_alert(channel, incident, monitor)
       type ->
         Logger.error("Unknown alert channel type: #{type}")
         {:error, :unknown_type}
