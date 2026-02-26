@@ -10,6 +10,7 @@ defmodule Uptrack.Teams do
   """
 
   import Ecto.Query, warn: false
+  require Logger
 
   alias Uptrack.AppRepo
   alias Uptrack.Accounts
@@ -245,7 +246,6 @@ defmodule Uptrack.Teams do
     |> Mailer.deliver()
   rescue
     e ->
-      require Logger
       Logger.error("Failed to send invitation email to #{invitation.email}: #{inspect(e)}")
   end
 
@@ -398,6 +398,10 @@ defmodule Uptrack.Teams do
     %AuditLog{}
     |> AuditLog.changeset(attrs)
     |> AppRepo.insert()
+  rescue
+    error ->
+      Logger.error("Failed to write audit log: #{inspect(error)}")
+      {:error, :audit_log_failed}
   end
 
   @doc """
