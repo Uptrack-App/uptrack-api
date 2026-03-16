@@ -31,6 +31,11 @@ defmodule Uptrack.Billing.PaddleClient.Http do
   end
 
   @impl true
+  def update_subscription(subscription_id, params) do
+    patch("/subscriptions/#{subscription_id}", params)
+  end
+
+  @impl true
   def create_portal_session(customer_id) do
     post("/customers/#{customer_id}/portal-sessions", %{})
   end
@@ -47,6 +52,26 @@ defmodule Uptrack.Billing.PaddleClient.Http do
 
       {:ok, %{status: status, body: body}} ->
         Logger.error("Paddle GET #{path} failed: status=#{status} body=#{inspect(body)}")
+        {:error, %{status: status, body: body}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  rescue
+    e -> {:error, Exception.message(e)}
+  end
+
+  defp patch(path, body) do
+    case Req.patch(base_url() <> path,
+           headers: auth_headers(),
+           json: body,
+           retry: false
+         ) do
+      {:ok, %{status: status, body: %{"data" => data}}} when status in [200, 201] ->
+        {:ok, data}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("Paddle PATCH #{path} failed: status=#{status} body=#{inspect(body)}")
         {:error, %{status: status, body: body}}
 
       {:error, reason} ->

@@ -24,6 +24,14 @@ defmodule Uptrack.Monitoring do
     |> AppRepo.aggregate(:count)
   end
 
+  def count_fast_monitors(organization_id) do
+    from(m in Monitor,
+      where: m.organization_id == ^organization_id,
+      where: m.interval < 180
+    )
+    |> AppRepo.aggregate(:count)
+  end
+
   def count_alert_channels(organization_id) do
     from(a in AlertChannel, where: a.organization_id == ^organization_id)
     |> AppRepo.aggregate(:count)

@@ -72,6 +72,7 @@ defmodule Uptrack.Monitoring.SmartDefaults do
       host
       |> String.replace(~r/^www\./, "")
       |> String.replace(~r/\.(com|org|net|io|co|app)$/, "")
+      |> sanitize_name()
 
     service = port_to_service(port)
 
@@ -85,6 +86,14 @@ defmodule Uptrack.Monitoring.SmartDefaults do
     host
     |> String.replace(~r/^www\./, "")
     |> String.replace(~r/\.(com|org|net|io|co|app)$/, "")
+    |> sanitize_name()
+  end
+
+  defp sanitize_name(name) do
+    case String.split(name, "://", parts: 2) do
+      [clean, _] -> clean
+      _ -> name
+    end
   end
 
   # ---------------------------------------------------------------------------

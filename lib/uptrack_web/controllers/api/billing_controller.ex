@@ -6,17 +6,19 @@ defmodule UptrackWeb.Api.BillingController do
   require Logger
 
   @doc """
-  Creates a Paddle checkout transaction and returns the checkout URL.
+  Creates a checkout session via the configured payment provider.
   POST /api/billing/checkout
 
   Body: {"plan": "pro" | "team"}
   """
-  def checkout(conn, %{"plan" => plan}) when plan in ["pro", "team"] do
+  def checkout(conn, %{"plan" => plan} = params) when plan in ["pro", "team"] do
     org = conn.assigns.current_organization
+    interval = params["interval"] || "monthly"
 
-    case Billing.create_checkout_session(org, plan) do
+    case Billing.create_checkout_session(org, plan, interval) do
       {:ok, %{checkout_url: url, transaction_id: txn_id}} ->
-        json(conn, %{checkout_url: url, transaction_id: txn_id})
+        provider = provider_name()
+        json(conn, %{checkout_url: url, transaction_id: txn_id, provider: provider})
 
       {:error, reason} ->
         conn
@@ -81,7 +83,7 @@ defmodule UptrackWeb.Api.BillingController do
   end
 
   @doc """
-  Changes plan by cancelling current subscription and creating a new checkout.
+  Changes plan by directly updating the Paddle subscription (no checkout needed).
   POST /api/billing/change-plan
 
   Body: {"plan": "pro" | "team"}
@@ -89,32 +91,21 @@ defmodule UptrackWeb.Api.BillingController do
   def change_plan(conn, %{"plan" => plan}) when plan in ["pro", "team"] do
     org = conn.assigns.current_organization
 
-    # Cancel existing subscription first — only proceed if cancel succeeds or no subscription exists
-    cancel_result =
-      case Billing.cancel_active_subscription(org) do
-        {:ok, _} -> :ok
-        {:error, :no_active_subscription} -> :ok
-        {:error, reason} -> {:error, reason}
-      end
+    case Billing.update_subscription_plan(org, plan) do
+      {:ok, plan} ->
+        json(conn, %{plan: plan})
 
-    case cancel_result do
-      :ok ->
-        case Billing.create_checkout_session(org, plan) do
-          {:ok, %{checkout_url: url, transaction_id: txn_id}} ->
-            json(conn, %{checkout_url: url, transaction_id: txn_id})
-
-          {:error, reason} ->
-            conn
-            |> put_status(422)
-            |> json(%{error: %{message: format_error(reason)}})
-        end
+      {:error, :no_active_subscription} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: %{message: "No active subscription found."}})
 
       {:error, reason} ->
-        Logger.warning("change_plan: cancel failed for org #{org.id}: #{inspect(reason)}")
+        Logger.warning("change_plan: update failed for org #{org.id}: #{inspect(reason)}")
 
         conn
         |> put_status(422)
-        |> json(%{error: %{message: "Failed to cancel current subscription. Please try again."}})
+        |> json(%{error: %{message: "Failed to change plan. Please try again."}})
     end
   end
 
@@ -151,6 +142,8 @@ defmodule UptrackWeb.Api.BillingController do
         |> json(%{error: %{message: format_error(reason)}})
     end
   end
+
+  defp provider_name, do: Billing.payment_provider_name()
 
   defp format_error(%{body: %{"error" => %{"detail" => msg}}}), do: msg
   defp format_error(%{body: %{"message" => msg}}), do: msg

@@ -54,6 +54,10 @@ defmodule Uptrack.Monitoring.Monitor do
       :user_id
     ])
     |> validate_required([:name, :url, :organization_id, :user_id])
+    |> validate_length(:name, max: 100)
+    |> validate_change(:name, fn :name, name ->
+      if String.contains?(name, "://"), do: [name: "must not contain a URL"], else: []
+    end)
     |> validate_inclusion(:monitor_type, @monitor_types)
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:interval, greater_than_or_equal_to: 30)

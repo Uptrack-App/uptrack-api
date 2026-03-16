@@ -155,9 +155,10 @@ defmodule Uptrack.Accounts do
   """
   def register_user_with_organization(attrs) do
     org_name = derive_organization_name(attrs)
+    slug = unique_org_slug(Organization.generate_slug(org_name))
 
     Multi.new()
-    |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name}))
+    |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name, slug: slug}))
     |> Multi.insert(:user, fn %{organization: org} ->
       user_attrs = Map.put(attrs, "organization_id", org.id)
 
@@ -207,9 +208,10 @@ defmodule Uptrack.Accounts do
   """
   def create_user_from_oauth_with_organization(attrs) do
     org_name = derive_organization_name(attrs)
+    slug = unique_org_slug(Organization.generate_slug(org_name))
 
     Multi.new()
-    |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name}))
+    |> Multi.insert(:organization, Organization.create_changeset(%Organization{}, %{name: org_name, slug: slug}))
     |> Multi.insert(:user, fn %{organization: org} ->
       user_attrs = Map.put(attrs, :organization_id, org.id)
 
@@ -222,6 +224,13 @@ defmodule Uptrack.Accounts do
       {:error, :organization, changeset, _} -> {:error, :organization, changeset, %{}}
       {:error, :user, changeset, _} -> {:error, :user, changeset, %{}}
     end
+  end
+
+  # Appends a 4-char random hex suffix to guarantee slug uniqueness without a DB check.
+  defp unique_org_slug(base_slug) do
+    suffix = :crypto.strong_rand_bytes(2) |> Base.encode16(case: :lower)
+    base = if base_slug == "", do: "org", else: String.slice(base_slug, 0, 45)
+    "#{base}-#{suffix}"
   end
 
   # Derives an organization name from user attributes

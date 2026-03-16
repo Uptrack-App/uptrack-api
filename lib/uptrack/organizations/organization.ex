@@ -46,22 +46,25 @@ defmodule Uptrack.Organizations.Organization do
     |> changeset(attrs)
   end
 
+  @doc """
+  Generates a URL-safe slug from an organization name.
+  """
+  def generate_slug(name) do
+    name
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9\s-]/, "")
+    |> String.replace(~r/\s+/, "-")
+    |> String.replace(~r/-+/, "-")
+    |> String.trim("-")
+  end
+
   defp maybe_add_slug_to_attrs(attrs) do
     attrs = Map.new(attrs, fn {k, v} -> {to_string(k), v} end)
 
     case Map.get(attrs, "slug") do
       nil ->
         name = Map.get(attrs, "name", "")
-
-        slug =
-          name
-          |> String.downcase()
-          |> String.replace(~r/[^a-z0-9\s-]/, "")
-          |> String.replace(~r/\s+/, "-")
-          |> String.replace(~r/-+/, "-")
-          |> String.trim("-")
-
-        Map.put(attrs, "slug", slug)
+        Map.put(attrs, "slug", generate_slug(name))
 
       _ ->
         attrs
