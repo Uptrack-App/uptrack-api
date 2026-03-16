@@ -15,7 +15,9 @@ defmodule Uptrack.Billing do
 
   require Logger
 
-  @provider Application.compile_env(:uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider)
+  defp provider do
+    Application.get_env(:uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider)
+  end
 
   # --- Plan limits (pure data) ---
 
@@ -29,10 +31,10 @@ defmodule Uptrack.Billing do
 
   def plan_limit(plan, resource), do: plan_limits(plan)[resource]
 
-  def payment_provider, do: @provider
+  def payment_provider, do: provider()
 
   def payment_provider_name do
-    case to_string(@provider) do
+    case to_string(provider()) do
       name when is_binary(name) ->
         cond do
           String.contains?(name, "Dodo") -> "dodo"
@@ -141,7 +143,7 @@ defmodule Uptrack.Billing do
 
   def create_checkout_session(%Organization{} = organization, plan, interval)
       when plan in ["pro", "team"] and interval in ["monthly", "annual"] do
-    @provider.create_checkout(organization, plan, interval)
+    provider().create_checkout(organization, plan, interval)
   end
 
   def create_checkout_session(_organization, _plan, _interval), do: {:error, :invalid_plan}
@@ -161,7 +163,7 @@ defmodule Uptrack.Billing do
         if is_nil(customer_id) do
           {:error, :no_customer_id}
         else
-          @provider.create_portal_session(customer_id)
+          provider().create_portal_session(customer_id)
         end
     end
   end
@@ -180,7 +182,7 @@ defmodule Uptrack.Billing do
       subscription ->
         sub_id = subscription.provider_subscription_id || subscription.paddle_subscription_id
 
-        case @provider.update_subscription(sub_id, plan) do
+        case provider().update_subscription(sub_id, plan) do
           {:ok, _} ->
             subscription
             |> Subscription.changeset(%{plan: plan})
@@ -210,7 +212,7 @@ defmodule Uptrack.Billing do
       subscription ->
         sub_id = subscription.provider_subscription_id || subscription.paddle_subscription_id
 
-        with {:ok, _} <- @provider.cancel_subscription(sub_id) do
+        with {:ok, _} <- provider().cancel_subscription(sub_id) do
           now = DateTime.utc_now() |> DateTime.truncate(:second)
 
           subscription
