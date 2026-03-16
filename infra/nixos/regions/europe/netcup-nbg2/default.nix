@@ -1,9 +1,10 @@
 # Netcup Nuremberg Node 2 (nbg2) - Coordinator Standby + API
 # IP: 152.53.183.208
 # Tailscale: 100.64.1.2
-# Services: Phoenix API, PostgreSQL Coordinator Standby,
+# Services: Phoenix API, cloudflared, PostgreSQL Coordinator Standby,
 #           Patroni (coordinator), etcd (2/3), vmagent
-# Note: No cloudflared - standby has read-only DB, can't handle writes (OAuth, etc.)
+# HAProxy routes DB writes to current Patroni primary (nbg1 or nbg2),
+# so both nodes are fully write-capable regardless of PostgreSQL primary location.
 { config, pkgs, lib, ... }:
 
 let
@@ -19,6 +20,7 @@ in {
     ../../../modules/services/haproxy.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/uptrack-app.nix
+    ../../../modules/services/cloudflared.nix
     ../../../modules/services/node-exporter.nix
     ../../../modules/services/vmagent.nix
   ];
@@ -68,7 +70,21 @@ in {
     ];
   };
 
+  # Cloudflare Tunnel — same token as nbg1, Cloudflare treats both as redundant connectors.
+  # If nbg1 dies, Cloudflare routes all traffic here automatically within ~5s.
+  services.uptrack.cloudflared = {
+    enable = true;
+    tunnelTokenFile = config.age.secrets.cloudflared-tunnel-token.path;
+  };
+
   # Agenix secrets
+  age.secrets.cloudflared-tunnel-token = {
+    file = ../../../secrets/cloudflared-tunnel-token.age;
+    owner = "cloudflared";
+    group = "cloudflared";
+    mode = "0400";
+  };
+
   age.secrets.uptrack-env = {
     file = ../../../secrets/uptrack-env.age;
     owner = "uptrack";

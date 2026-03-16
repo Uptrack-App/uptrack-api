@@ -155,6 +155,7 @@ in lib.mkIf isPatroniNode {
           "host all all 127.0.0.1/32 trust"
           # Allow admin access from any Tailscale IP (CGNAT range)
           "host all uptrack_app_user 100.64.0.0/10 md5"
+          "hostssl all uptrack_app_user 100.64.0.0/10 md5"
         ];
 
         # Post-bootstrap script: setup Citus after fresh cluster creation
