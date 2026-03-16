@@ -33,6 +33,15 @@ defmodule Uptrack.Billing.PaddleClientMock do
   end
 
   @impl true
+  def update_subscription(_subscription_id, _params) do
+    case Process.get(:paddle_update_subscription) do
+      nil -> {:ok, %{"id" => "sub_mock", "status" => "active"}}
+      fun when is_function(fun) -> fun.()
+      result -> result
+    end
+  end
+
+  @impl true
   def cancel_subscription(_subscription_id, _opts) do
     case Process.get(:paddle_cancel_subscription) do
       nil -> {:ok, %{"id" => "sub_mock", "status" => "canceled"}}

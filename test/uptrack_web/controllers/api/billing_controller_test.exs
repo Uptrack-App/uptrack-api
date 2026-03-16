@@ -112,9 +112,9 @@ defmodule UptrackWeb.Api.BillingControllerTest do
   end
 
   describe "POST /api/billing/change-plan" do
-    test "returns checkout URL for new plan", %{conn: conn} do
+    test "returns 422 when no active subscription", %{conn: conn} do
       conn = post(conn, ~p"/api/billing/change-plan", %{"plan" => "team"})
-      assert %{"checkout_url" => _, "transaction_id" => _} = json_response(conn, 200)
+      assert %{"error" => %{"message" => _}} = json_response(conn, 422)
     end
 
     test "rejects invalid plan", %{conn: conn} do

@@ -100,10 +100,20 @@ defmodule Uptrack.BillingTest do
       assert :ok = Billing.check_interval_limit(org, 180)
     end
 
-    test "rejects too-fast interval for free plan" do
+    test "allows fast interval for free plan when fast monitor slot available" do
       org = organization_fixture()
+      # Free plan has 1 fast monitor slot — 60s should be allowed
+      assert :ok = Billing.check_interval_limit(org, 60)
+      assert :ok = Billing.check_interval_limit(org, 30)
+    end
+
+    test "rejects fast interval for free plan when fast monitor slot used" do
+      {user, org} = user_with_org_fixture()
+      # Use up the fast monitor slot by creating a monitor with interval < 180
+      monitor_fixture(user_id: user.id, organization_id: org.id, interval: 30)
+
       assert {:error, msg} = Billing.check_interval_limit(org, 60)
-      assert msg =~ "180 seconds"
+      assert msg =~ "Fast Monitor"
     end
 
     test "allows 30-second interval for pro plan" do
@@ -113,7 +123,8 @@ defmodule Uptrack.BillingTest do
 
     test "rejects sub-30s interval for pro plan" do
       org = organization_fixture(plan: "pro")
-      assert {:error, _} = Billing.check_interval_limit(org, 15)
+      assert {:error, msg} = Billing.check_interval_limit(org, 15)
+      assert msg =~ "30 seconds"
     end
   end
 

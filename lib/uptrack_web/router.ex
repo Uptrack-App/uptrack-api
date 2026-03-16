@@ -223,6 +223,8 @@ defmodule UptrackWeb.Router do
     pipe_through :api
 
     post "/paddle", WebhookController, :paddle
+    post "/dodo", WebhookController, :dodo
+    post "/creem", WebhookController, :creem
   end
 
   # Public API routes (no authentication required)

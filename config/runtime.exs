@@ -130,6 +130,43 @@ if config_env() == :prod do
       price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM")
   end
 
+  # Dodo Payments (optional — used when DODO_API_KEY is set)
+  if dodo_api_key = System.get_env("DODO_API_KEY") do
+    config :uptrack, :dodo,
+      api_key: dodo_api_key,
+      webhook_secret: System.get_env("DODO_WEBHOOK_SECRET"),
+      base_url: System.get_env("DODO_BASE_URL", "https://live.dodopayments.com"),
+      business_id: System.get_env("DODO_BUSINESS_ID"),
+      product_id_pro: System.get_env("DODO_PRODUCT_ID_PRO"),
+      product_id_team: System.get_env("DODO_PRODUCT_ID_TEAM"),
+      return_url: System.get_env("DODO_RETURN_URL")
+  end
+
+  # Creem billing (optional — used when CREEM_API_KEY is set)
+  if creem_api_key = System.get_env("CREEM_API_KEY") do
+    config :uptrack, :creem,
+      api_key: creem_api_key,
+      webhook_secret: System.get_env("CREEM_WEBHOOK_SECRET"),
+      base_url: System.get_env("CREEM_BASE_URL", "https://api.creem.io"),
+      product_id_pro: System.get_env("CREEM_PRODUCT_ID_PRO"),
+      product_id_pro_annual: System.get_env("CREEM_PRODUCT_ID_PRO_ANNUAL"),
+      product_id_team: System.get_env("CREEM_PRODUCT_ID_TEAM"),
+      product_id_team_annual: System.get_env("CREEM_PRODUCT_ID_TEAM_ANNUAL"),
+      success_url: System.get_env("CREEM_SUCCESS_URL")
+  end
+
+  # Payment provider selection (default: Paddle for backward compatibility)
+  case System.get_env("PAYMENT_PROVIDER") do
+    "dodo" ->
+      config :uptrack, :payment_provider, Uptrack.Billing.Dodo.DodoProvider
+
+    "creem" ->
+      config :uptrack, :payment_provider, Uptrack.Billing.Creem.CreemProvider
+
+    _ ->
+      config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
+  end
+
   config :uptrack, UptrackWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

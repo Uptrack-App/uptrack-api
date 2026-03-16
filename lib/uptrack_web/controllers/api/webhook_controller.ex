@@ -2,12 +2,16 @@ defmodule UptrackWeb.Api.WebhookController do
   use UptrackWeb, :controller
 
   alias Uptrack.Billing
+  alias Uptrack.Billing.Dodo.DodoWebhook
+  alias Uptrack.Billing.Creem.CreemWebhook
 
   require Logger
 
+  # --- Paddle webhooks ---
+
   def paddle(conn, _params) do
     with {:ok, raw_body} <- get_raw_body(conn),
-         :ok <- verify_signature(conn, raw_body),
+         :ok <- verify_paddle_signature(conn, raw_body),
          {:ok, payload} <- Jason.decode(raw_body) do
       event_type = payload["event_type"]
       event_data = payload["data"] || %{}
@@ -24,21 +28,89 @@ defmodule UptrackWeb.Api.WebhookController do
         conn |> put_status(401) |> json(%{error: "Invalid signature"})
 
       {:error, reason} ->
-        Logger.error("Webhook processing error: #{inspect(reason)}")
+        Logger.error("Paddle webhook processing error: #{inspect(reason)}")
         conn |> put_status(400) |> json(%{error: "Bad request"})
     end
   end
 
-  # --- Signature verification ---
-  # Paddle signs webhooks with HMAC-SHA256:
-  # Header: Paddle-Signature: ts=<timestamp>;h1=<hmac_hex>
-  # Signed payload: "<timestamp>:<raw_body>"
+  # --- Dodo Payments webhooks ---
 
-  defp verify_signature(conn, raw_body) do
+  def dodo(conn, _params) do
+    with {:ok, raw_body} <- get_raw_body(conn),
+         headers <- dodo_webhook_headers(conn),
+         :ok <- DodoWebhook.verify(raw_body, headers),
+         {:ok, payload} <- Jason.decode(raw_body) do
+      event_type = payload["type"] || payload["event_type"]
+      event_data = payload["data"] || payload
+
+      Logger.info("Dodo webhook: #{event_type}")
+      Billing.handle_dodo_webhook(event_type, event_data)
+
+      json(conn, %{received: true})
+    else
+      {:error, :missing_signature} ->
+        conn |> put_status(401) |> json(%{error: "Missing signature"})
+
+      {:error, :invalid_signature} ->
+        conn |> put_status(401) |> json(%{error: "Invalid signature"})
+
+      {:error, :timestamp_too_old} ->
+        conn |> put_status(401) |> json(%{error: "Timestamp too old"})
+
+      {:error, reason} ->
+        Logger.error("Dodo webhook processing error: #{inspect(reason)}")
+        conn |> put_status(400) |> json(%{error: "Bad request"})
+    end
+  end
+
+  # --- Creem webhooks ---
+
+  def creem(conn, _params) do
+    with {:ok, raw_body} <- get_raw_body(conn),
+         headers <- creem_webhook_headers(conn),
+         :ok <- CreemWebhook.verify(raw_body, headers),
+         {:ok, payload} <- Jason.decode(raw_body) do
+      event_type = payload["type"] || payload["event_type"]
+      event_data = payload["data"] || payload
+
+      Logger.info("Creem webhook: #{event_type}")
+      Billing.handle_creem_webhook(event_type, event_data)
+
+      json(conn, %{received: true})
+    else
+      {:error, :missing_signature} ->
+        conn |> put_status(401) |> json(%{error: "Missing signature"})
+
+      {:error, :invalid_signature} ->
+        conn |> put_status(401) |> json(%{error: "Invalid signature"})
+
+      {:error, reason} ->
+        Logger.error("Creem webhook processing error: #{inspect(reason)}")
+        conn |> put_status(400) |> json(%{error: "Bad request"})
+    end
+  end
+
+  defp creem_webhook_headers(conn) do
+    %{
+      "creem-signature" => List.first(Plug.Conn.get_req_header(conn, "creem-signature")) || ""
+    }
+  end
+
+  defp dodo_webhook_headers(conn) do
+    %{
+      "webhook-id" => List.first(Plug.Conn.get_req_header(conn, "webhook-id")) || "",
+      "webhook-signature" => List.first(Plug.Conn.get_req_header(conn, "webhook-signature")) || "",
+      "webhook-timestamp" => List.first(Plug.Conn.get_req_header(conn, "webhook-timestamp")) || ""
+    }
+  end
+
+  # --- Paddle signature verification ---
+
+  defp verify_paddle_signature(conn, raw_body) do
     case Plug.Conn.get_req_header(conn, "paddle-signature") do
       [paddle_signature] ->
         with {:ok, ts, h1} <- parse_paddle_signature(paddle_signature) do
-          secret = webhook_secret()
+          secret = paddle_webhook_secret()
           signed_payload = "#{ts}:#{raw_body}"
 
           expected =
@@ -83,7 +155,7 @@ defmodule UptrackWeb.Api.WebhookController do
     end
   end
 
-  defp webhook_secret do
+  defp paddle_webhook_secret do
     config = Application.get_env(:uptrack, :paddle) || %{}
     config[:webhook_secret] || raise "PADDLE_WEBHOOK_SECRET not configured"
   end
