@@ -70,10 +70,10 @@ defmodule UptrackWeb.Api.WebhookController do
          headers <- creem_webhook_headers(conn),
          :ok <- CreemWebhook.verify(raw_body, headers),
          {:ok, payload} <- Jason.decode(raw_body) do
-      event_type = payload["type"] || payload["event_type"]
-      event_data = payload["data"] || payload
+      event_type = payload["eventType"] || payload["event_type"] || payload["type"]
+      event_data = payload["object"] || payload["data"] || payload
 
-      Logger.info("Creem webhook: #{event_type}")
+      Logger.info("Creem webhook event=#{event_type} keys=#{inspect(Map.keys(payload))}")
       Billing.handle_creem_webhook(event_type, event_data)
 
       json(conn, %{received: true})
