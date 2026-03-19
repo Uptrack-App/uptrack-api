@@ -88,13 +88,17 @@ defmodule Uptrack.Billing.Creem.CreemProvider do
   # --- Private ---
 
   defp handle_checkout_completed(data) do
-    # checkout.completed fires before subscription.active for subscription products.
-    # We can use it to create the subscription record early if metadata is present.
-    sub_id = data["subscription_id"]
-    customer_id = data["customer_id"]
+    # Creem checkout.completed payload structure:
+    # data.subscription.id, data.customer (string or nested), data.metadata, data.order.product
+    sub = data["subscription"] || %{}
+    sub_id = sub["id"] || data["subscription_id"]
+    customer_id = extract_customer_id(data)
     metadata = data["metadata"] || %{}
     org_id = metadata["organization_id"]
-    plan = metadata["plan"] || plan_for_product_id(data["product_id"])
+    product_id = get_in(data, ["order", "product"]) || data["product_id"]
+    plan = metadata["plan"] || plan_for_product_id(product_id)
+
+    Logger.info("Creem checkout.completed: sub_id=#{sub_id} org_id=#{org_id} plan=#{plan}")
 
     if sub_id do
       {:ok, %{
@@ -106,17 +110,20 @@ defmodule Uptrack.Billing.Creem.CreemProvider do
         status: "active"
       }}
     else
-      # One-time payment, not a subscription
       {:error, :unhandled_event}
     end
   end
 
   defp handle_subscription_active(data) do
+    # Creem subscription.active: data.id is sub ID, data.customer/product are nested
     sub_id = data["id"] || data["subscription_id"]
-    customer_id = data["customer_id"]
+    customer_id = extract_customer_id(data)
     metadata = data["metadata"] || %{}
     org_id = metadata["organization_id"]
-    plan = metadata["plan"] || plan_for_product_id(data["product_id"])
+    product_id = extract_product_id(data)
+    plan = metadata["plan"] || plan_for_product_id(product_id)
+
+    Logger.info("Creem subscription.active: sub_id=#{sub_id} org_id=#{org_id} plan=#{plan}")
 
     {:ok, %{
       provider: "creem",
@@ -125,8 +132,8 @@ defmodule Uptrack.Billing.Creem.CreemProvider do
       organization_id: org_id,
       plan: plan,
       status: "active",
-      current_period_start: parse_timestamp(data["current_period_start"]),
-      current_period_end: parse_timestamp(data["current_period_end"])
+      current_period_start: parse_timestamp(data["current_period_start"] || data["created_at"]),
+      current_period_end: parse_timestamp(data["current_period_end"] || data["updated_at"])
     }}
   end
 
@@ -148,6 +155,22 @@ defmodule Uptrack.Billing.Creem.CreemProvider do
       provider_subscription_id: sub_id,
       status: "past_due"
     }}
+  end
+
+  defp extract_customer_id(data) do
+    case data["customer"] do
+      %{"id" => id} -> id
+      id when is_binary(id) -> id
+      _ -> data["customer_id"]
+    end
+  end
+
+  defp extract_product_id(data) do
+    case data["product"] do
+      %{"id" => id} -> id
+      id when is_binary(id) -> id
+      _ -> get_in(data, ["order", "product"]) || data["product_id"]
+    end
   end
 
   defp parse_timestamp(nil), do: nil
