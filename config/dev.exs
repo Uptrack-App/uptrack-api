@@ -125,7 +125,9 @@ config :uptrack, :paddle,
   base_url: System.get_env("PADDLE_BASE_URL", "https://sandbox-api.paddle.com"),
   checkout_url: System.get_env("PADDLE_CHECKOUT_URL", "https://sandbox-checkout.paddle.com"),
   price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO", "pri_01khkcqn8pv207r6j8qnjfmj5t"),
-  price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM", "pri_01khkcrv2b6a5kc9cftsh503gc")
+  price_id_pro_annual: System.get_env("PADDLE_PRICE_ID_PRO_ANNUAL", "pri_01khkcqn8pv207r6j8qnjfmj5t"),
+  price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM", "pri_01khkcrv2b6a5kc9cftsh503gc"),
+  price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL", "pri_01khkcrv2b6a5kc9cftsh503gc")
 
 # Dodo Payments (test mode — configure via env vars or use placeholder)
 config :uptrack, :dodo,
@@ -148,12 +150,12 @@ config :uptrack, :creem,
   product_id_team_annual: System.get_env("CREEM_PRODUCT_ID_TEAM_ANNUAL", "prod_76qoauyawfSthPF4Zz3J9m"),
   success_url: System.get_env("CREEM_SUCCESS_URL", "http://localhost:3000/dashboard/settings?billing=success")
 
-# Payment provider: set PAYMENT_PROVIDER=paddle|dodo to switch in dev (default: creem)
+# Payment provider: set PAYMENT_PROVIDER=creem|dodo to switch in dev (default: paddle)
 dev_provider =
   case System.get_env("PAYMENT_PROVIDER") do
-    "paddle" -> Uptrack.Billing.Paddle.PaddleProvider
+    "creem" -> Uptrack.Billing.Creem.CreemProvider
     "dodo" -> Uptrack.Billing.Dodo.DodoProvider
-    _ -> Uptrack.Billing.Creem.CreemProvider
+    _ -> Uptrack.Billing.Paddle.PaddleProvider
   end
 
 config :uptrack, :payment_provider, dev_provider
