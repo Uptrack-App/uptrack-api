@@ -18,12 +18,16 @@ defmodule Uptrack.Billing.Paddle.PaddleProvider do
     config = paddle_config()
     price_id = price_id_for_plan(plan, interval, config)
 
+    success_url = Application.get_env(:uptrack, :frontend_url, "https://uptrack.app")
+    checkout_settings = %{url: "#{success_url}/dashboard/settings?billing=success"}
+
     case PaddleClient.create_transaction(%{
            items: [%{price_id: price_id, quantity: 1}],
            custom_data: %{
              organization_id: organization.id,
              plan: plan
-           }
+           },
+           checkout: %{url: checkout_settings.url}
          }) do
       {:ok, %{"id" => txn_id, "checkout" => %{"url" => url}}} ->
         {:ok, %{checkout_url: url, transaction_id: txn_id}}

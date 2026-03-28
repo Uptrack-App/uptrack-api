@@ -386,22 +386,35 @@ defmodule Uptrack.Billing do
           Logger.error("Creem webhook: subscription.active without organization_id in metadata")
           {:error, :missing_organization_id}
         else
-          %Subscription{}
-          |> Subscription.changeset(%{
-            organization_id: org_id,
-            provider: "creem",
-            provider_subscription_id: sub_id,
-            provider_customer_id: attrs[:provider_customer_id],
-            plan: attrs[:plan] || "pro",
-            status: "active",
-            current_period_start: attrs[:current_period_start],
-            current_period_end: attrs[:current_period_end]
-          })
-          |> AppRepo.insert()
-          |> tap(fn
-            {:ok, sub} -> update_organization_plan(sub.organization_id, sub.plan)
-            _ -> :ok
-          end)
+          result =
+            %Subscription{}
+            |> Subscription.changeset(%{
+              organization_id: org_id,
+              provider: "creem",
+              provider_subscription_id: sub_id,
+              provider_customer_id: attrs[:provider_customer_id],
+              plan: attrs[:plan] || "pro",
+              status: "active",
+              current_period_start: attrs[:current_period_start],
+              current_period_end: attrs[:current_period_end]
+            })
+            |> AppRepo.insert(
+              on_conflict: :nothing,
+              conflict_target: :provider_subscription_id
+            )
+
+          case result do
+            {:ok, %{id: nil}} ->
+              # Conflict: another webhook already inserted this subscription
+              :ok
+
+            {:ok, sub} ->
+              update_organization_plan(sub.organization_id, sub.plan)
+              {:ok, sub}
+
+            error ->
+              error
+          end
         end
 
       existing ->
@@ -556,22 +569,35 @@ defmodule Uptrack.Billing do
           Logger.error("Webhook: subscription.activated without organization_id in custom_data")
           {:error, :missing_organization_id}
         else
-          %Subscription{}
-          |> Subscription.changeset(%{
-            organization_id: org_id,
-            paddle_subscription_id: paddle_sub_id,
-            paddle_customer_id: customer_id,
-            provider: "paddle",
-            plan: plan,
-            status: status,
-            current_period_start: period_start,
-            current_period_end: period_end
-          })
-          |> AppRepo.insert()
-          |> tap(fn
-            {:ok, sub} -> update_organization_plan(sub.organization_id, plan)
-            _ -> :ok
-          end)
+          result =
+            %Subscription{}
+            |> Subscription.changeset(%{
+              organization_id: org_id,
+              paddle_subscription_id: paddle_sub_id,
+              paddle_customer_id: customer_id,
+              provider: "paddle",
+              plan: plan,
+              status: status,
+              current_period_start: period_start,
+              current_period_end: period_end
+            })
+            |> AppRepo.insert(
+              on_conflict: :nothing,
+              conflict_target: :paddle_subscription_id
+            )
+
+          case result do
+            {:ok, %{id: nil}} ->
+              # Conflict: another webhook already inserted this subscription
+              :ok
+
+            {:ok, sub} ->
+              update_organization_plan(sub.organization_id, plan)
+              {:ok, sub}
+
+            error ->
+              error
+          end
         end
 
       existing ->
@@ -613,7 +639,9 @@ defmodule Uptrack.Billing do
 
     cond do
       price_id == config[:price_id_pro] -> "pro"
+      price_id == config[:price_id_pro_annual] -> "pro"
       price_id == config[:price_id_team] -> "team"
+      price_id == config[:price_id_team_annual] -> "team"
       true ->
         Logger.warning("Unknown Paddle price_id #{inspect(price_id)}, falling back to pro plan")
         "pro"

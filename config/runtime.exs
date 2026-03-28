@@ -127,7 +127,9 @@ if config_env() == :prod do
       base_url: System.get_env("PADDLE_BASE_URL", "https://api.paddle.com"),
       checkout_url: System.get_env("PADDLE_CHECKOUT_URL", "https://checkout.paddle.com"),
       price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO"),
-      price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM")
+      price_id_pro_annual: System.get_env("PADDLE_PRICE_ID_PRO_ANNUAL"),
+      price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM"),
+      price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL")
   end
 
   # Dodo Payments (optional — used when DODO_API_KEY is set)
