@@ -132,9 +132,6 @@ if config_env() == :prod do
       price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL")
   end
 
-  # Payment provider (Paddle only)
-  config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
-
   config :uptrack, UptrackWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

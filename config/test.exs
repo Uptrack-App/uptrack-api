@@ -53,9 +53,6 @@ config :uptrack, Oban, testing: :manual, queues: false, plugins: false
 # Use mock Paddle client in tests
 config :uptrack, :paddle_client, Uptrack.Billing.PaddleClientMock
 
-# Default to Paddle provider in tests (matches production default)
-config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
-
 # Print only warnings and errors during test
 config :logger, level: :warning
 

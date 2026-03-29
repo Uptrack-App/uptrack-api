@@ -9,15 +9,12 @@ defmodule Uptrack.Billing do
   import Ecto.Query
 
   alias Uptrack.AppRepo
+  alias Uptrack.Billing.PaddleClient
   alias Uptrack.Billing.Subscription
   alias Uptrack.Organizations
   alias Uptrack.Organizations.Organization
 
   require Logger
-
-  defp provider do
-    Application.get_env(:uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider)
-  end
 
   # --- Plan limits (pure data) ---
 
@@ -30,8 +27,6 @@ defmodule Uptrack.Billing do
   def plan_limits(plan), do: Map.get(@plan_limits, plan, @plan_limits["free"])
 
   def plan_limit(plan, resource), do: plan_limits(plan)[resource]
-
-  def payment_provider, do: provider()
 
   def payment_provider_name, do: "paddle"
 
@@ -134,7 +129,25 @@ defmodule Uptrack.Billing do
 
   def create_checkout_session(%Organization{} = organization, plan, interval)
       when plan in ["pro", "team"] and interval in ["monthly", "annual"] do
-    provider().create_checkout(organization, plan, interval)
+    config = paddle_config()
+    price_id = price_id_for_plan(plan, interval, config)
+    success_url = Application.get_env(:uptrack, :frontend_url, "https://uptrack.app")
+
+    case PaddleClient.create_transaction(%{
+           items: [%{price_id: price_id, quantity: 1}],
+           custom_data: %{organization_id: organization.id, plan: plan},
+           checkout: %{url: "#{success_url}/dashboard/settings?billing=success"}
+         }) do
+      {:ok, %{"id" => txn_id, "checkout" => %{"url" => url}}} ->
+        {:ok, %{checkout_url: url, transaction_id: txn_id}}
+
+      {:ok, data} ->
+        checkout_url = "#{config[:checkout_url]}?_ptxn=#{data["id"]}"
+        {:ok, %{checkout_url: checkout_url, transaction_id: data["id"]}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def create_checkout_session(_organization, _plan, _interval), do: {:error, :invalid_plan}
@@ -154,7 +167,11 @@ defmodule Uptrack.Billing do
         if is_nil(customer_id) do
           {:error, :no_customer_id}
         else
-          provider().create_portal_session(customer_id)
+          case PaddleClient.create_portal_session(customer_id) do
+            {:ok, %{"urls" => %{"general" => %{"overview" => url}}}} -> {:ok, url}
+            {:ok, data} -> {:ok, get_in(data, ["urls", "general", "overview"]) || data["id"]}
+            {:error, reason} -> {:error, reason}
+          end
         end
     end
   end
@@ -172,8 +189,13 @@ defmodule Uptrack.Billing do
 
       subscription ->
         sub_id = subscription.provider_subscription_id || subscription.paddle_subscription_id
+        config = paddle_config()
+        price_id = price_id_for_plan(plan, "monthly", config)
 
-        case provider().update_subscription(sub_id, plan) do
+        case PaddleClient.update_subscription(sub_id, %{
+               items: [%{price_id: price_id, quantity: 1}],
+               proration_billing_mode: "prorated_immediately"
+             }) do
           {:ok, _} ->
             subscription
             |> Subscription.changeset(%{plan: plan})
@@ -203,7 +225,7 @@ defmodule Uptrack.Billing do
       subscription ->
         sub_id = subscription.provider_subscription_id || subscription.paddle_subscription_id
 
-        with {:ok, _} <- provider().cancel_subscription(sub_id) do
+        with {:ok, _} <- PaddleClient.cancel_subscription(sub_id, %{effective_from: "immediately"}) do
           now = DateTime.utc_now() |> DateTime.truncate(:second)
 
           subscription
@@ -218,11 +240,6 @@ defmodule Uptrack.Billing do
   end
 
   # --- Paddle webhook handlers ---
-
-  @doc false
-  def handle_paddle_webhook(event_type, data) do
-    handle_webhook_event(event_type, data)
-  end
 
   def handle_webhook_event("subscription.created", data) do
     handle_subscription_activated(data)
@@ -241,6 +258,10 @@ defmodule Uptrack.Billing do
       nil ->
         Logger.warning("Webhook: subscription.canceled for unknown subscription #{data["id"]}")
         :ok
+
+      %{status: "cancelled"} = subscription ->
+        # Already cancelled (retry) — skip redundant org plan update
+        {:ok, subscription}
 
       subscription ->
         now = DateTime.utc_now() |> DateTime.truncate(:second)
@@ -297,6 +318,9 @@ defmodule Uptrack.Billing do
         Logger.warning("Webhook: subscription.past_due for unknown subscription #{data["id"]}")
         :ok
 
+      %{status: "past_due"} = subscription ->
+        {:ok, subscription}
+
       subscription ->
         subscription
         |> Subscription.changeset(%{status: "past_due"})
@@ -310,6 +334,7 @@ defmodule Uptrack.Billing do
     if sub_id do
       case get_subscription_by_paddle_id(sub_id) do
         nil -> :ok
+        %{status: "past_due"} = subscription -> {:ok, subscription}
         subscription ->
           subscription
           |> Subscription.changeset(%{status: "past_due"})
@@ -447,6 +472,11 @@ defmodule Uptrack.Billing do
       _ -> nil
     end
   end
+
+  defp price_id_for_plan("pro", "annual", config), do: config[:price_id_pro_annual] || config[:price_id_pro]
+  defp price_id_for_plan("team", "annual", config), do: config[:price_id_team_annual] || config[:price_id_team]
+  defp price_id_for_plan("pro", _interval, config), do: config[:price_id_pro]
+  defp price_id_for_plan("team", _interval, config), do: config[:price_id_team]
 
   defp paddle_config do
     Application.get_env(:uptrack, :paddle) ||
