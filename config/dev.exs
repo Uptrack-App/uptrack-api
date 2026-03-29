@@ -129,33 +129,5 @@ config :uptrack, :paddle,
   price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM", "pri_01khkcrv2b6a5kc9cftsh503gc"),
   price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL", "pri_01khkcrv2b6a5kc9cftsh503gc")
 
-# Dodo Payments (test mode — configure via env vars or use placeholder)
-config :uptrack, :dodo,
-  api_key: System.get_env("DODO_API_KEY", "dodo_test_placeholder"),
-  webhook_secret: System.get_env("DODO_WEBHOOK_SECRET", "whsec_dodo_test_placeholder"),
-  base_url: System.get_env("DODO_BASE_URL", "https://test.dodopayments.com"),
-  business_id: System.get_env("DODO_BUSINESS_ID", ""),
-  product_id_pro: System.get_env("DODO_PRODUCT_ID_PRO", ""),
-  product_id_team: System.get_env("DODO_PRODUCT_ID_TEAM", ""),
-  return_url: System.get_env("DODO_RETURN_URL", "http://localhost:3000/dashboard/settings?billing=success")
-
-# Creem billing (test mode)
-config :uptrack, :creem,
-  api_key: System.get_env("CREEM_API_KEY", "creem_test_2uMgBHX84fLUfnm35SrmGa"),
-  webhook_secret: System.get_env("CREEM_WEBHOOK_SECRET", "whsec_7MAcc9KevU73Zsaa2zqWzc"),
-  base_url: System.get_env("CREEM_BASE_URL", "https://test-api.creem.io"),
-  product_id_pro: System.get_env("CREEM_PRODUCT_ID_PRO", "prod_2F2ybprOYgRIjQAojSUMMH"),
-  product_id_pro_annual: System.get_env("CREEM_PRODUCT_ID_PRO_ANNUAL", "prod_1gIOkOu2RjiIwzQSImdAOq"),
-  product_id_team: System.get_env("CREEM_PRODUCT_ID_TEAM", "prod_1W9ViBO8HBMMCnR6BSLIwu"),
-  product_id_team_annual: System.get_env("CREEM_PRODUCT_ID_TEAM_ANNUAL", "prod_76qoauyawfSthPF4Zz3J9m"),
-  success_url: System.get_env("CREEM_SUCCESS_URL", "http://localhost:3000/dashboard/settings?billing=success")
-
-# Payment provider: set PAYMENT_PROVIDER=creem|dodo to switch in dev (default: paddle)
-dev_provider =
-  case System.get_env("PAYMENT_PROVIDER") do
-    "creem" -> Uptrack.Billing.Creem.CreemProvider
-    "dodo" -> Uptrack.Billing.Dodo.DodoProvider
-    _ -> Uptrack.Billing.Paddle.PaddleProvider
-  end
-
-config :uptrack, :payment_provider, dev_provider
+# Payment provider (Paddle only)
+config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
