@@ -428,9 +428,30 @@ defmodule Uptrack.Billing do
         Logger.error("Cannot update plan: organization #{organization_id} not found")
 
       org ->
-        org
-        |> Organization.changeset(%{plan: plan})
-        |> AppRepo.update()
+        result =
+          org
+          |> Organization.changeset(%{plan: plan})
+          |> AppRepo.update()
+
+        with {:ok, _} <- result do
+          enforce_plan_limits(organization_id, plan)
+        end
+
+        result
+    end
+  end
+
+  defp enforce_plan_limits(organization_id, plan) do
+    monitor_limit = plan_limit(plan, :monitors)
+
+    if is_integer(monitor_limit) do
+      excess = Uptrack.Monitoring.select_excess_monitors(organization_id, monitor_limit)
+
+      if excess != [] do
+        ids = Enum.map(excess, & &1.id)
+        count = Uptrack.Monitoring.pause_monitors(ids)
+        Logger.info("Paused #{count} monitors for org #{organization_id} after downgrade to #{plan}")
+      end
     end
   end
 

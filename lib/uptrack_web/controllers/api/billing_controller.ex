@@ -143,6 +143,21 @@ defmodule UptrackWeb.Api.BillingController do
     end
   end
 
+  @doc """
+  Returns a preview of what would be paused if the user downgrades to Free.
+  """
+  def downgrade_preview(conn, _params) do
+    organization = conn.assigns.current_organization
+    free_limit = Billing.plan_limit("free", :monitors)
+    excess = Uptrack.Monitoring.select_excess_monitors(organization.id, free_limit)
+
+    json(conn, %{
+      current_count: Uptrack.Monitoring.count_monitors(organization.id),
+      limit: free_limit,
+      monitors_to_pause: Enum.map(excess, fn m -> %{id: m.id, name: m.name, url: m.url} end)
+    })
+  end
+
   defp provider_name, do: Billing.payment_provider_name()
 
   defp format_error(%{body: %{"error" => %{"detail" => msg}}}), do: msg

@@ -71,6 +71,34 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
+  Returns active monitors that exceed the given limit, ordered by most recently created.
+  Pure selection: does not modify any data.
+  """
+  def select_excess_monitors(organization_id, limit) when is_integer(limit) do
+    Monitor
+    |> where([m], m.organization_id == ^organization_id and m.status == "active")
+    |> order_by([m], asc: m.inserted_at)
+    |> offset(^limit)
+    |> AppRepo.all()
+  end
+
+  @doc """
+  Pauses the given monitors by setting their status to "paused".
+  Returns the count of paused monitors.
+  """
+  def pause_monitors(monitor_ids) when is_list(monitor_ids) do
+    if monitor_ids == [] do
+      0
+    else
+      {count, _} =
+        from(m in Monitor, where: m.id in ^monitor_ids)
+        |> AppRepo.update_all(set: [status: "paused", updated_at: DateTime.utc_now() |> DateTime.truncate(:second)])
+
+      count
+    end
+  end
+
+  @doc """
   Returns all active monitors across all users (for scheduler).
   """
   def get_all_active_monitors do
