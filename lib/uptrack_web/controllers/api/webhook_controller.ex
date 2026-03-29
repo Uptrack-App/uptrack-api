@@ -2,9 +2,6 @@ defmodule UptrackWeb.Api.WebhookController do
   use UptrackWeb, :controller
 
   alias Uptrack.Billing
-  alias Uptrack.Billing.Dodo.DodoWebhook
-  alias Uptrack.Billing.Creem.CreemWebhook
-
   require Logger
 
   # --- Paddle webhooks ---
@@ -31,77 +28,6 @@ defmodule UptrackWeb.Api.WebhookController do
         Logger.error("Paddle webhook processing error: #{inspect(reason)}")
         conn |> put_status(400) |> json(%{error: "Bad request"})
     end
-  end
-
-  # --- Dodo Payments webhooks ---
-
-  def dodo(conn, _params) do
-    with {:ok, raw_body} <- get_raw_body(conn),
-         headers <- dodo_webhook_headers(conn),
-         :ok <- DodoWebhook.verify(raw_body, headers),
-         {:ok, payload} <- Jason.decode(raw_body) do
-      event_type = payload["type"] || payload["event_type"]
-      event_data = payload["data"] || payload
-
-      Logger.info("Dodo webhook: #{event_type}")
-      Billing.handle_dodo_webhook(event_type, event_data)
-
-      json(conn, %{received: true})
-    else
-      {:error, :missing_signature} ->
-        conn |> put_status(401) |> json(%{error: "Missing signature"})
-
-      {:error, :invalid_signature} ->
-        conn |> put_status(401) |> json(%{error: "Invalid signature"})
-
-      {:error, :timestamp_too_old} ->
-        conn |> put_status(401) |> json(%{error: "Timestamp too old"})
-
-      {:error, reason} ->
-        Logger.error("Dodo webhook processing error: #{inspect(reason)}")
-        conn |> put_status(400) |> json(%{error: "Bad request"})
-    end
-  end
-
-  # --- Creem webhooks ---
-
-  def creem(conn, _params) do
-    with {:ok, raw_body} <- get_raw_body(conn),
-         headers <- creem_webhook_headers(conn),
-         :ok <- CreemWebhook.verify(raw_body, headers),
-         {:ok, payload} <- Jason.decode(raw_body) do
-      event_type = payload["eventType"] || payload["event_type"] || payload["type"]
-      event_data = payload["object"] || payload["data"] || payload
-
-      Logger.info("Creem webhook event=#{event_type} keys=#{inspect(Map.keys(payload))}")
-      Billing.handle_creem_webhook(event_type, event_data)
-
-      json(conn, %{received: true})
-    else
-      {:error, :missing_signature} ->
-        conn |> put_status(401) |> json(%{error: "Missing signature"})
-
-      {:error, :invalid_signature} ->
-        conn |> put_status(401) |> json(%{error: "Invalid signature"})
-
-      {:error, reason} ->
-        Logger.error("Creem webhook processing error: #{inspect(reason)}")
-        conn |> put_status(400) |> json(%{error: "Bad request"})
-    end
-  end
-
-  defp creem_webhook_headers(conn) do
-    %{
-      "creem-signature" => List.first(Plug.Conn.get_req_header(conn, "creem-signature")) || ""
-    }
-  end
-
-  defp dodo_webhook_headers(conn) do
-    %{
-      "webhook-id" => List.first(Plug.Conn.get_req_header(conn, "webhook-id")) || "",
-      "webhook-signature" => List.first(Plug.Conn.get_req_header(conn, "webhook-signature")) || "",
-      "webhook-timestamp" => List.first(Plug.Conn.get_req_header(conn, "webhook-timestamp")) || ""
-    }
   end
 
   # --- Paddle signature verification ---

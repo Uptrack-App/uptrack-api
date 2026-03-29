@@ -1,10 +1,10 @@
 defmodule Uptrack.Billing.PaymentProvider do
   @moduledoc """
-  Behaviour for payment provider implementations (Paddle, Dodo, etc.).
+  Behaviour for payment provider implementations.
 
   The active provider is configured via:
 
-      config :uptrack, :payment_provider, Uptrack.Billing.Dodo.DodoProvider
+      config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
 
   All billing operations in the `Billing` context delegate to the configured provider.
   """

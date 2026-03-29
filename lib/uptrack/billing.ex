@@ -2,8 +2,8 @@ defmodule Uptrack.Billing do
   @moduledoc """
   Billing context — manages subscriptions and payment provider checkout flow.
 
-  Public API for the billing domain. Delegates to the configured PaymentProvider
-  (Paddle, Dodo, or Creem) for checkout, cancellation, and portal operations.
+  Public API for the billing domain. Delegates to Paddle for checkout,
+  cancellation, and portal operations.
   """
 
   import Ecto.Query
@@ -33,16 +33,7 @@ defmodule Uptrack.Billing do
 
   def payment_provider, do: provider()
 
-  def payment_provider_name do
-    case to_string(provider()) do
-      name when is_binary(name) ->
-        cond do
-          String.contains?(name, "Dodo") -> "dodo"
-          String.contains?(name, "Creem") -> "creem"
-          true -> "paddle"
-        end
-    end
-  end
+  def payment_provider_name, do: "paddle"
 
   # --- Plan enforcement ---
 
@@ -226,218 +217,7 @@ defmodule Uptrack.Billing do
     end
   end
 
-  # --- Dodo webhook handler (called from WebhookController) ---
-
-  @doc """
-  Handles a Dodo webhook event. The DodoProvider.handle_webhook/2 returns
-  normalized data that this function uses to create/update subscriptions.
-  """
-  def handle_dodo_webhook(event_type, data) do
-    alias Uptrack.Billing.Dodo.DodoProvider
-
-    case DodoProvider.handle_webhook(event_type, data) do
-      {:ok, %{status: "cancelled", provider_subscription_id: sub_id}} ->
-        case get_subscription_by_provider_id(sub_id) do
-          nil ->
-            Logger.warning("Dodo webhook: #{event_type} for unknown subscription #{sub_id}")
-            :ok
-
-          subscription ->
-            now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-            subscription
-            |> Subscription.changeset(%{status: "cancelled", cancelled_at: now})
-            |> AppRepo.update()
-            |> tap(fn
-              {:ok, sub} -> update_organization_plan(sub.organization_id, "free")
-              _ -> :ok
-            end)
-        end
-
-      {:ok, %{status: "past_due", provider_subscription_id: sub_id}} ->
-        case get_subscription_by_provider_id(sub_id) do
-          nil ->
-            Logger.warning("Dodo webhook: #{event_type} for unknown subscription #{sub_id}")
-            :ok
-
-          subscription ->
-            subscription
-            |> Subscription.changeset(%{status: "past_due"})
-            |> AppRepo.update()
-        end
-
-      {:ok, %{status: "active"} = attrs} ->
-        handle_dodo_subscription_active(attrs)
-
-      {:error, :unhandled_event} ->
-        :ok
-
-      {:error, reason} ->
-        Logger.error("Dodo webhook error: #{inspect(reason)}")
-        {:error, reason}
-    end
-  end
-
-  defp handle_dodo_subscription_active(attrs) do
-    sub_id = attrs[:provider_subscription_id]
-
-    case get_subscription_by_provider_id(sub_id) do
-      nil ->
-        org_id = attrs[:organization_id]
-
-        if is_nil(org_id) do
-          Logger.error("Dodo webhook: subscription.active without organization_id in metadata")
-          {:error, :missing_organization_id}
-        else
-          %Subscription{}
-          |> Subscription.changeset(%{
-            organization_id: org_id,
-            provider: "dodo",
-            provider_subscription_id: sub_id,
-            provider_customer_id: attrs[:provider_customer_id],
-            plan: attrs[:plan] || "pro",
-            status: "active"
-          })
-          |> AppRepo.insert()
-          |> tap(fn
-            {:ok, sub} -> update_organization_plan(sub.organization_id, sub.plan)
-            _ -> :ok
-          end)
-        end
-
-      existing ->
-        existing
-        |> Subscription.changeset(%{
-          plan: attrs[:plan] || existing.plan,
-          status: "active",
-          cancelled_at: nil
-        })
-        |> AppRepo.update()
-        |> tap(fn
-          {:ok, sub} ->
-            if sub.plan != existing.plan do
-              update_organization_plan(sub.organization_id, sub.plan)
-            end
-          _ -> :ok
-        end)
-    end
-  end
-
-  # --- Creem webhook handler (called from WebhookController) ---
-
-  @doc """
-  Handles a Creem webhook event. The CreemProvider.handle_webhook/2 returns
-  normalized data that this function uses to create/update subscriptions.
-  """
-  def handle_creem_webhook(event_type, data) do
-    alias Uptrack.Billing.Creem.CreemProvider
-
-    case CreemProvider.handle_webhook(event_type, data) do
-      {:ok, %{status: "cancelled", provider_subscription_id: sub_id}} ->
-        case get_subscription_by_provider_id(sub_id) do
-          nil ->
-            Logger.warning("Creem webhook: #{event_type} for unknown subscription #{sub_id}")
-            :ok
-
-          subscription ->
-            now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-            subscription
-            |> Subscription.changeset(%{status: "cancelled", cancelled_at: now})
-            |> AppRepo.update()
-            |> tap(fn
-              {:ok, sub} -> update_organization_plan(sub.organization_id, "free")
-              _ -> :ok
-            end)
-        end
-
-      {:ok, %{status: "past_due", provider_subscription_id: sub_id}} ->
-        case get_subscription_by_provider_id(sub_id) do
-          nil ->
-            Logger.warning("Creem webhook: #{event_type} for unknown subscription #{sub_id}")
-            :ok
-
-          subscription ->
-            subscription
-            |> Subscription.changeset(%{status: "past_due"})
-            |> AppRepo.update()
-        end
-
-      {:ok, %{status: "active"} = attrs} ->
-        handle_creem_subscription_active(attrs)
-
-      {:error, :unhandled_event} ->
-        :ok
-
-      {:error, reason} ->
-        Logger.error("Creem webhook error: #{inspect(reason)}")
-        {:error, reason}
-    end
-  end
-
-  defp handle_creem_subscription_active(attrs) do
-    sub_id = attrs[:provider_subscription_id]
-
-    case get_subscription_by_provider_id(sub_id) do
-      nil ->
-        org_id = attrs[:organization_id]
-
-        if is_nil(org_id) do
-          Logger.error("Creem webhook: subscription.active without organization_id in metadata")
-          {:error, :missing_organization_id}
-        else
-          result =
-            %Subscription{}
-            |> Subscription.changeset(%{
-              organization_id: org_id,
-              provider: "creem",
-              provider_subscription_id: sub_id,
-              provider_customer_id: attrs[:provider_customer_id],
-              plan: attrs[:plan] || "pro",
-              status: "active",
-              current_period_start: attrs[:current_period_start],
-              current_period_end: attrs[:current_period_end]
-            })
-            |> AppRepo.insert(
-              on_conflict: :nothing,
-              conflict_target: :provider_subscription_id
-            )
-
-          case result do
-            {:ok, %{id: nil}} ->
-              # Conflict: another webhook already inserted this subscription
-              :ok
-
-            {:ok, sub} ->
-              update_organization_plan(sub.organization_id, sub.plan)
-              {:ok, sub}
-
-            error ->
-              error
-          end
-        end
-
-      existing ->
-        existing
-        |> Subscription.changeset(%{
-          plan: attrs[:plan] || existing.plan,
-          status: "active",
-          cancelled_at: nil,
-          current_period_start: attrs[:current_period_start],
-          current_period_end: attrs[:current_period_end]
-        })
-        |> AppRepo.update()
-        |> tap(fn
-          {:ok, sub} ->
-            if sub.plan != existing.plan do
-              update_organization_plan(sub.organization_id, sub.plan)
-            end
-          _ -> :ok
-        end)
-    end
-  end
-
-  # --- Paddle webhook handlers (kept for backward compatibility) ---
+  # --- Paddle webhook handlers ---
 
   @doc false
   def handle_paddle_webhook(event_type, data) do

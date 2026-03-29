@@ -53,33 +53,8 @@ config :uptrack, Oban, testing: :manual, queues: false, plugins: false
 # Use mock Paddle client in tests
 config :uptrack, :paddle_client, Uptrack.Billing.PaddleClientMock
 
-# Use mock Dodo client in tests
-config :uptrack, :dodo_client, Uptrack.Billing.DodoClientMock
-
 # Default to Paddle provider in tests (matches production default)
 config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
-
-# Use mock Creem client in tests
-config :uptrack, :creem_client, Uptrack.Billing.CreemClientMock
-
-# Creem test config (for webhook tests)
-config :uptrack, :creem,
-  api_key: "test_creem_key",
-  webhook_secret: "test_creem_webhook_secret",
-  base_url: "https://test-api.creem.io",
-  product_id_pro: "prod_creem_test_pro",
-  product_id_pro_annual: "prod_creem_test_pro_annual",
-  product_id_team: "prod_creem_test_team",
-  product_id_team_annual: "prod_creem_test_team_annual"
-
-# Dodo test config (for webhook tests)
-config :uptrack, :dodo,
-  api_key: "test_dodo_key",
-  webhook_secret: "whsec_" <> Base.encode64("test_dodo_webhook_secret"),
-  base_url: "https://test.dodopayments.com",
-  business_id: "test_business",
-  product_id_pro: "prod_test_pro",
-  product_id_team: "prod_test_team"
 
 # Print only warnings and errors during test
 config :logger, level: :warning
