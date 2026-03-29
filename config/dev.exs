@@ -128,6 +128,3 @@ config :uptrack, :paddle,
   price_id_pro_annual: System.get_env("PADDLE_PRICE_ID_PRO_ANNUAL", "pri_01khkcqn8pv207r6j8qnjfmj5t"),
   price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM", "pri_01khkcrv2b6a5kc9cftsh503gc"),
   price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL", "pri_01khkcrv2b6a5kc9cftsh503gc")
-
-# Payment provider (Paddle only)
-config :uptrack, :payment_provider, Uptrack.Billing.Paddle.PaddleProvider
