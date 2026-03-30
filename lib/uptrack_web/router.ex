@@ -139,6 +139,12 @@ defmodule UptrackWeb.Router do
     post "/auth/2fa/confirm", TwoFactorController, :confirm
     post "/auth/2fa/disable", TwoFactorController, :disable
 
+    # SSO/SAML configuration (Business plan)
+    get "/auth/sso/status", SamlController, :status
+    get "/auth/sso/config", SamlController, :show
+    post "/auth/sso/config", SamlController, :configure
+    delete "/auth/sso/config", SamlController, :delete
+
     # Custom email sender
     get "/custom-sender", CustomSenderController, :show
     post "/custom-sender", CustomSenderController, :create
