@@ -108,11 +108,18 @@ defmodule UptrackWeb.Api.AuthController do
             end
 
           _ ->
-            # No TOTP code provided — tell frontend to prompt for it
+            # No TOTP code provided — store pending state in session, prompt for code
             conn
+            |> put_session(:pending_2fa_user_id, user.id)
             |> put_status(200)
-            |> json(%{totp_required: true, user_id: user.id})
+            |> json(%{totp_required: true})
         end
+
+      {:error, :sso_enforced} ->
+        conn
+        |> put_status(:forbidden)
+        |> put_view(json: UptrackWeb.Api.ErrorJSON)
+        |> render(:error, message: "Password login is disabled for this organization. Please sign in with SSO.")
 
       {:error, :invalid_credentials} ->
         conn
@@ -132,21 +139,35 @@ defmodule UptrackWeb.Api.AuthController do
   @doc """
   Verifies a TOTP code after initial login returned totp_required.
   POST /api/auth/verify-2fa
-  """
-  def verify_2fa(conn, %{"user_id" => user_id, "code" => code}) do
-    case Auth.verify_second_factor(user_id, code) do
-      {:ok, user} ->
-        org = Organizations.get_organization!(user.organization_id)
 
-        conn
-        |> put_session(:user_id, user.id)
-        |> render(:user, user: user, organization: org)
+  Uses session-stored pending_2fa_user_id (set during login) to prevent
+  arbitrary user_id brute-force attacks.
+  """
+  def verify_2fa(conn, %{"code" => code}) do
+    pending_user_id = get_session(conn, :pending_2fa_user_id)
+
+    if is_nil(pending_user_id) do
+      conn
+      |> put_status(:unauthorized)
+      |> put_view(json: UptrackWeb.Api.ErrorJSON)
+      |> render(:error, message: "No pending 2FA session. Please log in first.")
+    else
+      conn = delete_session(conn, :pending_2fa_user_id)
+
+      case Auth.verify_second_factor(pending_user_id, code) do
+        {:ok, user} ->
+          org = Organizations.get_organization!(user.organization_id)
+
+          conn
+          |> put_session(:user_id, user.id)
+          |> render(:user, user: user, organization: org)
 
       {:error, :invalid_code} ->
         conn
         |> put_status(:unauthorized)
         |> put_view(json: UptrackWeb.Api.ErrorJSON)
         |> render(:error, message: "Invalid 2FA code")
+      end
     end
   end
 

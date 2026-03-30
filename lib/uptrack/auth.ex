@@ -27,14 +27,18 @@ defmodule Uptrack.Auth do
   def authenticate(email, password) when is_binary(email) and is_binary(password) do
     case Accounts.get_user_by_email(email) do
       %User{} = user ->
-        if User.valid_password?(user, password) do
-          if totp_enabled?(user.id) do
-            {:totp_required, user}
-          else
-            {:ok, user}
-          end
+        if Uptrack.Auth.Saml.sso_enforced?(user.organization_id) do
+          {:error, :sso_enforced}
         else
-          {:error, :invalid_credentials}
+          if User.valid_password?(user, password) do
+            if totp_enabled?(user.id) do
+              {:totp_required, user}
+            else
+              {:ok, user}
+            end
+          else
+            {:error, :invalid_credentials}
+          end
         end
 
       nil ->
