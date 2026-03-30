@@ -8,6 +8,46 @@ defmodule UptrackWeb.Api.StatusPageController do
 
   action_fallback UptrackWeb.Api.FallbackController
 
+  @doc """
+  GET /api/status/:slug/uptime — public endpoint, no auth required.
+  Returns daily uptime data for all monitors on the status page (last 90 days).
+  """
+  def public_uptime(conn, %{"slug" => slug}) do
+    alias Uptrack.Metrics.Reader
+    alias Uptrack.Cache
+
+    status_page = Monitoring.get_status_page_with_status!(slug)
+
+    if status_page.is_public do
+      result =
+        Cache.fetch("status_uptime:#{slug}", [ttl: :timer.minutes(5)], fn ->
+          now = DateTime.utc_now()
+          start_time = DateTime.add(now, -90 * 86400, :second)
+
+          monitor_ids = Enum.map(status_page.monitors, & &1.id)
+
+          uptime_data =
+            Enum.map(monitor_ids, fn monitor_id ->
+              daily =
+                case Reader.get_daily_uptime(monitor_id, start_time, now) do
+                  {:ok, points} -> points
+                  _ -> []
+                end
+
+              %{monitor_id: monitor_id, daily_uptime: daily}
+            end)
+
+          %{monitors: uptime_data, days: 90}
+        end)
+
+      json(conn, result)
+    else
+      {:error, :not_found}
+    end
+  rescue
+    Ecto.NoResultsError -> {:error, :not_found}
+  end
+
   def show_public(conn, %{"slug" => slug}) do
     status_page = Monitoring.get_status_page_with_status!(slug)
 
@@ -20,6 +60,13 @@ defmodule UptrackWeb.Api.StatusPageController do
 
       maintenance_windows =
         Maintenance.upcoming_maintenance(status_page.organization_id, days: 1)
+
+      conn =
+        if status_page.noindex do
+          put_resp_header(conn, "x-robots-tag", "noindex, nofollow")
+        else
+          conn
+        end
 
       render(conn, :show_public,
         status_page: status_page,

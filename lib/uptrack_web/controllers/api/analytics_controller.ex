@@ -9,6 +9,7 @@ defmodule UptrackWeb.Api.AnalyticsController do
   use OpenApiSpex.ControllerSpecs
 
   alias Uptrack.Monitoring
+  alias Uptrack.Metrics.{Reader, Retention}
   alias Uptrack.Cache
   alias UptrackWeb.Schemas.Analytics
 
@@ -118,17 +119,26 @@ defmodule UptrackWeb.Api.AnalyticsController do
         |> json(%{error: "Monitor not found"})
 
       _monitor ->
+        plan = org.plan
+        now = DateTime.utc_now()
+        requested_start = DateTime.add(now, -days * 86400, :second)
+        {start_time, end_time} = Retention.clamp_range(requested_start, now, plan)
+        clamped_days = div(DateTime.diff(end_time, start_time, :second), 86400) |> max(1)
+        step = Retention.step_for_days(days)
+
         result =
           Cache.fetch(Cache.monitor_analytics_key(monitor_id, days), [ttl: Cache.ttl_medium()], fn ->
-            uptime_chart = Monitoring.get_uptime_chart_data(monitor_id, days)
-            response_times = Monitoring.get_response_time_trends(monitor_id, days)
-            incident_stats = Monitoring.get_incident_stats(monitor_id, days)
+            # Try VictoriaMetrics first, fall back to PostgreSQL
+            {response_times, percentiles} = fetch_response_data(monitor_id, start_time, end_time, step)
+            uptime_chart = fetch_uptime_chart(monitor_id, start_time, end_time, clamped_days)
+            incident_stats = Monitoring.get_incident_stats(monitor_id, clamped_days)
 
             %{
               monitor_id: monitor_id,
-              period_days: days,
+              period_days: clamped_days,
               uptime_chart: uptime_chart,
               response_times: response_times,
+              percentiles: percentiles,
               incident_stats: incident_stats
             }
           end)
@@ -170,7 +180,49 @@ defmodule UptrackWeb.Api.AnalyticsController do
     json(conn, result)
   end
 
-  # Private helpers
+  # Private helpers — VM Reader with PostgreSQL fallback
+
+  defp fetch_response_data(monitor_id, start_time, end_time, step) do
+    case Reader.get_response_times(monitor_id, start_time, end_time, step) do
+      {:ok, []} ->
+        # VM has no data — fall back to PostgreSQL
+        days = div(DateTime.diff(end_time, start_time, :second), 86400) |> max(1)
+        pg_data = Monitoring.get_response_time_trends(monitor_id, days)
+        {pg_data, %{p50: 0.0, p95: 0.0, p99: 0.0}}
+
+      {:ok, points} ->
+        formatted =
+          Enum.map(points, fn {ts, val} ->
+            %{timestamp: ts, response_time: Float.round(val, 2)}
+          end)
+
+        percentiles =
+          case Reader.get_response_time_percentiles(monitor_id, start_time, end_time) do
+            {:ok, p} -> p
+            _ -> %{p50: 0.0, p95: 0.0, p99: 0.0}
+          end
+
+        {formatted, percentiles}
+
+      {:error, _} ->
+        days = div(DateTime.diff(end_time, start_time, :second), 86400) |> max(1)
+        pg_data = Monitoring.get_response_time_trends(monitor_id, days)
+        {pg_data, %{p50: 0.0, p95: 0.0, p99: 0.0}}
+    end
+  end
+
+  defp fetch_uptime_chart(monitor_id, start_time, end_time, days) do
+    case Reader.get_daily_uptime(monitor_id, start_time, end_time) do
+      {:ok, []} ->
+        Monitoring.get_uptime_chart_data(monitor_id, days)
+
+      {:ok, points} ->
+        points
+
+      {:error, _} ->
+        Monitoring.get_uptime_chart_data(monitor_id, days)
+    end
+  end
 
   defp parse_days(%{"days" => days}) when is_binary(days) do
     case Integer.parse(days) do

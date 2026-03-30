@@ -14,11 +14,24 @@ defmodule UptrackWeb.Api.AlertChannelController do
     render(conn, :index, alert_channels: channels)
   end
 
+  def allowed_types(conn, _params) do
+    org = conn.assigns.current_organization
+    allowed = Billing.allowed_channel_types(org.plan)
+
+    json(conn, %{
+      allowed: allowed,
+      plan: org.plan
+    })
+  end
+
   def create(conn, params) do
     user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
-    with :ok <- check_limit(org, :alert_channels) do
+    channel_type = params["type"]
+
+    with :ok <- check_limit(org, :alert_channels),
+         :ok <- check_channel_type_allowed(org, channel_type) do
       attrs =
         params
         |> Map.put("organization_id", org.id)
@@ -44,6 +57,17 @@ defmodule UptrackWeb.Api.AlertChannelController do
     case Billing.check_plan_limit(org, resource) do
       :ok -> :ok
       {:error, message} -> {:error, :plan_limit, message}
+    end
+  end
+
+  defp check_channel_type_allowed(org, channel_type) do
+    allowed = Billing.allowed_channel_types(org.plan)
+
+    if allowed == :all or channel_type in allowed do
+      :ok
+    else
+      {:error, :plan_limit,
+       "#{channel_type} alert channels are not available on the #{String.capitalize(org.plan)} plan. Upgrade to unlock more channel types."}
     end
   end
 

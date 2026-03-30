@@ -38,6 +38,12 @@ defmodule Uptrack.Monitoring.StatusPage do
     # Multi-language support
     field :default_language, :string, default: "en"
 
+    # Whitelabel: hide "Powered by Uptrack" (Business plan only)
+    field :whitelabel, :boolean, default: false
+
+    # Search engine opt-out: add noindex meta tag (Team+ plan)
+    field :noindex, :boolean, default: false
+
     belongs_to :organization, Organization
     belongs_to :user, User
     has_many :status_page_monitors, StatusPageMonitor, on_delete: :delete_all
@@ -61,6 +67,8 @@ defmodule Uptrack.Monitoring.StatusPage do
       :password,
       :allow_subscriptions,
       :default_language,
+      :whitelabel,
+      :noindex,
       :organization_id,
       :user_id
     ])

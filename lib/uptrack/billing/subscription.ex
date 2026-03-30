@@ -4,7 +4,6 @@ defmodule Uptrack.Billing.Subscription do
 
   alias Uptrack.Organizations.Organization
 
-  @valid_plans ~w(pro team)
   @valid_statuses ~w(active trialing cancelled past_due)
   @valid_providers ~w(paddle)
 
@@ -45,7 +44,7 @@ defmodule Uptrack.Billing.Subscription do
     ])
     |> validate_required([:organization_id, :plan])
     |> validate_at_least_one_subscription_id()
-    |> validate_inclusion(:plan, @valid_plans)
+    |> validate_inclusion(:plan, Uptrack.Billing.paid_plans())
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_inclusion(:provider, @valid_providers)
     |> unique_constraint(:paddle_subscription_id)

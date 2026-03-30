@@ -91,6 +91,87 @@ defmodule Uptrack.Metrics.Reader do
       {:error, Exception.message(e)}
   end
 
+  @doc """
+  Queries daily uptime for a monitor over a time range.
+
+  Returns a list of `%{date: Date.t(), uptime: float()}` maps.
+  Uses `avg_over_time(status[1d])` with step=1d for daily granularity.
+  """
+  def get_daily_uptime(monitor_id, start_time, end_time) do
+    query = "avg_over_time(uptrack_monitor_status{monitor_id=\"#{monitor_id}\"}[1d])"
+
+    case query_range(query, start_time, end_time, "1d") do
+      {:ok, results} ->
+        points =
+          results
+          |> List.first(%{})
+          |> Map.get("values", [])
+          |> Enum.map(fn [ts, val] ->
+            %{
+              date: ts |> trunc() |> DateTime.from_unix!() |> DateTime.to_date(),
+              uptime: parse_float(val) * 100 |> Float.round(2)
+            }
+          end)
+
+        {:ok, points}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Queries response time percentiles for a monitor.
+
+  Returns `{:ok, %{p50: float, p95: float, p99: float}}` for the given period.
+  """
+  def get_response_time_percentiles(monitor_id, start_time, end_time) do
+    base = "uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}"
+
+    results =
+      for {label, quantile} <- [p50: "0.5", p95: "0.95", p99: "0.99"] do
+        query = "quantile_over_time(#{quantile}, #{base}[#{range_duration(start_time, end_time)}])"
+
+        case query_instant(query, end_time) do
+          {:ok, value} -> {label, value}
+          {:error, _} -> {label, 0.0}
+        end
+      end
+
+    {:ok, Map.new(results)}
+  end
+
+  defp query_instant(query, time) do
+    case vmselect_url() do
+      nil ->
+        {:ok, 0.0}
+
+      url ->
+        query_url = "#{url}/api/v1/query"
+        params = %{query: query, time: DateTime.to_unix(time)}
+
+        case Req.get(query_url, params: params) do
+          {:ok, %{status: 200, body: %{"status" => "success", "data" => %{"result" => [%{"value" => [_ts, val]} | _]}}}} ->
+            {:ok, parse_float(val)}
+
+          {:ok, %{status: 200, body: %{"status" => "success", "data" => %{"result" => []}}}} ->
+            {:ok, 0.0}
+
+          _ ->
+            {:error, :query_failed}
+        end
+    end
+  rescue
+    e ->
+      Logger.warning("VictoriaMetrics instant query exception: #{Exception.message(e)}")
+      {:error, Exception.message(e)}
+  end
+
+  defp range_duration(start_time, end_time) do
+    diff_seconds = DateTime.diff(end_time, start_time, :second)
+    "#{diff_seconds}s"
+  end
+
   defp extract_values(results) do
     results
     |> Enum.flat_map(fn result ->

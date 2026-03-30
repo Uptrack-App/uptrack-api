@@ -2,7 +2,7 @@ defmodule UptrackWeb.Api.AuthController do
   use UptrackWeb, :controller
 
   alias Uptrack.Accounts
-  alias Uptrack.Accounts.User
+  alias Uptrack.Auth
   alias Uptrack.Organizations
 
   action_fallback UptrackWeb.Api.FallbackController
@@ -79,26 +79,42 @@ defmodule UptrackWeb.Api.AuthController do
   Logs in with email and password.
   POST /api/auth/login
   """
-  def login(conn, %{"email" => email, "password" => password}) do
-    case Accounts.get_user_by_email(email) do
-      %User{} = user ->
-        if User.valid_password?(user, password) do
-          org = Organizations.get_organization!(user.organization_id)
+  def login(conn, %{"email" => email, "password" => password} = params) do
+    case Auth.authenticate(email, password) do
+      {:ok, user} ->
+        org = Organizations.get_organization!(user.organization_id)
 
-          conn
-          |> put_session(:user_id, user.id)
-          |> render(:user, user: user, organization: org)
-        else
-          conn
-          |> put_status(:unauthorized)
-          |> put_view(json: UptrackWeb.Api.ErrorJSON)
-          |> render(:error, message: "Invalid email or password")
+        conn
+        |> put_session(:user_id, user.id)
+        |> render(:user, user: user, organization: org)
+
+      {:totp_required, user} ->
+        # 2FA enabled — check if TOTP code was provided in the same request
+        case params["totp_code"] do
+          code when is_binary(code) and code != "" ->
+            case Auth.verify_second_factor(user.id, code) do
+              {:ok, user} ->
+                org = Organizations.get_organization!(user.organization_id)
+
+                conn
+                |> put_session(:user_id, user.id)
+                |> render(:user, user: user, organization: org)
+
+              {:error, :invalid_code} ->
+                conn
+                |> put_status(:unauthorized)
+                |> put_view(json: UptrackWeb.Api.ErrorJSON)
+                |> render(:error, message: "Invalid 2FA code")
+            end
+
+          _ ->
+            # No TOTP code provided — tell frontend to prompt for it
+            conn
+            |> put_status(200)
+            |> json(%{totp_required: true, user_id: user.id})
         end
 
-      nil ->
-        # Prevent timing attacks
-        Bcrypt.no_user_verify()
-
+      {:error, :invalid_credentials} ->
         conn
         |> put_status(:unauthorized)
         |> put_view(json: UptrackWeb.Api.ErrorJSON)
@@ -111,6 +127,27 @@ defmodule UptrackWeb.Api.AuthController do
     |> put_status(:unprocessable_entity)
     |> put_view(json: UptrackWeb.Api.ErrorJSON)
     |> render(:error, message: "Email and password are required")
+  end
+
+  @doc """
+  Verifies a TOTP code after initial login returned totp_required.
+  POST /api/auth/verify-2fa
+  """
+  def verify_2fa(conn, %{"user_id" => user_id, "code" => code}) do
+    case Auth.verify_second_factor(user_id, code) do
+      {:ok, user} ->
+        org = Organizations.get_organization!(user.organization_id)
+
+        conn
+        |> put_session(:user_id, user.id)
+        |> render(:user, user: user, organization: org)
+
+      {:error, :invalid_code} ->
+        conn
+        |> put_status(:unauthorized)
+        |> put_view(json: UptrackWeb.Api.ErrorJSON)
+        |> render(:error, message: "Invalid 2FA code")
+    end
   end
 
   @doc """

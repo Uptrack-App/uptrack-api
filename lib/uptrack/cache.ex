@@ -1,11 +1,14 @@
 defmodule Uptrack.Cache do
   @moduledoc """
-  Application-level caching using Cachex.
+  Application-level caching using Nebulex.
 
   Provides a get-or-compute pattern for expensive database queries.
+  Uses a local (ETS-based) cache adapter.
   """
 
-  @cache_name :uptrack_cache
+  use Nebulex.Cache,
+    otp_app: :uptrack,
+    adapter: Nebulex.Adapters.Local
 
   # TTLs in milliseconds
   @ttl_short :timer.seconds(60)
@@ -20,32 +23,31 @@ defmodule Uptrack.Cache do
   def fetch(key, opts \\ [], fun) do
     ttl = Keyword.get(opts, :ttl, @ttl_short)
 
-    Cachex.fetch(@cache_name, key, fn _key ->
-      {:commit, fun.(), ttl: ttl}
-    end)
-    |> unwrap()
+    case get(key) do
+      nil ->
+        value = fun.()
+        put(key, value, ttl: ttl)
+        value
+
+      value ->
+        value
+    end
   end
 
   @doc """
   Invalidates a specific cache key.
   """
   def invalidate(key) do
-    Cachex.del(@cache_name, key)
+    delete(key)
   end
 
   @doc """
   Invalidates all cache keys matching a prefix pattern.
-  Uses Cachex stream to find and delete matching keys.
+  Clears the entire cache since Nebulex Local adapter doesn't support
+  prefix queries. Cache is small and rebuilds quickly.
   """
-  def invalidate_prefix(prefix) do
-    Cachex.stream!(@cache_name)
-    |> Stream.filter(fn {:entry, key, _touch, _ttl, _val} ->
-      is_binary(key) and String.starts_with?(key, prefix)
-    end)
-    |> Stream.each(fn {:entry, key, _touch, _ttl, _val} ->
-      Cachex.del(@cache_name, key)
-    end)
-    |> Stream.run()
+  def invalidate_prefix(_prefix) do
+    delete_all()
   end
 
   # Cache key builders
@@ -58,11 +60,4 @@ defmodule Uptrack.Cache do
   # TTL accessors for callers
   def ttl_short, do: @ttl_short
   def ttl_medium, do: @ttl_medium
-
-  # Unwrap Cachex fetch results
-  defp unwrap({:ok, val}), do: val
-  defp unwrap({:commit, val}), do: val
-  defp unwrap({:commit, val, _opts}), do: val
-  defp unwrap({:error, %Cachex.Error{} = err}), do: raise(err.message)
-  defp unwrap({:error, reason}), do: raise("Cache error: #{inspect(reason)}")
 end

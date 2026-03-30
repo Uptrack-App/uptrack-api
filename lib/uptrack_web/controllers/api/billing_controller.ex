@@ -5,13 +5,15 @@ defmodule UptrackWeb.Api.BillingController do
 
   require Logger
 
+  @paid_plans Billing.paid_plans()
+
   @doc """
   Creates a checkout session via the configured payment provider.
   POST /api/billing/checkout
 
-  Body: {"plan": "pro" | "team"}
+  Body: {"plan": "pro" | "team" | "business"}
   """
-  def checkout(conn, %{"plan" => plan} = params) when plan in ["pro", "team"] do
+  def checkout(conn, %{"plan" => plan} = params) when plan in @paid_plans do
     org = conn.assigns.current_organization
     interval = params["interval"] || "monthly"
 
@@ -30,7 +32,7 @@ defmodule UptrackWeb.Api.BillingController do
   def checkout(conn, _params) do
     conn
     |> put_status(400)
-    |> json(%{error: %{message: "Invalid plan. Must be 'pro' or 'team'."}})
+    |> json(%{error: %{message: "Invalid plan. Must be one of: #{Enum.join(@paid_plans, ", ")}."}})
   end
 
   @doc """
@@ -88,7 +90,7 @@ defmodule UptrackWeb.Api.BillingController do
 
   Body: {"plan": "pro" | "team"}
   """
-  def change_plan(conn, %{"plan" => plan}) when plan in ["pro", "team"] do
+  def change_plan(conn, %{"plan" => plan}) when plan in @paid_plans do
     org = conn.assigns.current_organization
 
     case Billing.update_subscription_plan(org, plan) do
@@ -112,7 +114,7 @@ defmodule UptrackWeb.Api.BillingController do
   def change_plan(conn, _params) do
     conn
     |> put_status(400)
-    |> json(%{error: %{message: "Invalid plan. Must be 'pro' or 'team'."}})
+    |> json(%{error: %{message: "Invalid plan. Must be one of: #{Enum.join(@paid_plans, ", ")}."}})
   end
 
   @doc """

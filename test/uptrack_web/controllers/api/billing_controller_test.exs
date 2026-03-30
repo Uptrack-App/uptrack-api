@@ -16,7 +16,9 @@ defmodule UptrackWeb.Api.BillingControllerTest do
       base_url: "https://sandbox-api.paddle.com",
       checkout_url: "https://sandbox-checkout.paddle.com",
       price_id_pro: "pri_pro_test",
-      price_id_team: "pri_team_test"
+      price_id_team: "pri_team_test",
+      price_id_business: "pri_business_test",
+      price_id_business_annual: "pri_business_annual_test"
     ])
 
     %{conn: conn, user: user, org: org} = setup_api_auth(conn)
@@ -41,10 +43,21 @@ defmodule UptrackWeb.Api.BillingControllerTest do
       assert %{"checkout_url" => _, "transaction_id" => _} = json_response(conn, 200)
     end
 
+    test "creates checkout session for business plan", %{conn: conn} do
+      conn = post(conn, ~p"/api/billing/checkout", %{"plan" => "business"})
+      assert %{"checkout_url" => _, "transaction_id" => _} = json_response(conn, 200)
+    end
+
+    test "creates checkout session with annual interval", %{conn: conn} do
+      conn = post(conn, ~p"/api/billing/checkout", %{"plan" => "business", "interval" => "annual"})
+      assert %{"checkout_url" => _, "transaction_id" => _} = json_response(conn, 200)
+    end
+
     test "rejects invalid plan", %{conn: conn} do
       conn = post(conn, ~p"/api/billing/checkout", %{"plan" => "enterprise"})
       assert %{"error" => %{"message" => msg}} = json_response(conn, 400)
       assert msg =~ "Invalid plan"
+      assert msg =~ "business"
     end
 
     test "returns error when paddle client fails", %{conn: conn} do

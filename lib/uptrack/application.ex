@@ -16,7 +16,7 @@ defmodule Uptrack.Application do
         {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Uptrack.PubSub},
         # In-app cache for expensive queries
-        {Cachex, name: :uptrack_cache},
+        {Uptrack.Cache, []},
         # Oban job processing
         {Oban, Application.fetch_env!(:uptrack, Oban)},
         # Task supervisor for monitoring checks

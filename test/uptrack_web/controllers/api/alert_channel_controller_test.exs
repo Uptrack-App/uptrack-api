@@ -32,7 +32,22 @@ defmodule UptrackWeb.Api.AlertChannelControllerTest do
   end
 
   describe "POST /api/alert-channels" do
-    test "creates an alert channel", %{conn: conn} do
+    test "creates an email alert channel on free plan", %{conn: conn} do
+      conn =
+        post(conn, "/api/alert-channels", %{
+          "name" => "Email Alerts",
+          "type" => "email",
+          "config" => %{"email" => "alerts@example.com"}
+        })
+
+      response = json_response(conn, 201)
+      assert response["data"]["name"] == "Email Alerts"
+      assert response["data"]["type"] == "email"
+    end
+
+    test "creates a slack channel on pro plan", %{conn: conn, org: org} do
+      Uptrack.Organizations.update_organization(org, %{plan: "pro"})
+
       conn =
         post(conn, "/api/alert-channels", %{
           "name" => "Slack Prod",
@@ -41,8 +56,19 @@ defmodule UptrackWeb.Api.AlertChannelControllerTest do
         })
 
       response = json_response(conn, 201)
-      assert response["data"]["name"] == "Slack Prod"
       assert response["data"]["type"] == "slack"
+    end
+
+    test "rejects slack channel on free plan", %{conn: conn} do
+      conn =
+        post(conn, "/api/alert-channels", %{
+          "name" => "Slack",
+          "type" => "slack",
+          "config" => %{"webhook_url" => "https://hooks.slack.com/test"}
+        })
+
+      assert %{"error" => %{"message" => msg}} = json_response(conn, 402)
+      assert msg =~ "not available on the Free plan"
     end
   end
 
