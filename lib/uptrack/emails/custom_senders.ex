@@ -8,6 +8,8 @@ defmodule Uptrack.Emails.CustomSenders do
   alias Uptrack.AppRepo
   alias Uptrack.Emails.{CustomSender, SenderVerification}
 
+  require Logger
+
   def get_sender(organization_id) do
     AppRepo.get_by(CustomSender, organization_id: organization_id)
   end
@@ -54,8 +56,12 @@ defmodule Uptrack.Emails.CustomSenders do
       end
 
     with {:ok, sender} <- result do
-      SenderVerification.send_verification(sender)
-      {:ok, sender}
+      case SenderVerification.send_verification(sender) do
+        {:ok, _} -> {:ok, sender}
+        {:error, reason} ->
+          Logger.warning("Failed to send verification email to #{sender.sender_email}: #{inspect(reason)}")
+          {:ok, sender}
+      end
     end
   end
 
