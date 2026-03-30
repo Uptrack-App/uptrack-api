@@ -139,6 +139,11 @@ defmodule UptrackWeb.Router do
     post "/auth/2fa/confirm", TwoFactorController, :confirm
     post "/auth/2fa/disable", TwoFactorController, :disable
 
+    # Custom email sender
+    get "/custom-sender", CustomSenderController, :show
+    post "/custom-sender", CustomSenderController, :create
+    delete "/custom-sender", CustomSenderController, :delete
+
     # Team management
     scope "/organizations/:organization_id" do
       resources "/members", TeamController, only: [:index, :update, :delete]
@@ -244,6 +249,9 @@ defmodule UptrackWeb.Router do
     # Invitation acceptance (token-based, may or may not be authenticated)
     get "/invitations/:token", InvitationController, :show_by_token
     post "/invitations/:token/accept", InvitationController, :accept
+
+    # Custom sender email verification (public, no auth)
+    get "/custom-sender/verify/:token", CustomSenderController, :verify
 
     # Public status page API (no auth required)
     get "/status/:slug", StatusPageController, :show_public
