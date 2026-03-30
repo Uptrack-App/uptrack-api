@@ -91,6 +91,20 @@ defmodule Uptrack.Billing do
   Checks if the organization can create a new resource of the given type.
   Returns :ok or {:error, message}.
   """
+  @doc """
+  Checks if a requested region count is within the plan limit.
+  Returns :ok or {:error, message}.
+  """
+  def check_region_limit(%Organization{} = org, region_count) when is_integer(region_count) do
+    limit = plan_limit(org.plan, :regions)
+
+    if region_count <= limit do
+      :ok
+    else
+      {:error, "Your #{String.capitalize(org.plan)} plan supports up to #{limit} monitoring regions. Upgrade for more."}
+    end
+  end
+
   def check_plan_limit(%Organization{} = org, resource) when resource in [:monitors, :alert_channels, :status_pages, :team_members] do
     limit = plan_limit(org.plan, resource)
 

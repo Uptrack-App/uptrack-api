@@ -359,6 +359,15 @@ defmodule Uptrack.Monitoring do
     AppRepo.all(query)
   end
 
+  def count_recent_incidents(organization_id, days) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-days * 86400, :second)
+
+    from(i in Incident,
+      where: i.organization_id == ^organization_id and i.started_at >= ^cutoff
+    )
+    |> AppRepo.aggregate(:count)
+  end
+
   # Alert Channel functions
 
   @doc """
