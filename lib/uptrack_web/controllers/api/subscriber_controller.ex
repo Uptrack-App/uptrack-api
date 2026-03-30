@@ -35,6 +35,7 @@ defmodule UptrackWeb.Api.SubscriberController do
   """
   def subscribe(conn, %{"slug" => slug, "email" => email}) do
     with {:ok, status_page} <- get_subscribable_status_page(slug),
+         :ok <- check_subscriber_limit(status_page),
          false <- Monitoring.subscriber_exists?(status_page.id, email),
          {:ok, subscriber} <- Monitoring.subscribe_to_status_page(status_page.id, email) do
       # Send verification email
@@ -56,6 +57,11 @@ defmodule UptrackWeb.Api.SubscriberController do
         conn
         |> put_status(:forbidden)
         |> json(%{error: "Subscriptions are not enabled for this status page"})
+
+      {:error, :subscriber_limit_reached} ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{error: "This status page has reached its subscriber limit."})
 
       true ->
         # Already subscribed
@@ -189,6 +195,23 @@ defmodule UptrackWeb.Api.SubscriberController do
     subscriber
     |> SubscriberEmail.verification_email(status_page)
     |> Mailer.deliver()
+  end
+
+  defp check_subscriber_limit(status_page) do
+    org = Uptrack.Organizations.get_organization(status_page.organization_id)
+    limit = Uptrack.Billing.plan_limit(org.plan, :subscribers)
+
+    if limit == :unlimited do
+      :ok
+    else
+      current = Monitoring.count_subscribers(status_page.id)
+
+      if current < limit do
+        :ok
+      else
+        {:error, :subscriber_limit_reached}
+      end
+    end
   end
 
   defp format_changeset_errors(changeset) do
