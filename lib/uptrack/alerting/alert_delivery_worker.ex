@@ -22,10 +22,12 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
     TelnyxAlert,
     WebhookAlert,
     MattermostAlert,
+    QuotaTracker,
     DeliveryTracker
   }
 
   alias Uptrack.Monitoring
+  alias Uptrack.Organizations
   alias Uptrack.Accounts
   require Logger
 
@@ -83,8 +85,8 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "telegram" -> TelegramAlert.send_incident_alert(channel, incident, monitor)
       "teams" -> TeamsAlert.send_incident_alert(channel, incident, monitor)
       "webhook" -> WebhookAlert.send_incident_alert(channel, incident, monitor)
-      "sms" -> TelnyxAlert.send_sms_incident_alert(channel, incident, monitor)
-      "phone" -> TelnyxAlert.send_phone_incident_alert(channel, incident, monitor)
+      "sms" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_sms_incident_alert(channel, incident, monitor) end)
+      "phone" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_phone_incident_alert(channel, incident, monitor) end)
       "mattermost" -> MattermostAlert.send_incident_alert(channel, incident, monitor)
       type ->
         Logger.error("Unknown alert channel type: #{type}")
@@ -100,12 +102,26 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "telegram" -> TelegramAlert.send_resolution_alert(channel, incident, monitor)
       "teams" -> TeamsAlert.send_resolution_alert(channel, incident, monitor)
       "webhook" -> WebhookAlert.send_resolution_alert(channel, incident, monitor)
-      "sms" -> TelnyxAlert.send_sms_resolution_alert(channel, incident, monitor)
-      "phone" -> TelnyxAlert.send_phone_resolution_alert(channel, incident, monitor)
+      "sms" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_sms_resolution_alert(channel, incident, monitor) end)
+      "phone" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_phone_resolution_alert(channel, incident, monitor) end)
       "mattermost" -> MattermostAlert.send_resolution_alert(channel, incident, monitor)
       type ->
         Logger.error("Unknown alert channel type: #{type}")
         {:error, :unknown_type}
+    end
+  end
+
+  defp with_sms_quota(organization_id, send_fn) do
+    org = Organizations.get_organization(organization_id)
+    plan = if org, do: org.plan, else: "free"
+
+    case QuotaTracker.check_and_increment(organization_id, plan) do
+      :ok ->
+        send_fn.()
+
+      {:error, :quota_exhausted} ->
+        Logger.warning("SMS/call quota exhausted for org #{organization_id}, skipping delivery")
+        {:error, :quota_exhausted}
     end
   end
 end

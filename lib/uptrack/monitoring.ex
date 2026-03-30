@@ -727,6 +727,12 @@ defmodule Uptrack.Monitoring do
     |> AppRepo.exists?()
   end
 
+  def count_subscribers(status_page_id) do
+    StatusPageSubscriber
+    |> where([s], s.status_page_id == ^status_page_id)
+    |> AppRepo.aggregate(:count)
+  end
+
   # Incident management functions
 
   @doc """
