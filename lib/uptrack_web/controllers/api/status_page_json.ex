@@ -37,6 +37,7 @@ defmodule UptrackWeb.Api.StatusPageJSON do
         allow_subscriptions: page.allow_subscriptions,
         whitelabel: page.whitelabel,
         noindex: page.noindex,
+        theme: page.theme_config,
         overall_status: overall_status,
         uptime_percentage: uptime,
         monitors: monitors_data,
@@ -58,6 +59,7 @@ defmodule UptrackWeb.Api.StatusPageJSON do
       allow_subscriptions: p.allow_subscriptions,
       whitelabel: p.whitelabel,
       noindex: p.noindex,
+      theme_config: p.theme_config,
       default_language: p.default_language,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at
