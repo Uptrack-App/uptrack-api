@@ -22,6 +22,12 @@ config :uptrack,
 config :uptrack, Uptrack.AppRepo,
   migration_lock: :pg_advisory_lock
 
+# Nebulex cache (Local ETS adapter — each node has its own cache)
+config :uptrack, Uptrack.Cache,
+  gc_interval: :timer.minutes(5),
+  max_size: 10_000,
+  allocated_memory: 100_000_000
+
 # Rate limiting configuration
 config :hammer,
   backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60, cleanup_interval_ms: 60_000 * 10]}

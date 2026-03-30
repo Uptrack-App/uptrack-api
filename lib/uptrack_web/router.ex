@@ -119,6 +119,7 @@ defmodule UptrackWeb.Router do
     get "/providers", AuthController, :providers
     post "/register", AuthController, :register
     post "/login", AuthController, :login
+    post "/verify-2fa", AuthController, :verify_2fa
   end
 
   # API routes for TanStack Start frontend
@@ -131,6 +132,12 @@ defmodule UptrackWeb.Router do
     patch "/auth/profile", AuthController, :update_profile
     patch "/auth/password", AuthController, :change_password
     delete "/auth/account", AuthController, :delete_account
+
+    # Two-factor authentication
+    get "/auth/2fa/status", TwoFactorController, :status
+    post "/auth/2fa/setup", TwoFactorController, :setup
+    post "/auth/2fa/confirm", TwoFactorController, :confirm
+    post "/auth/2fa/disable", TwoFactorController, :disable
 
     # Team management
     scope "/organizations/:organization_id" do
@@ -153,6 +160,7 @@ defmodule UptrackWeb.Router do
 
     # Alert channel API
     resources "/alert-channels", AlertChannelController, only: [:index, :create, :show, :update, :delete]
+    get "/alert-channels/allowed-types", AlertChannelController, :allowed_types
     post "/alert-channels/:id/test", AlertChannelController, :test
 
     # Incident API
@@ -239,6 +247,7 @@ defmodule UptrackWeb.Router do
 
     # Public status page API (no auth required)
     get "/status/:slug", StatusPageController, :show_public
+    get "/status/:slug/uptime", StatusPageController, :public_uptime
 
     # Status page badges (public, no auth required)
     get "/badge/:slug", StatusBadgeController, :show

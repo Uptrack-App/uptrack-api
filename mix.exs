@@ -76,7 +76,8 @@ defmodule Uptrack.MixProject do
       {:bypass, "~> 2.1", only: :test},
       {:open_api_spex, "~> 3.21"},
       {:hammer, "~> 6.2"},
-      {:cachex, "~> 4.0"}
+      {:nebulex, "~> 2.6"},
+      {:nimble_totp, "~> 1.0"}
     ]
   end
 

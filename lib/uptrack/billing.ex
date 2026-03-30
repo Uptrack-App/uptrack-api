@@ -19,16 +19,71 @@ defmodule Uptrack.Billing do
   # --- Plan limits (pure data) ---
 
   @plan_limits %{
-    "free" => %{monitors: 10, alert_channels: 2, status_pages: 1, team_members: 1, min_interval: 180, fast_monitors: 1},
-    "pro" => %{monitors: 25, alert_channels: :unlimited, status_pages: 3, team_members: 5, min_interval: 30, fast_monitors: :unlimited},
-    "team" => %{monitors: 150, alert_channels: :unlimited, status_pages: :unlimited, team_members: :unlimited, min_interval: 30, fast_monitors: :unlimited}
+    "free" => %{
+      monitors: 10, alert_channels: 2, status_pages: 5, team_members: 1,
+      min_interval: 180, fast_monitors: 1, webhooks_per_monitor: 1,
+      regions: 3, retention_days: 180, sms_alerts: 0, subscribers: 100,
+      notify_only_seats: 0
+    },
+    "pro" => %{
+      monitors: 15, alert_channels: 5, status_pages: 5, team_members: 3,
+      min_interval: 60, fast_monitors: 1, webhooks_per_monitor: 2,
+      regions: 5, retention_days: 730, sms_alerts: 30, subscribers: 1_000,
+      notify_only_seats: 1
+    },
+    "team" => %{
+      monitors: 60, alert_channels: :unlimited, status_pages: :unlimited, team_members: 5,
+      min_interval: 30, fast_monitors: :unlimited, webhooks_per_monitor: 5,
+      regions: 15, retention_days: 730, sms_alerts: 100, subscribers: 5_000,
+      notify_only_seats: 3
+    },
+    "business" => %{
+      monitors: 300, alert_channels: :unlimited, status_pages: :unlimited, team_members: 15,
+      min_interval: 30, fast_monitors: :unlimited, webhooks_per_monitor: 10,
+      regions: 15, retention_days: 1825, sms_alerts: 200, subscribers: 10_000,
+      notify_only_seats: 5
+    }
   }
+
+  @all_plans Map.keys(@plan_limits)
+  @paid_plans @all_plans -- ["free"]
+
+  def all_plans, do: @all_plans
+  def paid_plans, do: @paid_plans
 
   def plan_limits(plan), do: Map.get(@plan_limits, plan, @plan_limits["free"])
 
   def plan_limit(plan, resource), do: plan_limits(plan)[resource]
 
   def payment_provider_name, do: "paddle"
+
+  # --- Feature gating ---
+
+  @business_features ~w(whitelabel custom_email_sender sso rbac priority_support)a
+  @team_features ~w(status_page_customization custom_domain password_protection
+                     incident_updates maintenance_scheduling search_engine_optout
+                     weekly_reports mattermost)a
+
+  @doc """
+  Checks if the organization's plan includes a specific feature.
+  Returns true or false.
+  """
+  def can_use_feature?(%Organization{plan: plan}, feature) when feature in @business_features do
+    plan == "business"
+  end
+
+  def can_use_feature?(%Organization{plan: plan}, feature) when feature in @team_features do
+    plan in ["team", "business"]
+  end
+
+  def can_use_feature?(_org, _feature), do: true
+
+  @doc """
+  Returns the list of allowed alert channel types for a plan.
+  """
+  def allowed_channel_types("free"), do: ["email"]
+  def allowed_channel_types("pro"), do: ["email", "slack", "ms_teams", "discord", "telegram", "webhook"]
+  def allowed_channel_types(_plan), do: :all
 
   # --- Plan enforcement ---
 
@@ -75,7 +130,7 @@ defmodule Uptrack.Billing do
             :ok
 
           true ->
-            {:error, "Free plan includes 1 Fast Monitor (30s). You've used yours — upgrade to Pro for unlimited 30s monitors."}
+            {:error, "Your plan includes #{fast_limit} Fast Monitor slot (30s). You've used yours — upgrade to Team for unlimited 30s monitors."}
         end
 
       true ->
@@ -128,7 +183,7 @@ defmodule Uptrack.Billing do
   def create_checkout_session(organization, plan, interval \\ "monthly")
 
   def create_checkout_session(%Organization{} = organization, plan, interval)
-      when plan in ["pro", "team"] and interval in ["monthly", "annual"] do
+      when plan in @paid_plans and interval in ["monthly", "annual"] do
     config = paddle_config()
     price_id = price_id_for_plan(plan, interval, config)
     success_url = Application.get_env(:uptrack, :frontend_url, "https://uptrack.app")
@@ -182,7 +237,7 @@ defmodule Uptrack.Billing do
   Switches an active subscription from one paid plan to another.
   Returns {:ok, plan} on success or {:error, reason} on failure.
   """
-  def update_subscription_plan(%Organization{} = organization, plan) when plan in ["pro", "team"] do
+  def update_subscription_plan(%Organization{} = organization, plan) when plan in @paid_plans do
     case get_active_subscription(organization.id) do
       nil ->
         {:error, :no_active_subscription}
@@ -468,6 +523,8 @@ defmodule Uptrack.Billing do
       price_id == config[:price_id_pro_annual] -> "pro"
       price_id == config[:price_id_team] -> "team"
       price_id == config[:price_id_team_annual] -> "team"
+      price_id == config[:price_id_business] -> "business"
+      price_id == config[:price_id_business_annual] -> "business"
       true ->
         Logger.warning("Unknown Paddle price_id #{inspect(price_id)}, falling back to pro plan")
         "pro"
@@ -496,8 +553,10 @@ defmodule Uptrack.Billing do
 
   defp price_id_for_plan("pro", "annual", config), do: config[:price_id_pro_annual] || config[:price_id_pro]
   defp price_id_for_plan("team", "annual", config), do: config[:price_id_team_annual] || config[:price_id_team]
+  defp price_id_for_plan("business", "annual", config), do: config[:price_id_business_annual] || config[:price_id_business]
   defp price_id_for_plan("pro", _interval, config), do: config[:price_id_pro]
   defp price_id_for_plan("team", _interval, config), do: config[:price_id_team]
+  defp price_id_for_plan("business", _interval, config), do: config[:price_id_business]
 
   defp paddle_config do
     Application.get_env(:uptrack, :paddle) ||

@@ -129,7 +129,9 @@ if config_env() == :prod do
       price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO"),
       price_id_pro_annual: System.get_env("PADDLE_PRICE_ID_PRO_ANNUAL"),
       price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM"),
-      price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL")
+      price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL"),
+      price_id_business: System.get_env("PADDLE_PRICE_ID_BUSINESS"),
+      price_id_business_annual: System.get_env("PADDLE_PRICE_ID_BUSINESS_ANNUAL")
   end
 
   config :uptrack, UptrackWeb.Endpoint,

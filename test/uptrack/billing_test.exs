@@ -16,7 +16,11 @@ defmodule Uptrack.BillingTest do
       base_url: "https://sandbox-api.paddle.com",
       checkout_url: "https://sandbox-checkout.paddle.com",
       price_id_pro: "pri_pro_test",
-      price_id_team: "pri_team_test"
+      price_id_pro_annual: "pri_pro_annual_test",
+      price_id_team: "pri_team_test",
+      price_id_team_annual: "pri_team_annual_test",
+      price_id_business: "pri_business_test",
+      price_id_business_annual: "pri_business_annual_test"
     ])
 
     :ok
@@ -27,27 +31,46 @@ defmodule Uptrack.BillingTest do
       limits = Billing.plan_limits("free")
       assert limits.monitors == 10
       assert limits.alert_channels == 2
-      assert limits.status_pages == 1
+      assert limits.status_pages == 5
       assert limits.team_members == 1
       assert limits.min_interval == 180
+      assert limits.fast_monitors == 1
+      assert limits.retention_days == 180
     end
 
     test "returns correct limits for pro plan" do
       limits = Billing.plan_limits("pro")
-      assert limits.monitors == 25
-      assert limits.alert_channels == :unlimited
-      assert limits.status_pages == 3
-      assert limits.team_members == 5
-      assert limits.min_interval == 30
+      assert limits.monitors == 15
+      assert limits.alert_channels == 5
+      assert limits.status_pages == 5
+      assert limits.team_members == 3
+      assert limits.min_interval == 60
+      assert limits.fast_monitors == 1
+      assert limits.retention_days == 730
     end
 
     test "returns correct limits for team plan" do
       limits = Billing.plan_limits("team")
-      assert limits.monitors == 150
+      assert limits.monitors == 60
       assert limits.alert_channels == :unlimited
       assert limits.status_pages == :unlimited
-      assert limits.team_members == :unlimited
+      assert limits.team_members == 5
       assert limits.min_interval == 30
+      assert limits.fast_monitors == :unlimited
+      assert limits.retention_days == 730
+    end
+
+    test "returns correct limits for business plan" do
+      limits = Billing.plan_limits("business")
+      assert limits.monitors == 300
+      assert limits.alert_channels == :unlimited
+      assert limits.status_pages == :unlimited
+      assert limits.team_members == 15
+      assert limits.min_interval == 30
+      assert limits.fast_monitors == :unlimited
+      assert limits.retention_days == 1825
+      assert limits.sms_alerts == 200
+      assert limits.subscribers == 10_000
     end
 
     test "returns free limits for unknown plan" do
@@ -116,15 +139,75 @@ defmodule Uptrack.BillingTest do
       assert msg =~ "Fast Monitor"
     end
 
-    test "allows 30-second interval for pro plan" do
+    test "allows 60-second interval for pro plan" do
       org = organization_fixture(plan: "pro")
+      assert :ok = Billing.check_interval_limit(org, 60)
+    end
+
+    test "allows 30s fast monitor for pro plan when slot available" do
+      org = organization_fixture(plan: "pro")
+      # Pro has 1 fast monitor slot
       assert :ok = Billing.check_interval_limit(org, 30)
     end
 
-    test "rejects sub-30s interval for pro plan" do
+    test "allows 30-second interval for team plan" do
+      org = organization_fixture(plan: "team")
+      assert :ok = Billing.check_interval_limit(org, 30)
+    end
+
+    test "rejects sub-30s interval" do
       org = organization_fixture(plan: "pro")
       assert {:error, msg} = Billing.check_interval_limit(org, 15)
       assert msg =~ "30 seconds"
+    end
+  end
+
+  describe "can_use_feature?/2" do
+    test "business-only features require business plan" do
+      free_org = organization_fixture()
+      pro_org = organization_fixture(plan: "pro")
+      team_org = organization_fixture(plan: "team")
+      biz_org = organization_fixture(plan: "business")
+
+      for feature <- [:whitelabel, :sso, :rbac, :custom_email_sender] do
+        refute Billing.can_use_feature?(free_org, feature)
+        refute Billing.can_use_feature?(pro_org, feature)
+        refute Billing.can_use_feature?(team_org, feature)
+        assert Billing.can_use_feature?(biz_org, feature)
+      end
+    end
+
+    test "team features require team or business plan" do
+      free_org = organization_fixture()
+      pro_org = organization_fixture(plan: "pro")
+      team_org = organization_fixture(plan: "team")
+      biz_org = organization_fixture(plan: "business")
+
+      for feature <- [:status_page_customization, :custom_domain, :maintenance_scheduling] do
+        refute Billing.can_use_feature?(free_org, feature)
+        refute Billing.can_use_feature?(pro_org, feature)
+        assert Billing.can_use_feature?(team_org, feature)
+        assert Billing.can_use_feature?(biz_org, feature)
+      end
+    end
+  end
+
+  describe "allowed_channel_types/1" do
+    test "free plan only allows email" do
+      assert Billing.allowed_channel_types("free") == ["email"]
+    end
+
+    test "pro plan allows common channels" do
+      types = Billing.allowed_channel_types("pro")
+      assert "email" in types
+      assert "slack" in types
+      assert "discord" in types
+      assert "webhook" in types
+    end
+
+    test "team and business plans allow all channels" do
+      assert Billing.allowed_channel_types("team") == :all
+      assert Billing.allowed_channel_types("business") == :all
     end
   end
 
@@ -202,6 +285,27 @@ defmodule Uptrack.BillingTest do
       assert {:ok, updated} = Billing.handle_webhook_event("subscription.activated", data)
       assert updated.id == existing.id
       assert updated.plan == "team"
+    end
+
+    test "handle_webhook_event subscription.activated with business price ID" do
+      org = organization_fixture()
+
+      data = %{
+        "id" => "sub_biz_123",
+        "customer_id" => "ctm_biz_123",
+        "custom_data" => %{"organization_id" => org.id, "plan" => "business"},
+        "items" => [%{"price" => %{"id" => "pri_business_test"}}],
+        "current_billing_period" => %{
+          "starts_at" => "2026-03-30T00:00:00Z",
+          "ends_at" => "2026-04-30T00:00:00Z"
+        }
+      }
+
+      assert {:ok, sub} = Billing.handle_webhook_event("subscription.activated", data)
+      assert sub.plan == "business"
+
+      updated_org = Organizations.get_organization(org.id)
+      assert updated_org.plan == "business"
     end
 
     test "handle_webhook_event subscription.canceled downgrades to free" do
