@@ -61,7 +61,13 @@ defmodule Uptrack.Auth do
 
           match?({:ok, _}, BackupCodes.verify(code, credential.backup_codes)) ->
             {:ok, index} = BackupCodes.verify(code, credential.backup_codes)
-            mark_backup_code_used(credential, index)
+
+            case mark_backup_code_used(credential, index) do
+              {:ok, _} -> :ok
+              {:error, reason} ->
+                Logger.warning("Failed to mark backup code used for user #{user_id}: #{inspect(reason)}")
+            end
+
             {:ok, AppRepo.get!(User, user_id)}
 
           true ->

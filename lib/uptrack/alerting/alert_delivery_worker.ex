@@ -112,16 +112,20 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
   end
 
   defp with_sms_quota(organization_id, send_fn) do
-    org = Organizations.get_organization(organization_id)
-    plan = if org, do: org.plan, else: "free"
+    case Organizations.get_organization(organization_id) do
+      nil ->
+        Logger.error("SMS quota check: organization #{organization_id} not found")
+        {:error, :organization_not_found}
 
-    case QuotaTracker.check_and_increment(organization_id, plan) do
-      :ok ->
-        send_fn.()
+      org ->
+        case QuotaTracker.check_and_increment(organization_id, org.plan) do
+          :ok ->
+            send_fn.()
 
-      {:error, :quota_exhausted} ->
-        Logger.warning("SMS/call quota exhausted for org #{organization_id}, skipping delivery")
-        {:error, :quota_exhausted}
+          {:error, :quota_exhausted} ->
+            Logger.warning("SMS/call quota exhausted for org #{organization_id}, skipping delivery")
+            {:error, :quota_exhausted}
+        end
     end
   end
 end

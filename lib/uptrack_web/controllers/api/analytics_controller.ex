@@ -199,12 +199,15 @@ defmodule UptrackWeb.Api.AnalyticsController do
         percentiles =
           case Reader.get_response_time_percentiles(monitor_id, start_time, end_time) do
             {:ok, p} -> p
-            _ -> %{p50: 0.0, p95: 0.0, p99: 0.0}
+            {:error, reason} ->
+              Logger.warning("VM percentile query failed for monitor #{monitor_id}: #{inspect(reason)}")
+              %{p50: 0.0, p95: 0.0, p99: 0.0}
           end
 
         {formatted, percentiles}
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.warning("VM Reader failed for monitor #{monitor_id}, falling back to PG: #{inspect(reason)}")
         days = div(DateTime.diff(end_time, start_time, :second), 86400) |> max(1)
         pg_data = Monitoring.get_response_time_trends(monitor_id, days)
         {pg_data, %{p50: 0.0, p95: 0.0, p99: 0.0}}
@@ -219,7 +222,8 @@ defmodule UptrackWeb.Api.AnalyticsController do
       {:ok, points} ->
         points
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.warning("VM uptime query failed for monitor #{monitor_id}, falling back to PG: #{inspect(reason)}")
         Monitoring.get_uptime_chart_data(monitor_id, days)
     end
   end

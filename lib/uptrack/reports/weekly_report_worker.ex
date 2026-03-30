@@ -19,14 +19,21 @@ defmodule Uptrack.Reports.WeeklyReportWorker do
 
     organizations = Organizations.list_organizations()
 
-    sent_count =
+    results =
       organizations
       |> Enum.filter(&report_enabled?/1)
       |> Enum.map(&send_org_report/1)
-      |> Enum.count(&(&1 == :ok))
 
-    Logger.info("WeeklyReportWorker: sent #{sent_count} reports")
-    :ok
+    sent = Enum.count(results, &(&1 == :ok))
+    failed = Enum.count(results, &(&1 == :error))
+
+    Logger.info("WeeklyReportWorker: sent #{sent} reports, #{failed} failed")
+
+    if failed > 0 do
+      {:error, "#{failed} org report(s) failed — check logs for details"}
+    else
+      :ok
+    end
   end
 
   defp report_enabled?(org) do
@@ -77,7 +84,7 @@ defmodule Uptrack.Reports.WeeklyReportWorker do
     end
   rescue
     e ->
-      Logger.error("WeeklyReportWorker: error for org #{org.id}: #{Exception.message(e)}")
+      Logger.error("WeeklyReportWorker: error for org #{org.id}: #{Exception.format(:error, e, __STACKTRACE__)}")
       :error
   end
 end
