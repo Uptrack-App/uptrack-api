@@ -323,7 +323,7 @@ defmodule Uptrack.Billing do
   end
 
   def handle_webhook_event("subscription.canceled", data) do
-    case get_subscription_by_paddle_id(data["id"]) do
+    case find_subscription(data["id"]) do
       nil ->
         Logger.warning("Webhook: subscription.canceled for unknown subscription #{data["id"]}")
         :ok
@@ -346,7 +346,7 @@ defmodule Uptrack.Billing do
   end
 
   def handle_webhook_event("subscription.updated", data) do
-    case get_subscription_by_paddle_id(data["id"]) do
+    case find_subscription(data["id"]) do
       nil ->
         Logger.warning("Webhook: subscription.updated for unknown subscription #{data["id"]}")
         :ok
@@ -382,7 +382,7 @@ defmodule Uptrack.Billing do
   end
 
   def handle_webhook_event("subscription.past_due", data) do
-    case get_subscription_by_paddle_id(data["id"]) do
+    case find_subscription(data["id"]) do
       nil ->
         Logger.warning("Webhook: subscription.past_due for unknown subscription #{data["id"]}")
         :ok
