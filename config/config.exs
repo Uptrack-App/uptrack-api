@@ -115,13 +115,16 @@ config :uptrack, Oban,
       # Process batched notification digests every hour
       {"0 * * * *", Uptrack.Alerting.NotificationBatchWorker},
       # Activate/complete maintenance windows every minute
-      {"* * * * *", Uptrack.Maintenance.MaintenanceWorker}
+      {"* * * * *", Uptrack.Maintenance.MaintenanceWorker},
+      # Send weekly uptime reports every Monday at 9am UTC
+      {"0 9 * * 1", Uptrack.Reports.WeeklyReportWorker}
     ]}
   ],
   queues: [
     default: 10,
     monitor_checks: 25,
-    alerts: 5
+    alerts: 5,
+    mailers: 5
   ]
 
 # Import environment specific config. This must remain at the bottom
