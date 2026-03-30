@@ -77,7 +77,8 @@ defmodule Uptrack.MixProject do
       {:open_api_spex, "~> 3.21"},
       {:hammer, "~> 6.2"},
       {:nebulex, "~> 2.6"},
-      {:nimble_totp, "~> 1.0"}
+      {:nimble_totp, "~> 1.0"},
+      {:samly, "~> 1.4"}
     ]
   end
 
