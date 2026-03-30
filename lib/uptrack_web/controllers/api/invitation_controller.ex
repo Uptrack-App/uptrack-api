@@ -26,9 +26,10 @@ defmodule UptrackWeb.Api.InvitationController do
     current_user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
+    role_atom = String.to_existing_atom(role)
+
     with :ok <- authorize_manage(conn, org_id),
-         :ok <- check_limit(org),
-         role_atom <- String.to_existing_atom(role),
+         :ok <- check_seat_limit(org, role_atom),
          {:ok, invitation} <- Teams.invite_member(org_id, email, role_atom, current_user.id) do
       conn
       |> put_status(:created)
@@ -103,7 +104,23 @@ defmodule UptrackWeb.Api.InvitationController do
     end
   end
 
-  defp check_limit(org) do
+  defp check_seat_limit(org, :notify_only) do
+    limit = Billing.plan_limit(org.plan, :notify_only_seats)
+
+    if limit == 0 do
+      {:error, :plan_limit, "Notify-only seats are not available on the #{String.capitalize(org.plan)} plan. Upgrade for more."}
+    else
+      current = Teams.count_members_by_role(org.id, :notify_only)
+
+      if current < limit do
+        :ok
+      else
+        {:error, :plan_limit, "You've reached the notify-only seat limit (#{limit}) for the #{String.capitalize(org.plan)} plan. Upgrade for more."}
+      end
+    end
+  end
+
+  defp check_seat_limit(org, _role) do
     case Billing.check_plan_limit(org, :team_members) do
       :ok -> :ok
       {:error, msg} -> {:error, :plan_limit, msg}
