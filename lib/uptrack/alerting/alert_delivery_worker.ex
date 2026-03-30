@@ -21,6 +21,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
     TeamsAlert,
     TelnyxAlert,
     WebhookAlert,
+    MattermostAlert,
     DeliveryTracker
   }
 
@@ -84,6 +85,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "webhook" -> WebhookAlert.send_incident_alert(channel, incident, monitor)
       "sms" -> TelnyxAlert.send_sms_incident_alert(channel, incident, monitor)
       "phone" -> TelnyxAlert.send_phone_incident_alert(channel, incident, monitor)
+      "mattermost" -> MattermostAlert.send_incident_alert(channel, incident, monitor)
       type ->
         Logger.error("Unknown alert channel type: #{type}")
         {:error, :unknown_type}
@@ -100,6 +102,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "webhook" -> WebhookAlert.send_resolution_alert(channel, incident, monitor)
       "sms" -> TelnyxAlert.send_sms_resolution_alert(channel, incident, monitor)
       "phone" -> TelnyxAlert.send_phone_resolution_alert(channel, incident, monitor)
+      "mattermost" -> MattermostAlert.send_resolution_alert(channel, incident, monitor)
       type ->
         Logger.error("Unknown alert channel type: #{type}")
         {:error, :unknown_type}
