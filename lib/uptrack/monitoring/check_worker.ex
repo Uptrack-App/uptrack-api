@@ -55,28 +55,29 @@ defmodule Uptrack.Monitoring.CheckWorker do
       case result do
         {:ok, status_code, headers, body} ->
           expected = Map.get(monitor.settings, "expected_status_code")
+          assertions = Map.get(monitor.settings, "assertions", [])
 
-          if expected && status_code != expected do
-            %{
-              monitor_id: monitor.id,
-              status: "down",
-              response_time: response_time,
-              status_code: status_code,
-              checked_at: DateTime.utc_now(),
-              response_headers: headers,
-              response_body: truncate_body(body),
-              error_message: "Expected status #{expected}, got #{status_code}"
-            }
-          else
-            %{
-              monitor_id: monitor.id,
-              status: "up",
-              response_time: response_time,
-              status_code: status_code,
-              checked_at: DateTime.utc_now(),
-              response_headers: headers,
-              response_body: truncate_body(body)
-            }
+          base = %{
+            monitor_id: monitor.id,
+            response_time: response_time,
+            status_code: status_code,
+            checked_at: DateTime.utc_now(),
+            response_headers: headers,
+            response_body: truncate_body(body)
+          }
+
+          cond do
+            expected && status_code != expected ->
+              Map.merge(base, %{status: "down", error_message: "Expected status #{expected}, got #{status_code}"})
+
+            assertions != [] ->
+              case Uptrack.Monitoring.Assertions.evaluate(assertions, status_code, headers, body) do
+                :ok -> Map.put(base, :status, "up")
+                {:error, msg} -> Map.merge(base, %{status: "down", error_message: "Assertion failed: #{msg}"})
+              end
+
+            true ->
+              Map.put(base, :status, "up")
           end
 
         {:error, reason} ->
