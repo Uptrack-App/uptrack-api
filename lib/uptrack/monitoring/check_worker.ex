@@ -509,6 +509,9 @@ defmodule Uptrack.Monitoring.CheckWorker do
             end)
         end
 
+        # Check for response time degradation
+        check_degradation(monitor, check)
+
       "down" ->
         # Skip incident creation during active maintenance
         if Maintenance.under_maintenance?(monitor.id, monitor.organization_id) do
@@ -588,5 +591,50 @@ defmodule Uptrack.Monitoring.CheckWorker do
         if String.downcase(key) == "content-type", do: value
       _ -> nil
     end)
+  end
+
+  # Response time degradation detection.
+  # If the monitor has a response_time_threshold in settings, and the check
+  # exceeds it, create a "degraded" incident.
+  defp check_degradation(%Monitor{} = monitor, %MonitorCheck{} = check) do
+    threshold = get_in(monitor.settings || %{}, ["response_time_threshold"])
+
+    cond do
+      is_nil(threshold) or is_nil(check.response_time) ->
+        :ok
+
+      check.response_time > threshold ->
+        # Only create degradation incident if there isn't one already
+        case Monitoring.get_ongoing_incident(monitor.id) do
+          nil ->
+            Logger.info("Monitor #{monitor.name} degraded: #{check.response_time}ms > #{threshold}ms threshold")
+
+            incident_attrs = %{
+              monitor_id: monitor.id,
+              organization_id: monitor.organization_id,
+              status: "investigating",
+              cause: "Response time degradation: #{check.response_time}ms (threshold: #{threshold}ms)",
+              started_at: DateTime.utc_now() |> DateTime.truncate(:second)
+            }
+
+            case Monitoring.create_incident(incident_attrs) do
+              {:ok, incident} ->
+                Events.broadcast_incident_created(incident, monitor)
+
+                Task.start(fn ->
+                  Alerting.send_incident_alerts(incident, monitor)
+                end)
+
+              {:error, _} ->
+                :ok
+            end
+
+          _existing ->
+            :ok
+        end
+
+      true ->
+        :ok
+    end
   end
 end
