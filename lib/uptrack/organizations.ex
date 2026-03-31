@@ -19,6 +19,23 @@ defmodule Uptrack.Organizations do
   end
 
   @doc """
+  Returns the most popular plan by organization count.
+  """
+  def most_popular_plan do
+    from(o in Organization,
+      group_by: o.plan,
+      select: {o.plan, count(o.id)},
+      order_by: [desc: count(o.id)],
+      limit: 1
+    )
+    |> AppRepo.one()
+    |> case do
+      {plan, _count} -> plan
+      nil -> "free"
+    end
+  end
+
+  @doc """
   Gets a single organization by ID.
 
   Raises `Ecto.NoResultsError` if the Organization does not exist.
