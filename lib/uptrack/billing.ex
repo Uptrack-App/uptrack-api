@@ -85,6 +85,76 @@ defmodule Uptrack.Billing do
   def allowed_channel_types("pro"), do: ["email", "slack", "ms_teams", "discord", "telegram", "webhook"]
   def allowed_channel_types(_plan), do: :all
 
+  # --- Add-on management ---
+
+  alias Uptrack.Billing.AddOn
+
+  @doc "Lists all add-ons for an organization."
+  def list_add_ons(organization_id) do
+    from(a in AddOn, where: a.organization_id == ^organization_id)
+    |> AppRepo.all()
+  end
+
+  @doc "Gets add-on quantity for a specific type. Returns 0 if none."
+  def get_add_on_quantity(organization_id, type) do
+    case AppRepo.get_by(AddOn, organization_id: organization_id, type: type) do
+      nil -> 0
+      add_on -> add_on.quantity
+    end
+  end
+
+  @doc "Sets add-on quantity (upsert). Quantity of 0 removes the add-on."
+  def set_add_on(organization_id, type, quantity) when is_integer(quantity) and quantity >= 0 do
+    case AppRepo.get_by(AddOn, organization_id: organization_id, type: type) do
+      nil when quantity > 0 ->
+        %AddOn{}
+        |> AddOn.changeset(%{organization_id: organization_id, type: type, quantity: quantity})
+        |> AppRepo.insert()
+
+      nil ->
+        {:ok, nil}
+
+      existing when quantity == 0 ->
+        AppRepo.delete(existing)
+
+      existing ->
+        existing
+        |> AddOn.changeset(%{quantity: quantity})
+        |> AppRepo.update()
+    end
+  end
+
+  @doc """
+  Returns the effective limit for a resource, including add-ons.
+  For example, if Pro plan has 15 monitors and org has 10 extra_monitors,
+  the effective limit is 25.
+  """
+  def effective_limit(organization_id, plan, resource) do
+    base = plan_limit(plan, resource)
+
+    if base == :unlimited do
+      :unlimited
+    else
+      add_on_type = resource_to_add_on(resource)
+      extra = if add_on_type, do: get_add_on_quantity(organization_id, add_on_type), else: 0
+      base + extra
+    end
+  end
+
+  defp resource_to_add_on(:monitors), do: "extra_monitors"
+  defp resource_to_add_on(:fast_monitors), do: "extra_fast_slots"
+  defp resource_to_add_on(:team_members), do: "extra_teammates"
+  defp resource_to_add_on(:subscribers), do: "extra_subscribers"
+  defp resource_to_add_on(_), do: nil
+
+  @doc "Calculates total monthly add-on cost in cents."
+  def add_on_monthly_cost(organization_id) do
+    list_add_ons(organization_id)
+    |> Enum.reduce(0, fn add_on, acc ->
+      acc + add_on.quantity * AddOn.unit_price(add_on.type)
+    end)
+  end
+
   # --- Plan enforcement ---
 
   @doc """
@@ -106,7 +176,7 @@ defmodule Uptrack.Billing do
   end
 
   def check_plan_limit(%Organization{} = org, resource) when resource in [:monitors, :alert_channels, :status_pages, :team_members] do
-    limit = plan_limit(org.plan, resource)
+    limit = effective_limit(org.id, org.plan, resource)
 
     if limit == :unlimited do
       :ok
@@ -116,7 +186,7 @@ defmodule Uptrack.Billing do
       if current_count < limit do
         :ok
       else
-        {:error, "You've reached the #{resource_label(resource)} limit for the #{String.capitalize(org.plan)} plan (#{limit}). Upgrade for more."}
+        {:error, "You've reached the #{resource_label(resource)} limit for your plan (#{limit}). Upgrade or add extras."}
       end
     end
   end
