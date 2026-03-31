@@ -59,12 +59,12 @@ defmodule UptrackWeb.Api.AlertChannelControllerTest do
       assert response["data"]["type"] == "slack"
     end
 
-    test "rejects slack channel on free plan", %{conn: conn} do
+    test "rejects telegram channel on free plan", %{conn: conn} do
       conn =
         post(conn, "/api/alert-channels", %{
-          "name" => "Slack",
-          "type" => "slack",
-          "config" => %{"webhook_url" => "https://hooks.slack.com/test"}
+          "name" => "Telegram",
+          "type" => "telegram",
+          "config" => %{"bot_token" => "123:ABC", "chat_id" => "456"}
         })
 
       assert %{"error" => %{"message" => msg}} = json_response(conn, 402)

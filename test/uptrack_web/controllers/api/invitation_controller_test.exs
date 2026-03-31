@@ -82,8 +82,15 @@ defmodule UptrackWeb.Api.InvitationControllerTest do
 
   describe "plan enforcement" do
     test "returns 402 when team member limit reached on free plan", %{conn: conn, org: org} do
-      # Downgrade to free (limit = 1 member, owner already counts)
+      # Downgrade to free (limit = 2 members, owner already counts as 1)
       {:ok, _} = Organizations.update_organization(org, %{plan: "free"})
+
+      # Add a second member to fill the limit
+      Uptrack.Accounts.create_user(%{
+        email: "member2@example.com",
+        name: "Member 2",
+        organization_id: org.id
+      })
 
       conn =
         post(conn, "/api/organizations/#{org.id}/invitations", %{

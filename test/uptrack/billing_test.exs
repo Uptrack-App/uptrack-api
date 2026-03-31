@@ -29,12 +29,13 @@ defmodule Uptrack.BillingTest do
   describe "plan_limits/1" do
     test "returns correct limits for free plan" do
       limits = Billing.plan_limits("free")
-      assert limits.monitors == 10
-      assert limits.alert_channels == 2
+      assert limits.monitors == 5
+      assert limits.alert_channels == 3
       assert limits.status_pages == 5
-      assert limits.team_members == 1
+      assert limits.team_members == 2
       assert limits.min_interval == 180
-      assert limits.fast_monitors == 1
+      assert limits.fast_monitors == 0
+      assert limits.quick_monitors == 2
       assert limits.retention_days == 180
     end
 
@@ -87,14 +88,14 @@ defmodule Uptrack.BillingTest do
     test "rejects creation when at monitor limit", %{} do
       {user, org} = user_with_org_fixture()
 
-      # Free plan allows 10 monitors — create exactly 10
-      for _ <- 1..10 do
+      # Free plan allows 5 monitors — create exactly 5
+      for _ <- 1..5 do
         monitor_fixture(organization_id: org.id, user_id: user.id)
       end
 
       assert {:error, msg} = Billing.check_plan_limit(org, :monitors)
       assert msg =~ "monitor"
-      assert msg =~ "10"
+      assert msg =~ "5"
       assert msg =~ "Upgrade"
     end
 
@@ -106,13 +107,14 @@ defmodule Uptrack.BillingTest do
     test "rejects when at free plan alert channel limit", %{} do
       {user, org} = user_with_org_fixture()
 
-      # Free plan allows 2 alert channels
+      # Free plan allows 3 alert channels
+      alert_channel_fixture(organization_id: org.id, user_id: user.id)
       alert_channel_fixture(organization_id: org.id, user_id: user.id)
       alert_channel_fixture(organization_id: org.id, user_id: user.id)
 
       assert {:error, msg} = Billing.check_plan_limit(org, :alert_channels)
       assert msg =~ "alert channel"
-      assert msg =~ "2"
+      assert msg =~ "3"
     end
   end
 
@@ -123,20 +125,29 @@ defmodule Uptrack.BillingTest do
       assert :ok = Billing.check_interval_limit(org, 180)
     end
 
-    test "allows fast interval for free plan when fast monitor slot available" do
+    test "allows quick interval for free plan when slots available" do
       org = organization_fixture()
-      # Free plan has 1 fast monitor slot — 60s should be allowed
       assert :ok = Billing.check_interval_limit(org, 60)
-      assert :ok = Billing.check_interval_limit(org, 30)
     end
 
-    test "rejects fast interval for free plan when fast monitor slot used" do
+    test "rejects 30s on free plan (no fast slots)" do
+      org = organization_fixture()
+      assert {:error, msg} = Billing.check_interval_limit(org, 30)
+      assert msg =~ "Fast Monitor"
+    end
+
+    test "rejects quick interval when quick slots used" do
       {user, org} = user_with_org_fixture()
-      # Use up the fast monitor slot by creating a monitor with interval < 180
-      monitor_fixture(user_id: user.id, organization_id: org.id, interval: 30)
+      monitor_fixture(user_id: user.id, organization_id: org.id, interval: 60)
+      monitor_fixture(user_id: user.id, organization_id: org.id, interval: 60)
 
       assert {:error, msg} = Billing.check_interval_limit(org, 60)
-      assert msg =~ "Fast Monitor"
+      assert msg =~ "Quick Monitor"
+    end
+
+    test "allows 30s on pro plan (1 fast slot)" do
+      org = organization_fixture(plan: "pro")
+      assert :ok = Billing.check_interval_limit(org, 30)
     end
 
     test "allows 60-second interval for pro plan" do
@@ -193,8 +204,12 @@ defmodule Uptrack.BillingTest do
   end
 
   describe "allowed_channel_types/1" do
-    test "free plan only allows email" do
-      assert Billing.allowed_channel_types("free") == ["email"]
+    test "free plan allows email, slack, and discord" do
+      types = Billing.allowed_channel_types("free")
+      assert "email" in types
+      assert "slack" in types
+      assert "discord" in types
+      refute "telegram" in types
     end
 
     test "pro plan allows common channels" do
