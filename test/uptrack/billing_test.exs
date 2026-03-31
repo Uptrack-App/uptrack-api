@@ -357,6 +357,102 @@ defmodule Uptrack.BillingTest do
 
   # --- Helpers ---
 
+  describe "cancel_active_subscription/1" do
+    test "cancels subscription and downgrades org to free" do
+      org = organization_fixture(plan: "pro")
+      {:ok, _sub} = insert_subscription(org, "pro", "active")
+
+      Process.put(:paddle_cancel_subscription, {:ok, %{}})
+
+      case Billing.cancel_active_subscription(org) do
+        {:ok, sub} -> assert sub.status == "cancelled"
+        _ -> flunk("Expected successful cancellation")
+      end
+    end
+
+    test "returns error when no active subscription" do
+      org = organization_fixture()
+      assert {:error, :no_active_subscription} = Billing.cancel_active_subscription(org)
+    end
+  end
+
+  describe "create_checkout_session/3" do
+    test "creates checkout for pro plan" do
+      org = organization_fixture()
+      Process.put(:paddle_create_transaction, {:ok, %{"id" => "txn_test", "checkout" => %{"url" => "https://checkout.paddle.com/test"}}})
+
+      assert {:ok, %{checkout_url: url, transaction_id: txn}} = Billing.create_checkout_session(org, "pro", "monthly")
+      assert url =~ "paddle.com"
+      assert txn == "txn_test"
+    end
+
+    test "creates checkout for business plan" do
+      org = organization_fixture()
+      Process.put(:paddle_create_transaction, {:ok, %{"id" => "txn_biz", "checkout" => %{"url" => "https://checkout.paddle.com/biz"}}})
+
+      assert {:ok, %{checkout_url: _, transaction_id: "txn_biz"}} = Billing.create_checkout_session(org, "business", "annual")
+    end
+
+    test "rejects invalid plan" do
+      org = organization_fixture()
+      assert {:error, :invalid_plan} = Billing.create_checkout_session(org, "enterprise", "monthly")
+    end
+
+    test "rejects invalid interval" do
+      org = organization_fixture()
+      assert {:error, :invalid_plan} = Billing.create_checkout_session(org, "pro", "biweekly")
+    end
+  end
+
+  describe "effective_limit/3" do
+    test "returns base plan limit without add-ons" do
+      org = organization_fixture(plan: "pro")
+      assert Billing.effective_limit(org.id, "pro", :monitors) == 15
+    end
+
+    test "adds extra monitors from add-ons" do
+      org = organization_fixture(plan: "pro")
+      Billing.set_add_on(org.id, "extra_monitors", 10)
+
+      assert Billing.effective_limit(org.id, "pro", :monitors) == 25
+    end
+
+    test "returns :unlimited for unlimited resources" do
+      org = organization_fixture(plan: "team")
+      assert Billing.effective_limit(org.id, "team", :alert_channels) == :unlimited
+    end
+  end
+
+  describe "add-on management" do
+    test "set_add_on creates and updates" do
+      org = organization_fixture(plan: "pro")
+
+      assert {:ok, _} = Billing.set_add_on(org.id, "extra_monitors", 5)
+      assert Billing.get_add_on_quantity(org.id, "extra_monitors") == 5
+
+      assert {:ok, _} = Billing.set_add_on(org.id, "extra_monitors", 10)
+      assert Billing.get_add_on_quantity(org.id, "extra_monitors") == 10
+    end
+
+    test "set_add_on with 0 removes" do
+      org = organization_fixture(plan: "pro")
+
+      Billing.set_add_on(org.id, "extra_monitors", 5)
+      Billing.set_add_on(org.id, "extra_monitors", 0)
+
+      assert Billing.get_add_on_quantity(org.id, "extra_monitors") == 0
+    end
+
+    test "add_on_monthly_cost calculates correctly" do
+      org = organization_fixture(plan: "pro")
+
+      Billing.set_add_on(org.id, "extra_monitors", 10)    # 10 * 20 = 200 cents
+      Billing.set_add_on(org.id, "extra_fast_slots", 2)   # 2 * 100 = 200 cents
+
+      assert Billing.add_on_monthly_cost(org.id) == 400
+    end
+  end
+
   defp insert_subscription(org, plan, status, opts \\ []) do
     paddle_sub_id = opts[:paddle_sub_id] || "sub_#{System.unique_integer([:positive])}"
 
