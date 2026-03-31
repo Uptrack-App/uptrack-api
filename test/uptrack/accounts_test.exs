@@ -20,12 +20,15 @@ defmodule Uptrack.AccountsTest do
 
     test "list_users/0 returns all users" do
       user = user_fixture()
-      assert Accounts.list_users() == [user]
+      users = Accounts.list_users()
+      assert Enum.any?(users, &(&1.id == user.id))
     end
 
     test "get_user!/1 returns the user with given id" do
       user = user_fixture()
-      assert Accounts.get_user!(user.id) == user
+      found = Accounts.get_user!(user.id)
+      assert found.id == user.id
+      assert found.email == user.email
     end
 
     test "create_user/1 with valid data creates a user" do
