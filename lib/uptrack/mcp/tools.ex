@@ -48,7 +48,7 @@ defmodule Uptrack.MCP.Tools do
         status: if(latest, do: latest.status, else: "unknown"),
         response_time: latest && latest.response_time,
         interval: m.interval,
-        is_active: m.is_active
+        is_active: m.status == "active"
       }
     end)}
   end
@@ -62,7 +62,7 @@ defmodule Uptrack.MCP.Tools do
         {:ok, %{
           id: monitor.id, name: monitor.name, url: monitor.url,
           type: monitor.monitor_type, interval: monitor.interval,
-          is_active: monitor.is_active,
+          is_active: monitor.status == "active",
           status: if(latest, do: latest.status, else: "unknown"),
           response_time: latest && latest.response_time,
           uptime_30d: uptime
@@ -109,8 +109,8 @@ defmodule Uptrack.MCP.Tools do
     case Monitoring.get_organization_monitor(org_id, id) do
       nil -> {:error, "Monitor not found"}
       monitor ->
-        case Monitoring.update_monitor(monitor, %{is_active: false}) do
-          {:ok, m} -> {:ok, %{id: m.id, name: m.name, is_active: false}}
+        case Monitoring.update_monitor(monitor, %{status: "paused"}) do
+          {:ok, m} -> {:ok, %{id: m.id, name: m.name, is_active: false, status: m.status}}
           {:error, _} -> {:error, "Failed to pause monitor"}
         end
     end
@@ -120,8 +120,8 @@ defmodule Uptrack.MCP.Tools do
     case Monitoring.get_organization_monitor(org_id, id) do
       nil -> {:error, "Monitor not found"}
       monitor ->
-        case Monitoring.update_monitor(monitor, %{is_active: true}) do
-          {:ok, m} -> {:ok, %{id: m.id, name: m.name, is_active: true}}
+        case Monitoring.update_monitor(monitor, %{status: "active"}) do
+          {:ok, m} -> {:ok, %{id: m.id, name: m.name, is_active: true, status: m.status}}
           {:error, _} -> {:error, "Failed to resume monitor"}
         end
     end

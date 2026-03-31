@@ -4,6 +4,8 @@ defmodule UptrackWeb.Api.AddOnController do
   alias Uptrack.Billing
   alias Uptrack.Billing.AddOn
 
+  action_fallback UptrackWeb.Api.FallbackController
+
   @doc "GET /api/billing/add-ons — list all add-ons for the org."
   def index(conn, _params) do
     org = conn.assigns.current_organization
