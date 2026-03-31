@@ -219,6 +219,8 @@ defmodule UptrackWeb.Router do
     post "/billing/change-plan", BillingController, :change_plan
     post "/billing/portal", BillingController, :portal
     get "/billing/downgrade-preview", BillingController, :downgrade_preview
+    get "/billing/add-ons", AddOnController, :index
+    post "/billing/add-ons", AddOnController, :update
   end
 
   # OAuth callbacks (no auth - redirects from OAuth providers)
