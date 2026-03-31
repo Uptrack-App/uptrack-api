@@ -256,6 +256,9 @@ defmodule UptrackWeb.Router do
     get "/invitations/:token", InvitationController, :show_by_token
     post "/invitations/:token/accept", InvitationController, :accept
 
+    # Public billing info (no auth, cached)
+    get "/billing/popular-plan", BillingController, :popular_plan
+
     # Custom sender email verification (public, no auth)
     get "/custom-sender/verify/:token", CustomSenderController, :verify
 

@@ -5,7 +5,22 @@ defmodule UptrackWeb.Api.BillingController do
 
   require Logger
 
+  alias Uptrack.Organizations
+  alias Uptrack.Cache
+
   @paid_plans Billing.paid_plans()
+
+  @doc """
+  Returns the most popular plan. Public, cached.
+  GET /api/billing/popular-plan
+  """
+  def popular_plan(conn, _params) do
+    plan = Cache.fetch("popular_plan", [ttl: :timer.minutes(30)], fn ->
+      Organizations.most_popular_plan()
+    end)
+
+    json(conn, %{plan: plan})
+  end
 
   @doc """
   Creates a checkout session via the configured payment provider.
