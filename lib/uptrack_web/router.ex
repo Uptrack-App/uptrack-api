@@ -223,7 +223,7 @@ defmodule UptrackWeb.Router do
     post "/billing/add-ons", AddOnController, :update
 
     # MCP (Model Context Protocol) endpoint
-    post "/mcp", UptrackWeb.MCPController, :index
+    post "/mcp", MCPController, :index
   end
 
   # OAuth callbacks (no auth - redirects from OAuth providers)
