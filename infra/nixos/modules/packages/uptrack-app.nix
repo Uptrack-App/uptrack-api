@@ -20,7 +20,7 @@ beamPackages.mixRelease {
     pname = "uptrack-deps";
     version = "0.1.0";
     inherit src;
-    sha256 = "sha256-5EsK/movP1Sr41CYVSr+XHIg4J7LQBeDywb1n3TaxH8=";
+    sha256 = "sha256-KRlrmwbDDL+aquV/yAurbAias2LLDzJLZKACdSPKPO8=";
   };
 
   # Dependencies needed for compilation
