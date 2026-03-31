@@ -27,7 +27,15 @@ defmodule Uptrack.Monitoring do
   def count_fast_monitors(organization_id) do
     from(m in Monitor,
       where: m.organization_id == ^organization_id,
-      where: m.interval < 180
+      where: m.interval <= 30
+    )
+    |> AppRepo.aggregate(:count)
+  end
+
+  def count_quick_monitors(organization_id) do
+    from(m in Monitor,
+      where: m.organization_id == ^organization_id,
+      where: m.interval > 30 and m.interval <= 60
     )
     |> AppRepo.aggregate(:count)
   end

@@ -20,26 +20,26 @@ defmodule Uptrack.Billing do
 
   @plan_limits %{
     "free" => %{
-      monitors: 10, alert_channels: 2, status_pages: 5, team_members: 1,
-      min_interval: 180, fast_monitors: 1, webhooks_per_monitor: 1,
+      monitors: 5, alert_channels: 3, status_pages: 5, team_members: 2,
+      min_interval: 180, fast_monitors: 0, quick_monitors: 2, webhooks_per_monitor: 1,
       regions: 3, retention_days: 180, sms_alerts: 0, subscribers: 100,
       notify_only_seats: 0
     },
     "pro" => %{
       monitors: 15, alert_channels: 5, status_pages: 5, team_members: 3,
-      min_interval: 60, fast_monitors: 1, webhooks_per_monitor: 2,
+      min_interval: 60, fast_monitors: 1, quick_monitors: 0, webhooks_per_monitor: 2,
       regions: 5, retention_days: 730, sms_alerts: 30, subscribers: 1_000,
       notify_only_seats: 1
     },
     "team" => %{
       monitors: 60, alert_channels: :unlimited, status_pages: :unlimited, team_members: 5,
-      min_interval: 30, fast_monitors: :unlimited, webhooks_per_monitor: 5,
+      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 5,
       regions: 15, retention_days: 730, sms_alerts: 100, subscribers: 5_000,
       notify_only_seats: 3
     },
     "business" => %{
       monitors: 300, alert_channels: :unlimited, status_pages: :unlimited, team_members: 15,
-      min_interval: 30, fast_monitors: :unlimited, webhooks_per_monitor: 10,
+      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 10,
       regions: 15, retention_days: 1825, sms_alerts: 200, subscribers: 10_000,
       notify_only_seats: 5
     }
@@ -81,7 +81,7 @@ defmodule Uptrack.Billing do
   @doc """
   Returns the list of allowed alert channel types for a plan.
   """
-  def allowed_channel_types("free"), do: ["email"]
+  def allowed_channel_types("free"), do: ["email", "slack", "discord"]
   def allowed_channel_types("pro"), do: ["email", "slack", "ms_teams", "discord", "telegram", "webhook"]
   def allowed_channel_types(_plan), do: :all
 
@@ -132,7 +132,22 @@ defmodule Uptrack.Billing do
       interval >= min ->
         :ok
 
-      # Below plan minimum — check if fast monitor slot is available (only for intervals ≥ 30s)
+      # 60s interval — check Quick Monitor slots
+      interval >= 60 ->
+        quick_limit = plan_limit(org.plan, :quick_monitors)
+
+        cond do
+          quick_limit == :unlimited ->
+            :ok
+
+          is_integer(quick_limit) and Uptrack.Monitoring.count_quick_monitors(org.id) < quick_limit ->
+            :ok
+
+          true ->
+            {:error, "Your plan includes #{quick_limit} Quick Monitor slot(s) (1-min). You've used yours — upgrade for more."}
+        end
+
+      # 30s interval — check Fast Monitor slots
       interval >= 30 ->
         fast_limit = plan_limit(org.plan, :fast_monitors)
 
@@ -144,7 +159,7 @@ defmodule Uptrack.Billing do
             :ok
 
           true ->
-            {:error, "Your plan includes #{fast_limit} Fast Monitor slot (30s). You've used yours — upgrade to Team for unlimited 30s monitors."}
+            {:error, "Your plan includes #{fast_limit} Fast Monitor slot(s) (30s). You've used yours — upgrade to Team for unlimited 30s monitors."}
         end
 
       true ->
