@@ -221,6 +221,9 @@ defmodule UptrackWeb.Router do
     get "/billing/downgrade-preview", BillingController, :downgrade_preview
     get "/billing/add-ons", AddOnController, :index
     post "/billing/add-ons", AddOnController, :update
+
+    # MCP (Model Context Protocol) endpoint
+    post "/mcp", UptrackWeb.MCPController, :index
   end
 
   # OAuth callbacks (no auth - redirects from OAuth providers)
