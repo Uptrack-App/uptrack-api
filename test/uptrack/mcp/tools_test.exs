@@ -24,6 +24,41 @@ defmodule Uptrack.MCP.ToolsTest do
       names = Tools.definitions() |> Enum.map(& &1["name"])
       assert length(names) == length(Enum.uniq(names))
     end
+
+    test "all tools have readOnlyHint or destructiveHint annotation" do
+      for tool <- Tools.definitions() do
+        assert Map.has_key?(tool, "annotations"),
+               "Tool '#{tool["name"]}' is missing annotations"
+
+        annotations = tool["annotations"]
+
+        has_hint =
+          Map.has_key?(annotations, "readOnlyHint") or
+            Map.has_key?(annotations, "destructiveHint")
+
+        assert has_hint,
+               "Tool '#{tool["name"]}' must have readOnlyHint or destructiveHint"
+      end
+    end
+
+    test "read tools are annotated as readOnly" do
+      read_tools = ~w(list_monitors get_monitor list_incidents get_dashboard_stats
+                      get_monitor_analytics list_status_pages list_alert_channels)
+
+      for tool_name <- read_tools do
+        tool = Enum.find(Tools.definitions(), &(&1["name"] == tool_name))
+        assert tool["annotations"]["readOnlyHint"] == true
+      end
+    end
+
+    test "write tools are annotated as destructive" do
+      write_tools = ~w(create_monitor delete_monitor pause_monitor resume_monitor)
+
+      for tool_name <- write_tools do
+        tool = Enum.find(Tools.definitions(), &(&1["name"] == tool_name))
+        assert tool["annotations"]["destructiveHint"] == true
+      end
+    end
   end
 
   describe "call/3" do
