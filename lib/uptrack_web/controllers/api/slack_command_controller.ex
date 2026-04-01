@@ -121,7 +121,7 @@ defmodule UptrackWeb.Api.SlackCommandController do
 
     Uptrack.AppRepo.one(
       from ac in Uptrack.Monitoring.AlertChannel,
-        where: ac.type == :slack,
+        where: ac.type == "slack",
         where: fragment("? ->> 'team_id' = ?", ac.config, ^team_id),
         select: %{id: ac.organization_id},
         limit: 1
