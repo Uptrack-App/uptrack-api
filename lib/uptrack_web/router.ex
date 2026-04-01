@@ -234,6 +234,13 @@ defmodule UptrackWeb.Router do
     get "/discord/callback", IntegrationController, :discord_callback
   end
 
+  # Slack slash commands (verified by Slack signature, not user auth)
+  scope "/api/slack", UptrackWeb.Api do
+    pipe_through :api
+
+    post "/commands", SlackCommandController, :handle
+  end
+
   # Heartbeat endpoints (higher rate limit for services)
   scope "/api", UptrackWeb.Api do
     pipe_through :api_heartbeat

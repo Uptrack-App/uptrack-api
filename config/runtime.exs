@@ -119,11 +119,12 @@ if config_env() == :prod do
       client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
   end
 
-  # Slack OAuth (for alert channel integration)
+  # Slack OAuth + slash commands
   if slack_id = System.get_env("SLACK_CLIENT_ID") do
     config :uptrack,
       slack_client_id: slack_id,
-      slack_client_secret: System.get_env("SLACK_CLIENT_SECRET")
+      slack_client_secret: System.get_env("SLACK_CLIENT_SECRET"),
+      slack_signing_secret: System.get_env("SLACK_SIGNING_SECRET")
   end
 
   # Paddle billing (optional — billing disabled if not set)
