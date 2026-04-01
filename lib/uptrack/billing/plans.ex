@@ -13,7 +13,7 @@ defmodule Uptrack.Billing.Plans do
 
   @plan_limits %{
     "free" => %{
-      monitors: 10, alert_channels: 3, status_pages: 5, team_members: 2,
+      monitors: 5, alert_channels: 3, status_pages: 5, team_members: 2,
       min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 1,
       regions: 3, retention_days: 30, sms_alerts: 0, subscribers: 100,
       notify_only_seats: 0
