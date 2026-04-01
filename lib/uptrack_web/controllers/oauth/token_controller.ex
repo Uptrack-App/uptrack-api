@@ -1,17 +1,12 @@
 defmodule UptrackWeb.OAuth.TokenController do
   @moduledoc """
   OAuth 2.0 token endpoint with RFC 8707 Resource Indicators support.
-
-  Standard OAuth flow — no shared-client workaround like WigoIQ.
-  Each client has its own client_id/client_secret.
   """
 
   @behaviour Boruta.Oauth.TokenApplication
 
   use UptrackWeb, :controller
 
-  alias Boruta.Oauth.Error
-  alias Boruta.Oauth.TokenResponse
   alias Uptrack.OAuth.{ResourceIndicators, Tokens}
 
   def oauth_module, do: Application.get_env(:uptrack, :oauth_module, Boruta.Oauth)
@@ -35,8 +30,9 @@ defmodule UptrackWeb.OAuth.TokenController do
   end
 
   @impl true
-  def token_success(conn, %TokenResponse{access_token: access_token} = response) do
+  def token_success(conn, response) do
     resource = conn.assigns[:oauth_resource]
+    access_token = Map.get(response, :access_token)
 
     # RFC 8707: Store resource binding
     if access_token && resource do
@@ -52,24 +48,25 @@ defmodule UptrackWeb.OAuth.TokenController do
     |> put_resp_header("pragma", "no-cache")
     |> put_resp_header("cache-control", "no-store")
     |> json(%{
-      access_token: response.access_token,
-      token_type: response.token_type,
-      expires_in: response.expires_in,
-      refresh_token: response.refresh_token,
-      scope: response.scope
+      access_token: access_token,
+      token_type: Map.get(response, :token_type),
+      expires_in: Map.get(response, :expires_in),
+      refresh_token: Map.get(response, :refresh_token),
+      scope: Map.get(response, :scope)
     })
   end
 
   @impl true
-  def token_error(conn, %Error{status: status, error: error, error_description: error_description}) do
+  def token_error(conn, error) do
     conn
-    |> put_status(status)
-    |> json(%{error: error, error_description: error_description})
+    |> put_status(Map.get(error, :status, :bad_request))
+    |> json(%{error: Map.get(error, :error), error_description: Map.get(error, :error_description)})
   end
 
   defp store_org_sub(access_token, response) do
-    # Extract org_id from client metadata
-    case Uptrack.OAuth.get_client(response.client_id) do
+    client_id = Map.get(response, :client_id)
+
+    case Uptrack.OAuth.get_client(client_id) do
       {:ok, client} ->
         org_id = get_in(client.metadata, ["organization_id"])
         if org_id, do: Tokens.set_token_sub(access_token, "org:#{org_id}")
