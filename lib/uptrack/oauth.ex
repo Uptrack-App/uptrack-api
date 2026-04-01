@@ -14,10 +14,9 @@ defmodule Uptrack.OAuth do
   @doc "Lists OAuth clients for an organization."
   def list_clients(organization_id) do
     from(c in "oauth_clients",
-      left_join: m in fragment("SELECT unnest(?::jsonb[]) AS meta", c.metadata),
       where: fragment("?->>'organization_id' = ?", c.metadata, ^organization_id),
       select: %{
-        id: c.id,
+        id: type(c.id, :string),
         name: c.name,
         redirect_uris: c.redirect_uris,
         inserted_at: c.inserted_at
@@ -42,11 +41,16 @@ defmodule Uptrack.OAuth do
 
   @doc "Deletes an OAuth client by ID."
   def delete_client(client_id) do
-    Admin.delete_client(client_id)
+    client = Admin.get_client!(client_id)
+    Admin.delete_client(client)
+  rescue
+    Ecto.NoResultsError -> {:error, :not_found}
   end
 
   @doc "Gets an OAuth client by ID."
   def get_client(client_id) do
-    Admin.get_client(client_id)
+    {:ok, Admin.get_client!(client_id)}
+  rescue
+    Ecto.NoResultsError -> {:error, :not_found}
   end
 end

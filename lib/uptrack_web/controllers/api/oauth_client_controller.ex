@@ -38,7 +38,7 @@ defmodule UptrackWeb.Api.OAuthClientController do
   def delete(conn, %{"id" => id}) do
     case OAuth.delete_client(id) do
       {:ok, _} -> json(conn, %{deleted: true})
-      {:error, _} -> conn |> put_status(:not_found) |> json(%{error: "Client not found"})
+      _ -> conn |> put_status(:not_found) |> json(%{error: "Client not found"})
     end
   end
 end

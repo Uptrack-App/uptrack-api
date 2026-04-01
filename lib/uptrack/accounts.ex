@@ -24,6 +24,20 @@ defmodule Uptrack.Accounts do
   end
 
   @doc """
+  Gets a resource owner by sub claim (required by Boruta OAuth).
+
+  For org-scoped tokens, sub is "org:{id}" — returns the org as resource owner.
+  """
+  def get_by(sub: "org:" <> org_id) do
+    case AppRepo.get(Organization, org_id) do
+      nil -> {:error, "Organization not found"}
+      org -> {:ok, %{sub: "org:#{org.id}", username: org.name}}
+    end
+  end
+
+  def get_by(sub: _sub), do: {:error, "Unknown sub format"}
+
+  @doc """
   Gets a single user.
 
   Raises `Ecto.NoResultsError` if the User does not exist.
