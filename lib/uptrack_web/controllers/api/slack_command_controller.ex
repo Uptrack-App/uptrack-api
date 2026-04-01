@@ -42,19 +42,33 @@ defmodule UptrackWeb.Api.SlackCommandController do
       nil -> not_connected_response()
       org ->
         monitors = Monitoring.list_monitors(org.id)
-        up = Enum.count(monitors, &(&1.status == "active"))
-        down = Enum.count(monitors, &(Map.get(&1, :last_check_status) == "down"))
-        paused = Enum.count(monitors, &(&1.status == "paused"))
         total = length(monitors)
+        down_monitors = Enum.filter(monitors, &(Map.get(&1, :last_check_status) == "down"))
+        down = length(down_monitors)
+        paused = Enum.count(monitors, &(&1.status == "paused"))
+        up = total - down - paused
 
-        text = """
-        *Monitoring Status*
-        Total: #{total} monitors
-        :large_green_circle: Up: #{up}
-        #{if down > 0, do: ":red_circle: Down: #{down}\n", else: ""}#{if paused > 0, do: ":yellow_circle: Paused: #{paused}\n", else: ""}
-        """
+        header = "*Monitoring Status* — #{total} monitors"
 
-        %{response_type: "in_channel", text: String.trim(text)}
+        summary =
+          if down == 0 do
+            ":large_green_circle: All #{total} monitors operational."
+          else
+            counts = ":large_green_circle: #{up} up  :red_circle: #{down} down" <>
+              if(paused > 0, do: "  :yellow_circle: #{paused} paused", else: "")
+
+            down_list =
+              down_monitors
+              |> Enum.take(10)
+              |> Enum.map(fn m -> ":red_circle: *#{m.name || m.url}*" end)
+              |> Enum.join("\n")
+
+            suffix = if down > 10, do: "\n_...and #{down - 10} more_", else: ""
+
+            counts <> "\n\n*Down right now:*\n" <> down_list <> suffix
+          end
+
+        %{response_type: "in_channel", text: header <> "\n" <> summary}
     end
   end
 
