@@ -29,14 +29,14 @@ defmodule Uptrack.BillingTest do
   describe "plan_limits/1" do
     test "returns correct limits for free plan" do
       limits = Billing.plan_limits("free")
-      assert limits.monitors == 20
+      assert limits.monitors == 10
       assert limits.alert_channels == 3
       assert limits.status_pages == 5
       assert limits.team_members == 2
-      assert limits.min_interval == 180
-      assert limits.fast_monitors == 5
-      assert limits.quick_monitors == 5
-      assert limits.retention_days == 180
+      assert limits.min_interval == 30
+      assert limits.fast_monitors == :unlimited
+      assert limits.quick_monitors == :unlimited
+      assert limits.retention_days == 30
     end
 
     test "returns correct limits for pro plan" do
@@ -88,14 +88,14 @@ defmodule Uptrack.BillingTest do
     test "rejects creation when at monitor limit", %{} do
       {user, org} = user_with_org_fixture()
 
-      # Free plan allows 20 monitors — create exactly 20
-      for _ <- 1..20 do
+      # Free plan allows 10 monitors — create exactly 10
+      for _ <- 1..10 do
         monitor_fixture(organization_id: org.id, user_id: user.id)
       end
 
       assert {:error, msg} = Billing.check_plan_limit(org, :monitors)
       assert msg =~ "monitor"
-      assert msg =~ "20"
+      assert msg =~ "10"
       assert msg =~ "Upgrade"
     end
 
@@ -119,65 +119,22 @@ defmodule Uptrack.BillingTest do
   end
 
   describe "check_interval_limit/2" do
-    test "allows valid interval for free plan" do
+    test "allows 30s interval for free plan" do
       org = organization_fixture()
-      assert :ok = Billing.check_interval_limit(org, 300)
+      assert :ok = Billing.check_interval_limit(org, 30)
+      assert :ok = Billing.check_interval_limit(org, 60)
       assert :ok = Billing.check_interval_limit(org, 180)
     end
 
-    test "allows fast (2-min) interval for free plan when slots available" do
-      org = organization_fixture()
-      assert :ok = Billing.check_interval_limit(org, 120)
-    end
-
-    test "rejects fast (2-min) interval when fast slots used" do
-      {user, org} = user_with_org_fixture()
-      for _ <- 1..5 do
-        monitor_fixture(user_id: user.id, organization_id: org.id, interval: 120)
+    test "allows 30s on all paid plans" do
+      for plan <- ["pro", "team", "business"] do
+        org = organization_fixture(plan: plan)
+        assert :ok = Billing.check_interval_limit(org, 30)
       end
-
-      assert {:error, msg} = Billing.check_interval_limit(org, 120)
-      assert msg =~ "Fast Monitor"
-    end
-
-    test "allows quick (1-min) interval for free plan when slots available" do
-      org = organization_fixture()
-      assert :ok = Billing.check_interval_limit(org, 60)
-    end
-
-    test "rejects quick interval when quick slots used" do
-      {user, org} = user_with_org_fixture()
-      for _ <- 1..5 do
-        monitor_fixture(user_id: user.id, organization_id: org.id, interval: 60)
-      end
-
-      assert {:error, msg} = Billing.check_interval_limit(org, 60)
-      assert msg =~ "Quick Monitor"
-    end
-
-    test "rejects 30s on free plan" do
-      org = organization_fixture()
-      assert {:error, msg} = Billing.check_interval_limit(org, 30)
-      assert msg =~ "Pro"
-    end
-
-    test "allows 30s on pro plan (all monitors at 30s)" do
-      org = organization_fixture(plan: "pro")
-      assert :ok = Billing.check_interval_limit(org, 30)
-    end
-
-    test "allows 60-second interval for pro plan" do
-      org = organization_fixture(plan: "pro")
-      assert :ok = Billing.check_interval_limit(org, 60)
-    end
-
-    test "allows 30-second interval for team plan" do
-      org = organization_fixture(plan: "team")
-      assert :ok = Billing.check_interval_limit(org, 30)
     end
 
     test "rejects sub-30s interval" do
-      org = organization_fixture(plan: "pro")
+      org = organization_fixture()
       assert {:error, msg} = Billing.check_interval_limit(org, 15)
       assert msg =~ "30 seconds"
     end
