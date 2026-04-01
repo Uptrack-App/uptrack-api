@@ -98,6 +98,28 @@ defmodule UptrackWeb.Router do
     delete "/logout", AuthController, :logout
   end
 
+  # OAuth 2.0 endpoints (for Claude Connector and third-party integrations)
+  scope "/oauth", UptrackWeb.OAuth do
+    pipe_through :api
+
+    post "/token", TokenController, :token
+    post "/revoke", TokenController, :revoke
+  end
+
+  scope "/oauth", UptrackWeb.OAuth do
+    pipe_through [:api, :fetch_session]
+
+    get "/authorize", AuthorizeController, :authorize
+  end
+
+  # RFC 8414 / RFC 9728 well-known endpoints
+  scope "/.well-known", UptrackWeb.OAuth do
+    pipe_through :api
+
+    get "/oauth-authorization-server", AuthServerMetadataController, :index
+    get "/oauth-protected-resource", ProtectedResourceController, :index
+  end
+
   # Health check endpoints (for load balancers and systemd)
   scope "/", UptrackWeb do
     pipe_through :health
@@ -164,6 +186,9 @@ defmodule UptrackWeb.Router do
     resources "/api-keys", ApiKeyController, only: [:index, :create, :delete]
     post "/api-keys/:id/revoke", ApiKeyController, :revoke
 
+    # OAuth client management (Integrations tab)
+    resources "/oauth-clients", OAuthClientController, only: [:index, :create, :delete]
+
     # Monitor API
     post "/monitors/smart-defaults", MonitorController, :smart_defaults
     resources "/monitors", MonitorController, only: [:index, :create, :show, :update, :delete]
@@ -222,8 +247,20 @@ defmodule UptrackWeb.Router do
     get "/billing/add-ons", AddOnController, :index
     post "/billing/add-ons", AddOnController, :update
 
-    # MCP (Model Context Protocol) endpoint
+  end
+
+  # MCP endpoint — dual OAuth/API key auth (separate from api_authenticated)
+  scope "/api", UptrackWeb.Api do
+    pipe_through [:api, :fetch_session, UptrackWeb.Plugs.MCPAuth]
+
     post "/mcp", MCPController, :index
+  end
+
+  # Also support /mcp at root level (some MCP clients expect this)
+  scope "/mcp", UptrackWeb.Api do
+    pipe_through [:api, UptrackWeb.Plugs.MCPAuth]
+
+    post "/", MCPController, :index
   end
 
   # OAuth callbacks (no auth - redirects from OAuth providers)

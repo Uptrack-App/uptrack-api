@@ -4,15 +4,17 @@ defmodule UptrackWeb.Api.MCPController do
   use UptrackWeb, :controller
 
   alias Uptrack.MCP.Server
+  alias Uptrack.OAuth.Scopes
 
   require Logger
 
   def index(conn, params) do
     org = conn.assigns.current_organization
+    scopes = conn.assigns[:oauth_scopes]
 
     if map_size(params) > 0 do
       body_json = Jason.encode!(params)
-      response_json = Server.handle_message(body_json, org.id)
+      response_json = Server.handle_message(body_json, org.id, scopes)
 
       conn
       |> put_resp_content_type("application/json", "utf-8")

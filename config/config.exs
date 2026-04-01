@@ -8,6 +8,7 @@
 import Config
 
 config :uptrack,
+  env: config_env(),
   ecto_repos: [Uptrack.AppRepo, Uptrack.ObanRepo],
   generators: [timestamp_type: :utc_datetime],
   app_url: "http://localhost:4000",
@@ -98,6 +99,16 @@ config :ueberauth, Ueberauth.Strategy.Google.OAuth,
 
 # Configure Tesla (disable deprecation warnings)
 config :tesla, disable_deprecated_builder_warning: true
+
+# Boruta OAuth 2.0 server
+config :boruta, Boruta.Oauth,
+  repo: Uptrack.AppRepo,
+  cache_backend: Boruta.Cache,
+  contexts: [resource_owners: Uptrack.Accounts],
+  token_generator: Uptrack.OAuth.TokenGenerator,
+  access_token_ttl: 24 * 60 * 60,
+  authorization_code_ttl: 3 * 60,
+  refresh_token_ttl: 30 * 24 * 60 * 60
 
 # Configure Oban for background jobs
 config :uptrack, Oban,
