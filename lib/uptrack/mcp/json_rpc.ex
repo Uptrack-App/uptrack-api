@@ -38,10 +38,22 @@ defmodule Uptrack.MCP.JsonRpc do
     %{"jsonrpc" => "2.0", "id" => id, "error" => error}
   end
 
-  def define_tool(name, description, properties, required \\ []) do
+  def define_tool(name, description, properties, required \\ [], opts \\ []) do
     schema = %{"type" => "object", "properties" => properties}
     schema = if required == [], do: schema, else: Map.put(schema, "required", required)
-    %{"name" => name, "description" => description, "inputSchema" => schema}
+
+    tool = %{"name" => name, "description" => description, "inputSchema" => schema}
+
+    annotations = build_annotations(opts)
+    if map_size(annotations) > 0, do: Map.put(tool, "annotations", annotations), else: tool
+  end
+
+  defp build_annotations(opts) do
+    Enum.reduce(opts, %{}, fn
+      {:read_only, true}, acc -> Map.put(acc, "readOnlyHint", true)
+      {:destructive, true}, acc -> Map.put(acc, "destructiveHint", true)
+      _, acc -> acc
+    end)
   end
 
   def prop(type, description), do: %{"type" => type, "description" => description}

@@ -574,17 +574,17 @@ defmodule Uptrack.Monitoring.CheckWorker do
   end
 
   # Truncates response body to prevent storing very large responses.
-  defp truncate_body(body) when is_binary(body) do
-    max_length = 10_000
-
+  # Default 1KB — sufficient for assertions, prevents scraping abuse.
+  defp truncate_body(body, max_length \\ 1_000)
+  defp truncate_body(nil, _max_length), do: nil
+  defp truncate_body(body, max_length) when is_binary(body) do
     if String.length(body) > max_length do
       String.slice(body, 0, max_length) <> "... [truncated]"
     else
       body
     end
   end
-
-  defp truncate_body(_), do: nil
+  defp truncate_body(_, _max_length), do: nil
 
   defp get_content_type(headers) do
     Enum.find_value(headers, "text/plain", fn

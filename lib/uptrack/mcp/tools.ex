@@ -6,32 +6,36 @@ defmodule Uptrack.MCP.Tools do
 
   def definitions do
     [
-      JsonRpc.define_tool("list_monitors", "List all monitors with current status, URL, and response time.", %{}, []),
+      JsonRpc.define_tool("list_monitors", "List all monitors with current status, URL, and response time.",
+        %{}, [], read_only: true),
       JsonRpc.define_tool("get_monitor", "Get detailed info for a specific monitor including uptime percentage.",
-        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"]),
+        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"], read_only: true),
       JsonRpc.define_tool("create_monitor", "Create a new monitor.",
         %{
           "url" => JsonRpc.prop("string", "URL or domain to monitor"),
           "name" => JsonRpc.prop("string", "Display name for the monitor"),
           "monitor_type" => JsonRpc.prop("string", "Type: http, dns, ssl, heartbeat"),
           "interval" => JsonRpc.prop("integer", "Check interval in seconds (default 180)")
-        }, ["url", "name"]),
+        }, ["url", "name"], destructive: true),
       JsonRpc.define_tool("delete_monitor", "Delete a monitor.",
-        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"]),
+        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"], destructive: true),
       JsonRpc.define_tool("pause_monitor", "Pause a monitor (stop checking).",
-        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"]),
+        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"], destructive: true),
       JsonRpc.define_tool("resume_monitor", "Resume a paused monitor.",
-        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"]),
+        %{"monitor_id" => JsonRpc.prop("string", "Monitor ID")}, ["monitor_id"], destructive: true),
       JsonRpc.define_tool("list_incidents", "List recent incidents with cause, status, and duration.",
-        %{"limit" => JsonRpc.prop("integer", "Number of incidents to return (default 10)")}, []),
-      JsonRpc.define_tool("get_dashboard_stats", "Get dashboard overview: uptime %, active monitors, ongoing incidents.", %{}, []),
+        %{"limit" => JsonRpc.prop("integer", "Number of incidents to return (default 10)")}, [], read_only: true),
+      JsonRpc.define_tool("get_dashboard_stats", "Get dashboard overview: uptime %, active monitors, ongoing incidents.",
+        %{}, [], read_only: true),
       JsonRpc.define_tool("get_monitor_analytics", "Get response time trends and uptime chart for a monitor.",
         %{
           "monitor_id" => JsonRpc.prop("string", "Monitor ID"),
           "days" => JsonRpc.prop("integer", "Number of days (default 30)")
-        }, ["monitor_id"]),
-      JsonRpc.define_tool("list_status_pages", "List all status pages with their public URLs.", %{}, []),
-      JsonRpc.define_tool("list_alert_channels", "List configured alert channels.", %{}, []),
+        }, ["monitor_id"], read_only: true),
+      JsonRpc.define_tool("list_status_pages", "List all status pages with their public URLs.",
+        %{}, [], read_only: true),
+      JsonRpc.define_tool("list_alert_channels", "List configured alert channels.",
+        %{}, [], read_only: true)
     ]
   end
 
