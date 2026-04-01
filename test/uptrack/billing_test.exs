@@ -29,7 +29,7 @@ defmodule Uptrack.BillingTest do
   describe "plan_limits/1" do
     test "returns correct limits for free plan" do
       limits = Billing.plan_limits("free")
-      assert limits.monitors == 10
+      assert limits.monitors == 5
       assert limits.alert_channels == 3
       assert limits.status_pages == 5
       assert limits.team_members == 2
@@ -88,14 +88,14 @@ defmodule Uptrack.BillingTest do
     test "rejects creation when at monitor limit", %{} do
       {user, org} = user_with_org_fixture()
 
-      # Free plan allows 10 monitors — create exactly 10
-      for _ <- 1..10 do
+      # Free plan allows 5 monitors — create exactly 5
+      for _ <- 1..5 do
         monitor_fixture(organization_id: org.id, user_id: user.id)
       end
 
       assert {:error, msg} = Billing.check_plan_limit(org, :monitors)
       assert msg =~ "monitor"
-      assert msg =~ "10"
+      assert msg =~ "5"
       assert msg =~ "Upgrade"
     end
 
