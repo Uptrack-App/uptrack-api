@@ -62,6 +62,10 @@ defmodule UptrackWeb.Plugs.MCPAuth do
           conn
         end
     end
+  rescue
+    _ -> conn
+  catch
+    _, _ -> conn
   end
 
   defp token_valid?(token) do
