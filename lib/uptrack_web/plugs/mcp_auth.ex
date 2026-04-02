@@ -35,6 +35,14 @@ defmodule UptrackWeb.Plugs.MCPAuth do
         |> try_session_auth()
         |> require_auth()
     end
+  rescue
+    e ->
+      Logger.error("MCP auth error: #{Exception.format(:error, e, __STACKTRACE__)}")
+      require_auth(conn)
+  catch
+    kind, reason ->
+      Logger.error("MCP auth #{kind}: #{inspect(reason)}")
+      require_auth(conn)
   end
 
   # --- Token extraction ---
