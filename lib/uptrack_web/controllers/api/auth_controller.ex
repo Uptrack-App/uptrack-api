@@ -358,6 +358,45 @@ defmodule UptrackWeb.Api.AuthController do
     end
   end
 
+  @doc """
+  Redirect-based magic link verification.
+  GET /api/auth/magic-link/callback?token=...&email=...
+
+  Email links here directly → verifies token → sets session cookie
+  (same-origin, SameSite=Lax safe) → redirects to frontend dashboard.
+  Same pattern as Google/GitHub OAuth callbacks.
+  """
+  def magic_link_callback(conn, %{"email" => email, "token" => token})
+      when is_binary(email) and is_binary(token) do
+    frontend = Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
+
+    with {:ok, token_record} <- Accounts.verify_magic_token(email, token),
+         {:ok, _consumed} <- Accounts.consume_magic_token(token_record),
+         {:ok, user} <- Accounts.find_or_create_user_by_email(email) do
+      Logger.info("Magic link callback: signed in #{email}")
+
+      conn
+      |> put_session(:user_id, user.id)
+      |> redirect(external: "#{frontend}/dashboard")
+    else
+      {:error, reason} ->
+        error = case reason do
+          :invalid_token -> "invalid"
+          :token_expired -> "expired"
+          :token_already_used -> "used"
+          _ -> "error"
+        end
+
+        conn
+        |> redirect(external: "#{frontend}/login?error=#{error}")
+    end
+  end
+
+  def magic_link_callback(conn, _params) do
+    frontend = Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
+    redirect(conn, external: "#{frontend}/login?error=invalid")
+  end
+
   def magic_link_verify(conn, _params) do
     conn
     |> put_status(:unprocessable_entity)

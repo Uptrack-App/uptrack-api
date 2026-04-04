@@ -5,10 +5,11 @@ defmodule Uptrack.Emails.MagicLinkEmail do
 
   @from_email {"Uptrack", "alerts@uptrack.app"}
 
-  defp frontend_url, do: Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
+  defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
   def magic_link_email(email, raw_token) do
-    verify_url = "#{frontend_url()}/auth/verify-magic-link?token=#{raw_token}&email=#{URI.encode_www_form(email)}"
+    # Link directly to API callback (same-origin cookie, SameSite=Lax safe)
+    verify_url = "#{app_url()}/api/auth/magic-link/callback?token=#{raw_token}&email=#{URI.encode_www_form(email)}"
 
     new()
     |> to(email)
