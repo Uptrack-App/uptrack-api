@@ -155,8 +155,8 @@ defmodule Uptrack.Monitoring.CheckWorker do
 
     req_opts = [
       headers: headers,
-      connect_options: [timeout: monitor.timeout * 1000],
       receive_timeout: monitor.timeout * 1000,
+      pool_timeout: monitor.timeout * 1000,
       redirect: true,
       max_redirects: 5,
       retry: false,
