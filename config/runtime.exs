@@ -64,12 +64,9 @@ if config_env() == :prod do
     ],
     plugins: [
       {Oban.Plugins.Pruner, max_age: 604_800},  # 7 days
-      Oban.Plugins.Repeater,
-      {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(10)},
-      {Oban.Plugins.Cron, crontab: [
-        # Run monitor scheduling every minute (scheduler handles sub-minute intervals)
-        {"* * * * *", Uptrack.Monitoring.SchedulerWorker}
-      ]}
+      {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(10)}
+      # Monitor checks now handled by GenServer-per-monitor (MonitorProcess)
+      # SchedulerWorker and Repeater removed
     ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.

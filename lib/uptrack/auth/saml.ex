@@ -10,7 +10,6 @@ defmodule Uptrack.Auth.Saml do
   alias Uptrack.AppRepo
   alias Uptrack.Auth.{SamlProvider, SamlResponse}
   alias Uptrack.Accounts
-  alias Uptrack.Organizations
 
   require Logger
 

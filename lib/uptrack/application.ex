@@ -21,7 +21,7 @@ defmodule Uptrack.Application do
         {Oban, Application.fetch_env!(:uptrack, Oban)},
         # Finch HTTP pool for monitoring checks (connection reuse)
         {Finch, name: Uptrack.Finch, pools: %{
-          default: [size: 200, count: 4, protocol: :http1]
+          default: [size: 200, count: 4, protocols: [:http1]]
         }},
         # Task supervisor for monitoring checks
         {Task.Supervisor, name: Uptrack.TaskSupervisor},
