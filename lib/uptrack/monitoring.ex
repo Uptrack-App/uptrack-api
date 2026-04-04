@@ -53,6 +53,16 @@ defmodule Uptrack.Monitoring do
   # Monitor functions
 
   @doc """
+  Returns ALL active monitors across all organizations.
+  Used by MonitorSupervisor to start GenServer processes on boot.
+  """
+  def list_all_active_monitors do
+    Monitor
+    |> where([m], m.status == "active")
+    |> AppRepo.all()
+  end
+
+  @doc """
   Returns the list of monitors for an organization.
   """
   def list_monitors(organization_id) do
@@ -120,6 +130,8 @@ defmodule Uptrack.Monitoring do
   """
   def get_monitor!(id), do: AppRepo.get!(Monitor, id)
 
+  def get_monitor(id), do: AppRepo.get(Monitor, id)
+
   @doc """
   Gets a monitor by organization. Raises if not found.
   """
@@ -152,6 +164,8 @@ defmodule Uptrack.Monitoring do
 
     with {:ok, monitor} <- result do
       invalidate_org_cache(monitor.organization_id)
+      # Start GenServer process for active monitors
+      if monitor.status == "active", do: start_monitor_process(monitor)
       {:ok, monitor}
     end
   end
@@ -168,6 +182,8 @@ defmodule Uptrack.Monitoring do
     with {:ok, updated} <- result do
       invalidate_org_cache(updated.organization_id)
       invalidate_monitor_cache(updated.id)
+      # Update or start/stop GenServer process based on status change
+      sync_monitor_process(updated)
       {:ok, updated}
     end
   end
@@ -181,6 +197,8 @@ defmodule Uptrack.Monitoring do
     with {:ok, deleted} <- result do
       invalidate_org_cache(deleted.organization_id)
       invalidate_monitor_cache(deleted.id)
+      # Stop GenServer process
+      stop_monitor_process(deleted.id)
       {:ok, deleted}
     end
   end
@@ -1084,4 +1102,38 @@ defmodule Uptrack.Monitoring do
   defp to_float(nil, default), do: default
   defp to_float(f, _default) when is_float(f), do: f
   defp to_float(i, _default) when is_integer(i), do: i * 1.0
+
+  # --- GenServer process lifecycle ---
+
+  alias Uptrack.Monitoring.{MonitorSupervisor, MonitorProcess}
+
+  defp start_monitor_process(monitor) do
+    MonitorSupervisor.start_monitor(monitor)
+  rescue
+    _ -> :ok
+  end
+
+  defp stop_monitor_process(monitor_id) do
+    MonitorSupervisor.stop_monitor(monitor_id)
+  rescue
+    _ -> :ok
+  end
+
+  defp sync_monitor_process(monitor) do
+    case monitor.status do
+      "active" ->
+        case Uptrack.Monitoring.MonitorRegistry.lookup(monitor.id) do
+          {:ok, _pid} -> MonitorProcess.update_config(monitor.id, monitor)
+          :error -> start_monitor_process(monitor)
+        end
+
+      "paused" ->
+        MonitorProcess.pause(monitor.id)
+
+      _ ->
+        stop_monitor_process(monitor.id)
+    end
+  rescue
+    _ -> :ok
+  end
 end

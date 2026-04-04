@@ -27,7 +27,27 @@ defmodule Uptrack.Monitoring.CheckWorker do
   @user_agent "Uptrack Monitor/1.0"
 
   @doc """
-  Performs a check for a given monitor.
+  Executes only the raw network check (no DB write, no alerts).
+  Used by CheckExecutor for the GenServer pipeline.
+  Returns {:ok, status_code, headers, body} or {:error, reason}.
+  """
+  def execute_raw_check(%Monitor{} = monitor) do
+    case monitor.monitor_type do
+      "http" -> check_http(monitor)
+      "https" -> check_http(monitor)
+      "tcp" -> check_tcp(monitor)
+      "ping" -> check_ping(monitor)
+      "keyword" -> check_keyword(monitor)
+      "ssl" -> check_ssl(monitor)
+      "dns" -> check_dns(monitor)
+      "heartbeat" -> {:ok, nil, %{}, ""}
+      _ -> {:error, "Unsupported monitor type: #{monitor.monitor_type}"}
+    end
+  end
+
+  @doc """
+  Performs a full check for a given monitor (check + DB write + alerts).
+  Used by Oban CheckWorker.
   """
   def perform_check(%Monitor{} = monitor) do
     Logger.info("Performing check for monitor: #{monitor.name} (#{monitor.url})")

@@ -25,6 +25,10 @@ defmodule Uptrack.Application do
         }},
         # Task supervisor for monitoring checks
         {Task.Supervisor, name: Uptrack.TaskSupervisor},
+        # Registry for monitor process lookup
+        Uptrack.Monitoring.MonitorRegistry,
+        # DynamicSupervisor for per-monitor GenServer processes
+        Uptrack.Monitoring.MonitorSupervisor,
         # OAuth state storage for Slack/Discord integrations
         Uptrack.Integrations.OAuthState,
         # Start to serve requests, typically the last entry
@@ -34,7 +38,18 @@ defmodule Uptrack.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Uptrack.Supervisor]
-    Supervisor.start_link(children, opts)
+    result = Supervisor.start_link(children, opts)
+
+    # Boot loader: start all active monitor processes after supervision tree is ready
+    if Application.get_env(:uptrack, :start_monitor_processes, true) do
+      Task.start(fn ->
+        # Small delay to ensure everything is initialized
+        Process.sleep(2_000)
+        Uptrack.Monitoring.MonitorSupervisor.start_all_active()
+      end)
+    end
+
+    result
   end
 
   # Only run idle prevention on Oracle Cloud instances to prevent reclamation
