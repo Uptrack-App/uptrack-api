@@ -3,7 +3,7 @@ defmodule Uptrack.Emails.MagicLinkEmail do
 
   import Swoosh.Email
 
-  @from_email {"Uptrack", "auth@uptrack.app"}
+  @from_email {"Uptrack", "alerts@uptrack.app"}
 
   defp frontend_url, do: Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
 
