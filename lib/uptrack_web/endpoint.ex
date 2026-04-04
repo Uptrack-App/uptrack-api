@@ -7,9 +7,7 @@ defmodule UptrackWeb.Endpoint do
     key: "_uptrack_key",
     signing_salt: "UTz/hMyF",
     encryption_salt: "x8Rk3nPq",
-    same_site: "None",
-    secure: true,
-    domain: ".uptrack.app"
+    same_site: "Lax"
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
