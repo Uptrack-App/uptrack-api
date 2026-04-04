@@ -14,6 +14,8 @@ defmodule Uptrack.Auth do
   alias Uptrack.Accounts.User
   alias Uptrack.Auth.{Totp, BackupCodes, TotpCredential}
 
+  require Logger
+
   # --- Authentication ---
 
   @doc """

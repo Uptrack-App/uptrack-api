@@ -13,6 +13,8 @@ defmodule UptrackWeb.Api.AnalyticsController do
   alias Uptrack.Cache
   alias UptrackWeb.Schemas.Analytics
 
+  require Logger
+
   tags ["Analytics"]
 
   operation :dashboard,
@@ -196,13 +198,7 @@ defmodule UptrackWeb.Api.AnalyticsController do
             %{timestamp: ts, response_time: Float.round(val, 2)}
           end)
 
-        percentiles =
-          case Reader.get_response_time_percentiles(monitor_id, start_time, end_time) do
-            {:ok, p} -> p
-            {:error, reason} ->
-              Logger.warning("VM percentile query failed for monitor #{monitor_id}: #{inspect(reason)}")
-              %{p50: 0.0, p95: 0.0, p99: 0.0}
-          end
+        {:ok, percentiles} = Reader.get_response_time_percentiles(monitor_id, start_time, end_time)
 
         {formatted, percentiles}
 
