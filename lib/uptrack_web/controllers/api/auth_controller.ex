@@ -282,6 +282,15 @@ defmodule UptrackWeb.Api.AuthController do
   POST /api/auth/magic-link
   """
   def magic_link(conn, %{"email" => email}) when is_binary(email) do
+    if Uptrack.AbusePrevention.disposable_email?(email) do
+      # Silently accept to prevent enumeration — but don't send email
+      json(conn, %{ok: true, message: "If this email exists, you'll receive a sign-in link shortly."})
+    else
+      magic_link_send(conn, email)
+    end
+  end
+
+  defp magic_link_send(conn, email) do
     bucket = "magic_link:#{String.downcase(email)}"
 
     case Hammer.check_rate(bucket, 300_000, 3) do

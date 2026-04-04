@@ -128,7 +128,9 @@ config :uptrack, Oban,
       # Activate/complete maintenance windows every minute
       {"* * * * *", Uptrack.Maintenance.MaintenanceWorker},
       # Send weekly uptime reports every Monday at 9am UTC
-      {"0 9 * * 1", Uptrack.Reports.WeeklyReportWorker}
+      {"0 9 * * 1", Uptrack.Reports.WeeklyReportWorker},
+      # Refresh disposable email domain list daily at 3am UTC
+      {"0 3 * * *", Uptrack.AbusePrevention.DisposableEmailWorker}
     ]}
   ],
   queues: [
