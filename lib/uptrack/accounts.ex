@@ -348,4 +348,83 @@ defmodule Uptrack.Accounts do
       end
     end
   end
+
+  # --- Magic Link Token Management ---
+
+  alias Uptrack.Accounts.MagicLinkToken
+  alias Uptrack.Auth.MagicLink
+
+  @doc "Stores a hashed magic link token for an email."
+  def store_magic_token(email, hashed_token) do
+    %MagicLinkToken{}
+    |> MagicLinkToken.changeset(%{
+      email: String.downcase(email),
+      hashed_token: hashed_token,
+      expires_at: MagicLink.expires_at()
+    })
+    |> AppRepo.insert()
+  end
+
+  @doc "Finds an unexpired, unused token for an email and verifies the raw token."
+  def verify_magic_token(email, raw_token) do
+    hashed = MagicLink.hash_token(raw_token)
+
+    query =
+      from t in MagicLinkToken,
+        where: t.email == ^String.downcase(email),
+        where: t.hashed_token == ^hashed,
+        where: is_nil(t.used_at),
+        limit: 1
+
+    case AppRepo.one(query) do
+      nil ->
+        {:error, :invalid_token}
+
+      token ->
+        cond do
+          MagicLink.expired?(token) -> {:error, :token_expired}
+          MagicLink.used?(token) -> {:error, :token_already_used}
+          true -> {:ok, token}
+        end
+    end
+  end
+
+  @doc "Marks a token as used."
+  def consume_magic_token(%MagicLinkToken{} = token) do
+    token
+    |> Ecto.Changeset.change(%{used_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> AppRepo.update()
+  end
+
+  @doc """
+  Finds an existing user by email, or creates a new user + organization.
+
+  Used by magic link verification — the email is already verified by clicking the link.
+  """
+  def find_or_create_user_by_email(email) do
+    email = String.downcase(email)
+
+    case get_user_by_email(email) do
+      %User{} = user ->
+        {:ok, user}
+
+      nil ->
+        name = MagicLink.name_from_email(email)
+
+        create_user_from_oauth_with_organization(%{
+          email: email,
+          name: name,
+          provider: "magic_link",
+          provider_id: email
+        })
+    end
+  end
+
+  @doc "Deletes all expired tokens older than 24 hours."
+  def cleanup_expired_magic_tokens do
+    cutoff = DateTime.utc_now() |> DateTime.add(-86_400, :second)
+
+    from(t in MagicLinkToken, where: t.expires_at < ^cutoff)
+    |> AppRepo.delete_all()
+  end
 end

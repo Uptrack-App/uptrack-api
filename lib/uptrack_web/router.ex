@@ -142,6 +142,8 @@ defmodule UptrackWeb.Router do
     post "/register", AuthController, :register
     post "/login", AuthController, :login
     post "/verify-2fa", AuthController, :verify_2fa
+    post "/magic-link", AuthController, :magic_link  # Rate limited in controller
+    post "/magic-link/verify", AuthController, :magic_link_verify
   end
 
   # API routes for TanStack Start frontend
