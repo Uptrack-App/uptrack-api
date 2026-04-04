@@ -29,7 +29,10 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :consecutive_failures,
     :confirmation_threshold,
     :incident_id,
-    :status
+    :status,
+    :last_check,
+    :last_check_record,
+    alerted_this_streak: false
   ]
 
   # --- Client API ---
@@ -123,7 +126,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   end
 
   defp evaluate_result(%{last_check: %{status: "up"}} = state) do
-    %{state | consecutive_failures: 0}
+    %{state | consecutive_failures: 0, alerted_this_streak: false}
   end
 
   defp evaluate_result(%{last_check: %{status: "down"}} = state) do
@@ -149,18 +152,22 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       state
   end
 
-  defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t} = state) when f >= t do
-    # Only alert if we just crossed the threshold (not on every subsequent failure)
-    if f == t do
-      Logger.info("MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert")
-      monitor = refresh_monitor(state.monitor_id) || state.monitor
+  defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t, alerted_this_streak: true} = state) when f >= t do
+    # Already alerted for this failure streak — don't send again
+    state
+  end
 
+  defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t} = state) when f >= t do
+    Logger.info("MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert")
+
+    # Alert asynchronously (don't block check pipeline)
+    if state.last_check_record do
       Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-        Uptrack.Alerting.send_incident_alerts(monitor, state.last_check_record)
+        Uptrack.Alerting.send_incident_alerts(state.monitor, state.last_check_record)
       end)
     end
 
-    state
+    %{state | alerted_this_streak: true}
   end
 
   defp maybe_trigger_alert(state), do: state
@@ -171,9 +178,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     Process.send_after(self(), :check, delay_ms)
   end
 
-  defp refresh_monitor(monitor_id) do
-    Monitoring.get_monitor(monitor_id)
-  rescue
-    _ -> nil
-  end
+  # Removed: refresh_monitor was a DB call in the hot path.
+  # The process already holds the monitor state — use it directly.
+  # Config updates arrive via update_config/2 cast.
 end

@@ -1,9 +1,10 @@
 defmodule Uptrack.Monitoring.CheckExecutor do
   @moduledoc """
-  Executes a monitoring check and returns the raw result.
+  Executes a monitoring check and returns a result map.
 
-  Pure execution — no DB writes, no alerts, no side effects.
-  Called by both CheckWorker (Oban) and MonitorProcess (GenServer).
+  Impure (makes HTTP/TCP/DNS requests) but has no DB writes or alerts.
+  Called by MonitorProcess (GenServer) to separate check execution
+  from result recording and alerting.
 
   Returns:
     {:ok, %{status: "up"|"down", response_time: integer, status_code: integer|nil,
