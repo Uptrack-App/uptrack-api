@@ -139,7 +139,8 @@ defmodule Uptrack.Monitoring.CheckWorker do
       receive_timeout: monitor.timeout * 1000,
       redirect: true,
       max_redirects: 5,
-      retry: false
+      retry: false,
+      finch: Uptrack.Finch
     ]
 
     # Add request body for methods that support it
