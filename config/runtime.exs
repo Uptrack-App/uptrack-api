@@ -32,8 +32,8 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   # Separate connection pools to prevent job queue from starving app queries
-  app_pool_size = String.to_integer(System.get_env("APP_POOL_SIZE") || "10")
-  oban_pool_size = String.to_integer(System.get_env("OBAN_POOL_SIZE") || "20")
+  app_pool_size = String.to_integer(System.get_env("APP_POOL_SIZE") || "30")
+  oban_pool_size = String.to_integer(System.get_env("OBAN_POOL_SIZE") || "60")
 
   # AppRepo - app schema + migrations
   config :uptrack, Uptrack.AppRepo,
@@ -59,7 +59,7 @@ if config_env() == :prod do
     node: System.get_env("OBAN_NODE_NAME", "unknown-node"),
     queues: [
       default: 10,
-      monitor_checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "50")),
+      monitor_checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "200")),
       alerts: String.to_integer(System.get_env("OBAN_ALERTS_CONCURRENCY", "5"))
     ],
     plugins: [
