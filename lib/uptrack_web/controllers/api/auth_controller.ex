@@ -5,6 +5,8 @@ defmodule UptrackWeb.Api.AuthController do
   alias Uptrack.Auth
   alias Uptrack.Organizations
 
+  require Logger
+
   action_fallback UptrackWeb.Api.FallbackController
 
   @doc """
@@ -299,9 +301,12 @@ defmodule UptrackWeb.Api.AuthController do
 
         case Accounts.store_magic_token(email, hashed_token) do
           {:ok, _token} ->
-            MagicLinkEmail.magic_link_email(email, raw_token) |> Mailer.deliver()
-          {:error, _} ->
-            :ok
+            case MagicLinkEmail.magic_link_email(email, raw_token) |> Mailer.deliver() do
+              {:ok, _} -> Logger.info("Magic link email sent to #{email}")
+              {:error, reason} -> Logger.error("Magic link email failed for #{email}: #{inspect(reason)}")
+            end
+          {:error, reason} ->
+            Logger.error("Magic link token store failed: #{inspect(reason)}")
         end
 
         # Always return 200 to prevent email enumeration
