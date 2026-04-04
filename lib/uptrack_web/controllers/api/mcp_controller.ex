@@ -4,7 +4,6 @@ defmodule UptrackWeb.Api.MCPController do
   use UptrackWeb, :controller
 
   alias Uptrack.MCP.Server
-  alias Uptrack.OAuth.Scopes
 
   require Logger
 

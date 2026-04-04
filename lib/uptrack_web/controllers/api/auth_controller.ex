@@ -58,6 +58,13 @@ defmodule UptrackWeb.Api.AuthController do
     end
   end
 
+  def register(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: UptrackWeb.Api.ErrorJSON)
+    |> render(:error, message: "Name, email, and password are required")
+  end
+
   defp register_user(conn, name, email, password) do
     case Accounts.register_user_with_organization(%{
            "name" => name,
@@ -79,13 +86,6 @@ defmodule UptrackWeb.Api.AuthController do
       {:error, :organization, changeset, _} ->
         {:error, changeset}
     end
-  end
-
-  def register(conn, _params) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> put_view(json: UptrackWeb.Api.ErrorJSON)
-    |> render(:error, message: "Name, email, and password are required")
   end
 
   @doc """
@@ -292,6 +292,13 @@ defmodule UptrackWeb.Api.AuthController do
     end
   end
 
+  def magic_link(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: UptrackWeb.Api.ErrorJSON)
+    |> render(:error, message: "Email is required")
+  end
+
   defp magic_link_send(conn, email) do
     bucket = "magic_link:#{String.downcase(email)}"
 
@@ -317,13 +324,6 @@ defmodule UptrackWeb.Api.AuthController do
         |> put_status(:too_many_requests)
         |> json(%{error: "Too many requests. Try again in a few minutes."})
     end
-  end
-
-  def magic_link(conn, _params) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> put_view(json: UptrackWeb.Api.ErrorJSON)
-    |> render(:error, message: "Email is required")
   end
 
   @doc """
@@ -356,6 +356,13 @@ defmodule UptrackWeb.Api.AuthController do
       {:error, _reason} ->
         conn |> put_status(:internal_server_error) |> json(%{error: "Something went wrong"})
     end
+  end
+
+  def magic_link_verify(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: UptrackWeb.Api.ErrorJSON)
+    |> render(:error, message: "Email and token are required")
   end
 
   @doc """
@@ -395,12 +402,5 @@ defmodule UptrackWeb.Api.AuthController do
   def magic_link_callback(conn, _params) do
     frontend = Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
     redirect(conn, external: "#{frontend}/login?error=invalid")
-  end
-
-  def magic_link_verify(conn, _params) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> put_view(json: UptrackWeb.Api.ErrorJSON)
-    |> render(:error, message: "Email and token are required")
   end
 end
