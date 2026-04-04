@@ -117,8 +117,8 @@ config :uptrack, Oban,
   plugins: [
     {Oban.Plugins.Pruner, max_age: 300},
     {Oban.Plugins.Cron, crontab: [
-      # Run monitor checks every minute (scheduler handles sub-minute intervals)
-      {"* * * * *", Uptrack.Monitoring.SchedulerWorker},
+      # Monitor checks now handled by GenServer-per-monitor (MonitorProcess)
+      # SchedulerWorker removed — no longer needed
       # Check for missed heartbeats every minute
       {"* * * * *", Uptrack.Monitoring.HeartbeatCheckerWorker},
       # Run idle prevention every 3 hours to prevent Oracle Always Free reclamation
@@ -135,7 +135,7 @@ config :uptrack, Oban,
   ],
   queues: [
     default: 10,
-    monitor_checks: 25,
+    # monitor_checks queue removed — checks now via GenServer-per-monitor
     alerts: 5,
     mailers: 5
   ]
