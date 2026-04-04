@@ -122,7 +122,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   defp do_check(state) do
     check_attrs = CheckExecutor.execute(state.monitor)
-    Map.put(state, :last_check, check_attrs)
+    %{state | last_check: check_attrs}
   end
 
   defp evaluate_result(%{last_check: %{status: "up"}} = state) do
