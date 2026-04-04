@@ -59,7 +59,7 @@ if config_env() == :prod do
     node: System.get_env("OBAN_NODE_NAME", "unknown-node"),
     queues: [
       default: 10,
-      monitor_checks: String.to_integer(System.get_env("OBAN_CHECKS_CONCURRENCY", "200")),
+      # monitor_checks removed — GenServer-per-monitor handles checks
       alerts: String.to_integer(System.get_env("OBAN_ALERTS_CONCURRENCY", "5"))
     ],
     plugins: [
