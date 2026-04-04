@@ -46,6 +46,17 @@ defmodule UptrackWeb.Api.AuthController do
   POST /api/auth/register
   """
   def register(conn, %{"name" => name, "email" => email, "password" => password}) do
+    if Uptrack.AbusePrevention.disposable_email?(email) do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> put_view(json: UptrackWeb.Api.ErrorJSON)
+      |> render(:error, message: "Disposable email addresses are not allowed. Please use a permanent email.")
+    else
+      register_user(conn, name, email, password)
+    end
+  end
+
+  defp register_user(conn, name, email, password) do
     case Accounts.register_user_with_organization(%{
            "name" => name,
            "email" => email,
@@ -258,5 +269,85 @@ defmodule UptrackWeb.Api.AuthController do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # --- Magic Link Authentication ---
+
+  alias Uptrack.Auth.MagicLink
+  alias Uptrack.Emails.MagicLinkEmail
+  alias Uptrack.Mailer
+
+  @doc """
+  Sends a magic link email for passwordless authentication.
+  POST /api/auth/magic-link
+  """
+  def magic_link(conn, %{"email" => email}) when is_binary(email) do
+    bucket = "magic_link:#{String.downcase(email)}"
+
+    case Hammer.check_rate(bucket, 300_000, 3) do
+      {:allow, _} ->
+        {raw_token, hashed_token} = MagicLink.generate_token()
+
+        case Accounts.store_magic_token(email, hashed_token) do
+          {:ok, _token} ->
+            MagicLinkEmail.magic_link_email(email, raw_token) |> Mailer.deliver()
+          {:error, _} ->
+            :ok
+        end
+
+        # Always return 200 to prevent email enumeration
+        json(conn, %{ok: true, message: "If this email exists, you'll receive a sign-in link shortly."})
+
+      {:deny, _} ->
+        conn
+        |> put_status(:too_many_requests)
+        |> json(%{error: "Too many requests. Try again in a few minutes."})
+    end
+  end
+
+  def magic_link(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: UptrackWeb.Api.ErrorJSON)
+    |> render(:error, message: "Email is required")
+  end
+
+  @doc """
+  Verifies a magic link token and creates a session.
+  POST /api/auth/magic-link/verify
+  """
+  def magic_link_verify(conn, %{"email" => email, "token" => token})
+      when is_binary(email) and is_binary(token) do
+    with {:ok, token_record} <- Accounts.verify_magic_token(email, token),
+         {:ok, _consumed} <- Accounts.consume_magic_token(token_record),
+         {:ok, user} <- Accounts.find_or_create_user_by_email(email) do
+      org = Organizations.get_organization!(user.organization_id)
+
+      conn
+      |> put_session(:user_id, user.id)
+      |> json(%{
+        user: %{id: user.id, email: user.email, name: user.name, role: user.role},
+        organization: %{id: org.id, name: org.name, plan: org.plan}
+      })
+    else
+      {:error, :invalid_token} ->
+        conn |> put_status(:unauthorized) |> json(%{error: "Invalid token"})
+
+      {:error, :token_expired} ->
+        conn |> put_status(:unauthorized) |> json(%{error: "Token expired"})
+
+      {:error, :token_already_used} ->
+        conn |> put_status(:unauthorized) |> json(%{error: "Token already used"})
+
+      {:error, _reason} ->
+        conn |> put_status(:internal_server_error) |> json(%{error: "Something went wrong"})
+    end
+  end
+
+  def magic_link_verify(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: UptrackWeb.Api.ErrorJSON)
+    |> render(:error, message: "Email and token are required")
   end
 end
