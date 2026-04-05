@@ -317,6 +317,7 @@ defmodule UptrackWeb.Router do
     # Public status page API (no auth required)
     get "/status/:slug", StatusPageController, :show_public
     get "/status/:slug/uptime", StatusPageController, :public_uptime
+    get "/status/:slug/regions", StatusPageController, :public_regions
 
     # Status page badges (public, no auth required)
     get "/badge/:slug", StatusBadgeController, :show

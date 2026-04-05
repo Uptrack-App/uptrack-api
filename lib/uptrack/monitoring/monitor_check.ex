@@ -15,6 +15,8 @@ defmodule Uptrack.Monitoring.MonitorCheck do
     field :error_message, :string
     field :response_body, :string
     field :response_headers, :map
+    field :check_region, :string, source: :region
+    field :region_results, :map
 
     belongs_to :monitor, Monitor, type: Uniq.UUID
     belongs_to :region, Region
@@ -33,6 +35,8 @@ defmodule Uptrack.Monitoring.MonitorCheck do
       :error_message,
       :response_body,
       :response_headers,
+      :check_region,
+      :region_results,
       :monitor_id,
       :region_id
     ])

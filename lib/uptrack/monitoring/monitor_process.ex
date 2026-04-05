@@ -281,10 +281,13 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     result = Consensus.compute(state.consensus)
     cancel_consensus_timer(state.consensus)
 
+    region_data = serialize_region_results(state.consensus.region_results)
+
     %{state |
       last_check: %{
         status: result,
-        region_results: state.consensus.region_results,
+        check_region: region(),
+        region_results: region_data,
         monitor_id: state.monitor_id,
         response_time: avg_response_time(state.consensus.region_results),
         checked_at: DateTime.utc_now() |> DateTime.truncate(:second)
@@ -399,5 +402,17 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       end)
 
     if count > 0, do: div(sum, count), else: 0
+  end
+
+  # Serialize region results to a JSON-safe map for DB storage
+  # Input: %{"eu" => %{status: "up", response_time: 42, ...}, ...}
+  # Output: %{"eu" => %{"status" => "up", "response_time" => 42}, ...}
+  defp serialize_region_results(region_results) do
+    Map.new(region_results, fn {region, result} ->
+      {to_string(region), %{
+        "status" => Map.get(result, :status, "unknown"),
+        "response_time" => Map.get(result, :response_time, 0)
+      }}
+    end)
   end
 end
