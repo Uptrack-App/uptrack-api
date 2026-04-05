@@ -5,7 +5,7 @@ defmodule Uptrack.Monitoring.AlertChannel do
   alias Uptrack.Accounts.User
   alias Uptrack.Organizations.Organization
 
-  @types ~w(email slack discord telegram teams webhook sms phone)
+  @types ~w(email slack discord telegram teams webhook sms phone mattermost)
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
   @foreign_key_type Uniq.UUID
@@ -89,6 +89,13 @@ defmodule Uptrack.Monitoring.AlertChannel do
 
       {"phone", %{"phone_number" => phone}} when is_binary(phone) ->
         changeset
+
+      {"mattermost", %{"webhook_url" => url}} when is_binary(url) ->
+        if String.starts_with?(url, "http") do
+          changeset
+        else
+          add_error(changeset, :config, "webhook_url must be a valid Mattermost webhook URL")
+        end
 
       {nil, _} ->
         changeset
