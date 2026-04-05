@@ -166,6 +166,8 @@ defmodule Uptrack.Monitoring do
       invalidate_org_cache(monitor.organization_id)
       # Start GenServer process for active monitors
       if monitor.status == "active", do: start_monitor_process(monitor)
+      # Notify worker nodes
+      broadcast_to_workers({:monitor_created, monitor})
       {:ok, monitor}
     end
   end
@@ -184,6 +186,8 @@ defmodule Uptrack.Monitoring do
       invalidate_monitor_cache(updated.id)
       # Update or start/stop GenServer process based on status change
       sync_monitor_process(updated)
+      # Notify worker nodes
+      broadcast_to_workers({:monitor_updated, updated})
       {:ok, updated}
     end
   end
@@ -199,6 +203,8 @@ defmodule Uptrack.Monitoring do
       invalidate_monitor_cache(deleted.id)
       # Stop GenServer process
       stop_monitor_process(deleted.id)
+      # Notify worker nodes
+      broadcast_to_workers({:monitor_deleted, deleted.id})
       {:ok, deleted}
     end
   end
@@ -1133,6 +1139,14 @@ defmodule Uptrack.Monitoring do
       _ ->
         stop_monitor_process(monitor.id)
     end
+  rescue
+    _ -> :ok
+  end
+
+  # Broadcast monitor config changes to worker nodes via pg
+  defp broadcast_to_workers(message) do
+    :pg.get_members(:monitor_config, :workers)
+    |> Enum.each(&send(&1, message))
   rescue
     _ -> :ok
   end
