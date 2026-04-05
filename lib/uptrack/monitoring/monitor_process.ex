@@ -41,6 +41,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :conn,
     :last_check,
     :last_check_record,
+    checking: false,
     alerted_this_streak: false
   ]
 
@@ -102,21 +103,48 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     {:noreply, state}
   end
 
-  def handle_info(:check, %{status: :active} = state) do
+  # Skip if previous check is still running (prevents cascade on slow targets)
+  def handle_info(:check, %{status: :active, checking: true} = state) do
+    Logger.debug("MonitorProcess #{state.monitor_id}: skipping tick (previous check still running)")
+    schedule_check(state.interval_ms)
+    {:noreply, state}
+  end
+
+  # Fire check asynchronously — GenServer never blocks
+  def handle_info(:check, %{status: :active, checking: false} = state) do
+    parent = self()
+    monitor = state.monitor
+    conn = state.conn
+    check_client = @check_client
+
+    Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+      result = try do
+        check_client.check(monitor, conn)
+      rescue
+        e -> %{monitor_id: monitor.id, status: "down", response_time: 0,
+               checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
+               error_message: "Check error: #{Exception.message(e)}"}
+      catch
+        kind, reason -> %{monitor_id: monitor.id, status: "down", response_time: 0,
+                          checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
+                          error_message: "Check #{kind}: #{inspect(reason)}"}
+      end
+      send(parent, {:check_result, result})
+    end)
+
+    schedule_check(state.interval_ms)
+    {:noreply, %{state | checking: true}}
+  end
+
+  # Receive async check result — evaluate + record + alert pipeline
+  def handle_info({:check_result, result}, state) do
     state =
-      state
-      |> do_check()
+      %{state | last_check: result, checking: false}
       |> evaluate_result()
       |> record_result()
       |> maybe_trigger_alert()
 
-    schedule_check(state.interval_ms)
     {:noreply, state}
-  catch
-    kind, reason ->
-      Logger.error("MonitorProcess #{state.monitor_id} check failed: #{Exception.format(kind, reason, __STACKTRACE__)}")
-      schedule_check(state.interval_ms)
-      {:noreply, state}
   end
 
   # --- Gun lifecycle messages ---
@@ -193,12 +221,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :ok
   end
 
-  # --- Check Pipeline ---
-
-  defp do_check(state) do
-    check_attrs = @check_client.check(state.monitor, state.conn)
-    %{state | last_check: check_attrs}
-  end
+  # --- Check Pipeline (runs after async result arrives) ---
 
   defp evaluate_result(%{last_check: %{status: "up"}} = state) do
     %{state | consecutive_failures: 0, alerted_this_streak: false}
