@@ -72,8 +72,7 @@ defmodule Uptrack.Billing.Plans do
   @doc """
   Returns the list of allowed alert channel types for a plan.
   """
-  def allowed_channel_types("free"), do: ["email", "slack", "discord"]
-  def allowed_channel_types("pro"), do: ["email", "slack", "ms_teams", "discord", "telegram", "webhook"]
+  def allowed_channel_types("free"), do: ["email", "slack", "discord", "telegram", "ms_teams", "webhook", "mattermost"]
   def allowed_channel_types(_plan), do: :all
 
   # --- Plan enforcement (pure — callers provide counts) ---
