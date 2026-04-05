@@ -13,25 +13,25 @@ defmodule Uptrack.Billing.Plans do
 
   @plan_limits %{
     "free" => %{
-      monitors: 20, alert_channels: 3, status_pages: 5, team_members: 2,
+      monitors: 50, alert_channels: 3, status_pages: 5, team_members: 2,
       min_interval: 30, fast_monitors: 10, quick_monitors: :unlimited, webhooks_per_monitor: 1,
       regions: 3, retention_days: 30, sms_alerts: 0, subscribers: 100,
       notify_only_seats: 0
     },
     "pro" => %{
-      monitors: 30, alert_channels: 5, status_pages: 5, team_members: 3,
+      monitors: 50, alert_channels: 5, status_pages: 5, team_members: 3,
       min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 2,
       regions: 5, retention_days: 730, sms_alerts: 30, subscribers: 1_000,
       notify_only_seats: 1
     },
     "team" => %{
-      monitors: 60, alert_channels: :unlimited, status_pages: :unlimited, team_members: 5,
+      monitors: 200, alert_channels: :unlimited, status_pages: :unlimited, team_members: 5,
       min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 5,
       regions: 15, retention_days: 730, sms_alerts: 100, subscribers: 5_000,
       notify_only_seats: 3
     },
     "business" => %{
-      monitors: 625, alert_channels: :unlimited, status_pages: :unlimited, team_members: 15,
+      monitors: 1000, alert_channels: :unlimited, status_pages: :unlimited, team_members: 15,
       min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 10,
       regions: 15, retention_days: 1825, sms_alerts: 200, subscribers: 10_000,
       notify_only_seats: 5
