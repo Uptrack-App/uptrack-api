@@ -314,6 +314,9 @@ defmodule UptrackWeb.Router do
     # Custom sender email verification (public, no auth)
     get "/custom-sender/verify/:token", CustomSenderController, :verify
 
+    # Public tools (rate-limited, no auth)
+    post "/tools/check-website", ToolsController, :check_website
+
     # Public status page API (no auth required)
     get "/status/:slug", StatusPageController, :show_public
     get "/status/:slug/uptime", StatusPageController, :public_uptime
