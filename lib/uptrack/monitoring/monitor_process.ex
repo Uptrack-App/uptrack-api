@@ -36,7 +36,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   require Logger
 
   @check_client Application.compile_env(:uptrack, :check_client, Uptrack.Monitoring.CheckClient.Gun)
-  @region Application.compile_env(:uptrack, :node_region, :eu)
+  @region Application.compile_env(:uptrack, :node_region, "eu")
 
   @consensus_timeout_ms 10_000
 

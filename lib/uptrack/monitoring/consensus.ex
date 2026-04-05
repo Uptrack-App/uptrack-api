@@ -20,7 +20,7 @@ defmodule Uptrack.Monitoring.Consensus do
             status: :waiting
 
   @type t :: %__MODULE__{
-          region_results: %{atom() => map()},
+          region_results: %{String.t() => map()},
           expected_regions: pos_integer(),
           timer: reference() | nil,
           status: :waiting | :ready | :timeout
@@ -29,7 +29,7 @@ defmodule Uptrack.Monitoring.Consensus do
   # --- Pure functions ---
 
   @doc "Adds a region's check result."
-  @spec add_result(t(), atom(), map()) :: t()
+  @spec add_result(t(), String.t(), map()) :: t()
   def add_result(%__MODULE__{} = c, region, result) do
     %{c | region_results: Map.put(c.region_results, region, result)}
   end
