@@ -124,6 +124,43 @@
         };
 
         # ========================================
+        # CHECK WORKER NODES (Multi-region consensus)
+        # ========================================
+
+        # US - Ashburn, Virginia (RackNerd KVM)
+        worker1-us-ashburn = {
+          deployment = {
+            targetHost = "204.152.220.248";
+            targetUser = "root";
+            tags = [ "worker" "racknerd" "us" "check-worker" "tailscale" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          imports = [
+            ./infra/nixos/regions/americas/us-ashburn
+          ];
+        };
+
+        # India - Hyderabad (Oracle Cloud ARM64)
+        worker2-india = {
+          deployment = {
+            targetHost = "152.67.179.42";
+            targetUser = "root";
+            tags = [ "worker" "oracle" "asia" "india" "check-worker" "tailscale" "arm64" ];
+            buildOnTarget = true;
+            allowLocalDeployment = false;
+          };
+
+          nixpkgs.system = "aarch64-linux";
+
+          imports = [
+            diskoModule
+            ./infra/nixos/regions/asia/india-hyderabad/worker2-india
+          ];
+        };
+
+        # ========================================
         # LEGACY NODES (Deprecated - to be removed)
         # ========================================
 
