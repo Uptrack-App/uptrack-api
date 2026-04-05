@@ -25,6 +25,8 @@ defmodule Uptrack.Application do
         }},
         # Task supervisor for monitoring checks
         {Task.Supervisor, name: Uptrack.TaskSupervisor},
+        # pg scope for multi-region consensus (cross-node process groups)
+        %{id: :monitor_checks_pg, start: {:pg, :start_link, [:monitor_checks]}},
         # Registry for monitor process lookup
         Uptrack.Monitoring.MonitorRegistry,
         # DynamicSupervisor for per-monitor GenServer processes

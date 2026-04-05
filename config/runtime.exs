@@ -92,6 +92,11 @@ if config_env() == :prod do
     config :uptrack, cors_origins: String.split(cors, ",", trim: true)
   end
 
+  # Multi-region consensus: NODE_REGION env var overrides compile-time default
+  if region = System.get_env("NODE_REGION") do
+    config :uptrack, node_region: String.to_existing_atom(region)
+  end
+
   # VictoriaMetrics cluster endpoints (nil = disabled)
   if vminsert = System.get_env("VICTORIAMETRICS_VMINSERT_URL") do
     config :uptrack, victoriametrics_vminsert_url: vminsert
