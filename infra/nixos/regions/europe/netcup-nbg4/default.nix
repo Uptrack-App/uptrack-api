@@ -1,6 +1,6 @@
 # Netcup Nuremberg Node 4 (nbg4) - Citus Worker Standby
 # IP: 159.195.56.242
-# Tailscale: 100.64.1.4
+# Tailscale: 100.72.224.65
 # Services: PostgreSQL Worker Standby, Patroni (worker), victoria-metrics
 { config, pkgs, lib, ... }:
 
@@ -29,7 +29,7 @@ in {
   };
 
   # Tailscale VPN configuration
-  # Static IP: 100.64.1.4 (assigned via Tailscale admin console)
+  # Static IP: 100.72.224.65 (assigned via Tailscale admin console)
   services.uptrack.tailscale = {
     enable = true;
     hostname = "nbg4";

@@ -13,9 +13,9 @@ let
   # Tailscale IPs (static, assigned via Tailscale admin console)
   nodes = {
     nbg1 = "100.64.1.1";
-    nbg2 = "100.64.1.2";
-    nbg3 = "100.64.1.3";
-    nbg4 = "100.64.1.4";
+    nbg2 = "100.112.11.29";
+    nbg3 = "100.117.191.50";
+    nbg4 = "100.72.224.65";
   };
 
   # Cluster membership

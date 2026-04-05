@@ -13,9 +13,9 @@ let
   # Tailscale IPs (must match patroni.nix)
   nodes = {
     nbg1 = "100.64.1.1";
-    nbg2 = "100.64.1.2";
-    nbg3 = "100.64.1.3";
-    nbg4 = "100.64.1.4";
+    nbg2 = "100.112.11.29";
+    nbg3 = "100.117.191.50";
+    nbg4 = "100.72.224.65";
   };
 
   # PgBouncer runs on coordinator nodes only

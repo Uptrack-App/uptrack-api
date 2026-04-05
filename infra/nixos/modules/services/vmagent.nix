@@ -24,9 +24,9 @@ let
         static_configs:
           - targets:
               - "100.64.1.1:9100"
-              - "100.64.1.2:9100"
-              - "100.64.1.3:9100"
-              - "100.64.1.4:9100"
+              - "100.112.11.29:9100"
+              - "100.117.191.50:9100"
+              - "100.72.224.65:9100"
             labels:
               cluster: uptrack
 
@@ -35,40 +35,40 @@ let
         static_configs:
           - targets:
               - "100.64.1.1:9187"
-              - "100.64.1.2:9187"
-              - "100.64.1.3:9187"
-              - "100.64.1.4:9187"
+              - "100.112.11.29:9187"
+              - "100.117.191.50:9187"
+              - "100.72.224.65:9187"
 
       # etcd cluster (nbg1, nbg2, nbg3)
       - job_name: etcd
         static_configs:
           - targets:
               - "100.64.1.1:2379"
-              - "100.64.1.2:2379"
-              - "100.64.1.3:2379"
+              - "100.112.11.29:2379"
+              - "100.117.191.50:2379"
 
       # Patroni REST API (coordinator + worker clusters)
       - job_name: patroni
         static_configs:
           - targets:
               - "100.64.1.1:8008"
-              - "100.64.1.2:8008"
-              - "100.64.1.3:8008"
-              - "100.64.1.4:8008"
+              - "100.112.11.29:8008"
+              - "100.117.191.50:8008"
+              - "100.72.224.65:8008"
 
       # VictoriaMetrics single-node instances (nbg3 + nbg4)
       - job_name: victoria_metrics
         static_configs:
           - targets:
-              - "100.64.1.3:8428"
-              - "100.64.1.4:8428"
+              - "100.117.191.50:8428"
+              - "100.72.224.65:8428"
 
       # vmagent self-monitoring (nbg1 + nbg2)
       - job_name: vmagent
         static_configs:
           - targets:
               - "100.64.1.1:8429"
-              - "100.64.1.2:8429"
+              - "100.112.11.29:8429"
   '';
 
   # Build the list of -remoteWrite.url flags
@@ -86,7 +86,7 @@ in {
     remoteWriteUrls = mkOption {
       type = types.listOf types.str;
       description = "URLs of VictoriaMetrics instances to write metrics to (one -remoteWrite.url per entry)";
-      example = [ "http://100.64.1.3:8428/api/v1/write" "http://100.64.1.4:8428/api/v1/write" ];
+      example = [ "http://100.117.191.50:8428/api/v1/write" "http://100.72.224.65:8428/api/v1/write" ];
     };
 
     scrapeConfigFile = mkOption {

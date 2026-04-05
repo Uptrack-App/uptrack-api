@@ -1,6 +1,6 @@
 # Netcup Nuremberg Node 3 (nbg3) - Citus Worker Primary
 # IP: 152.53.180.51
-# Tailscale: 100.64.1.3
+# Tailscale: 100.117.191.50
 # Services: PostgreSQL Worker Primary (all shards), Patroni (worker),
 #           etcd (3/3), victoria-metrics
 { config, pkgs, lib, ... }:
@@ -31,7 +31,7 @@ in {
   };
 
   # Tailscale VPN configuration
-  # Static IP: 100.64.1.3 (assigned via Tailscale admin console)
+  # Static IP: 100.117.191.50 (assigned via Tailscale admin console)
   services.uptrack.tailscale = {
     enable = true;
     hostname = "nbg3";
