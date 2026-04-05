@@ -26,14 +26,14 @@ defmodule Uptrack.Tools.WebsiteChecker do
     local_region = Application.get_env(:uptrack, :node_region, "europe")
     local_task = Task.async(fn -> {local_region, do_check(url)} end)
 
-    # Remote checks on worker nodes
+    # Remote checks on worker nodes (call UptrackWorker.Tools.check_website/1)
     remote_tasks =
       Node.list()
       |> Enum.filter(&worker_node?/1)
       |> Enum.map(fn node ->
         Task.async(fn ->
           try do
-            :erpc.call(node, __MODULE__, :do_check_with_region, [url], @timeout + 2_000)
+            :erpc.call(node, UptrackWorker.Tools, :check_website, [url], @timeout + 2_000)
           catch
             _, reason ->
               region = extract_region_from_node(node)
