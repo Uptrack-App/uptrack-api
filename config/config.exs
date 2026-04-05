@@ -17,7 +17,7 @@ config :uptrack,
   # Check client: Gun (persistent) or Finch (pool). Gun is faster but newer.
   check_client: Uptrack.Monitoring.CheckClient.Gun,
   # Region identifier for multi-region consensus (override via NODE_REGION env var)
-  node_region: :eu,
+  node_region: "eu",
   victoriametrics_vminsert_url: nil,
   victoriametrics_vmselect_url: nil
 

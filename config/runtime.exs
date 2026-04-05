@@ -94,7 +94,7 @@ if config_env() == :prod do
 
   # Multi-region consensus: NODE_REGION env var overrides compile-time default
   if region = System.get_env("NODE_REGION") do
-    config :uptrack, node_region: String.to_atom(region)
+    config :uptrack, node_region: region
   end
 
   # VictoriaMetrics cluster endpoints (nil = disabled)
