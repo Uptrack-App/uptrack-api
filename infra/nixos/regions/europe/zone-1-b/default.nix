@@ -1,6 +1,6 @@
 # Zone 1-B - Replica Node (hostkey28628)
 # IP: 194.180.207.225
-# Tailscale: 100.64.1.2
+# Tailscale: 100.112.11.29
 # Services: etcd (2/3), PostgreSQL Replica, vmstorage-zone1-b, vmselect-zone1
 { config, pkgs, lib, ... }:
 
@@ -26,7 +26,7 @@ in {
   };
 
   # Tailscale VPN configuration
-  # Static IP: 100.64.1.2 (assigned via Tailscale admin console)
+  # Static IP: 100.112.11.29 (assigned via Tailscale admin console)
   services.uptrack.tailscale = {
     enable = true;
     hostname = "zone-1-b";

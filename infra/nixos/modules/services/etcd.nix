@@ -7,8 +7,8 @@ let
   # Tailscale IPs (static, assigned via Tailscale admin console)
   nodes = {
     nbg1 = "100.64.1.1";
-    nbg2 = "100.64.1.2";
-    nbg3 = "100.64.1.3";
+    nbg2 = "100.112.11.29";
+    nbg3 = "100.117.191.50";
   };
 
   nodeName = config.networking.hostName;
@@ -38,7 +38,7 @@ in lib.mkIf isEtcdNode {
       "nbg3=http://${nodes.nbg3}:2380"
     ];
 
-    initialClusterState = "new";
+    initialClusterState = "existing";
     initialClusterToken = "uptrack-etcd-cluster";
 
     # Data directory

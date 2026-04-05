@@ -65,15 +65,15 @@ in {
   services.uptrack.vmagent = {
     enable = true;
     remoteWriteUrls = [
-      "http://100.64.1.3:8428/api/v1/write"
-      "http://100.64.1.4:8428/api/v1/write"
+      "http://100.117.191.50:8428/api/v1/write"
+      "http://100.72.224.65:8428/api/v1/write"
     ];
   };
 
   services.uptrack.vmalert = {
     enable = true;
-    datasourceUrl = "http://100.64.1.3:8428";
-    remoteWriteUrl = "http://100.64.1.3:8428/api/v1/write";
+    datasourceUrl = "http://100.117.191.50:8428";
+    remoteWriteUrl = "http://100.117.191.50:8428/api/v1/write";
   };
 
   # Cloudflare Tunnel for public API access

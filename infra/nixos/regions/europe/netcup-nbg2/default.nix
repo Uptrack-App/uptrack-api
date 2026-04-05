@@ -1,6 +1,6 @@
 # Netcup Nuremberg Node 2 (nbg2) - Coordinator Standby + API
 # IP: 152.53.183.208
-# Tailscale: 100.64.1.2
+# Tailscale: 100.112.11.29
 # Services: Phoenix API, cloudflared, PostgreSQL Coordinator Standby,
 #           Patroni (coordinator), etcd (2/3), vmagent
 # HAProxy routes DB writes to current Patroni primary (nbg1 or nbg2),
@@ -37,7 +37,7 @@ in {
   };
 
   # Tailscale VPN configuration
-  # Static IP: 100.64.1.2 (assigned via Tailscale admin console)
+  # Static IP: 100.112.11.29 (assigned via Tailscale admin console)
   services.uptrack.tailscale = {
     enable = true;
     hostname = "nbg2";
@@ -65,8 +65,8 @@ in {
   services.uptrack.vmagent = {
     enable = true;
     remoteWriteUrls = [
-      "http://100.64.1.3:8428/api/v1/write"
-      "http://100.64.1.4:8428/api/v1/write"
+      "http://100.117.191.50:8428/api/v1/write"
+      "http://100.72.224.65:8428/api/v1/write"
     ];
   };
 

@@ -68,7 +68,9 @@ defmodule UptrackWeb.Api.MonitorController do
 
     interval = attrs[:interval] || defaults[:interval] || 300
 
-    with :ok <- check_limit(org, :monitors),
+    with :ok <- check_private_url(url),
+         :ok <- check_request_body(org.plan, user_settings),
+         :ok <- check_limit(org, :monitors),
          :ok <- check_interval(org, interval) do
       case Monitoring.create_monitor(attrs) do
         {:ok, monitor} ->
@@ -187,6 +189,24 @@ defmodule UptrackWeb.Api.MonitorController do
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  defp check_private_url(url) do
+    if Uptrack.AbusePrevention.private_url?(url) do
+      {:error, :plan_limit, "Monitoring private/localhost URLs is not allowed."}
+    else
+      :ok
+    end
+  end
+
+  defp check_request_body(plan, settings) do
+    has_body = Map.has_key?(settings, "body") and settings["body"] not in [nil, ""]
+
+    if has_body and not Uptrack.AbusePrevention.request_body_allowed?(plan) do
+      {:error, :plan_limit, "Custom request body is available on paid plans. Upgrade to Pro for POST monitoring."}
+    else
+      :ok
+    end
+  end
 
   defp check_limit(org, resource) do
     case Billing.check_plan_limit(org, resource) do
