@@ -79,7 +79,8 @@ defmodule Uptrack.MixProject do
       {:nebulex, "~> 2.6"},
       {:nimble_totp, "~> 1.0"},
       {:samly, "~> 1.4"},
-      {:boruta, "~> 2.3"}
+      {:boruta, "~> 2.3"},
+      {:gun, "~> 2.1"}
     ]
   end
 

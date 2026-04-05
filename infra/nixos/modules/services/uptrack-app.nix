@@ -174,7 +174,8 @@ in
         TimeoutStopSec = "30s";
 
         # Resource limits
-        MemoryMax = "2G";
+        MemoryMax = "4G";
+        LimitNOFILE = 65536;
 
         # Security hardening
         NoNewPrivileges = true;

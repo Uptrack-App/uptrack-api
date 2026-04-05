@@ -65,3 +65,6 @@ config :phoenix_live_view,
 
 # Disable auto-start of monitor processes in tests
 config :uptrack, start_monitor_processes: false
+
+# Use mock check client in tests (no HTTP calls)
+config :uptrack, check_client: Uptrack.Monitoring.CheckClient.Mock
