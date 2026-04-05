@@ -108,7 +108,7 @@ in {
       RestartSec = "5s";
       TimeoutStartSec = "60s";
       TimeoutStopSec = "30s";
-      MemoryMax = "2G";
+      MemoryMax = "12G";
       LimitNOFILE = 65536;
       NoNewPrivileges = true;
       PrivateTmp = true;

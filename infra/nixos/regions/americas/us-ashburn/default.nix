@@ -81,7 +81,7 @@ in {
       RestartSec = "5s";
       TimeoutStartSec = "60s";
       TimeoutStopSec = "30s";
-      MemoryMax = "1G";
+      MemoryMax = "1800M";
       LimitNOFILE = 65536;
       NoNewPrivileges = true;
       PrivateTmp = true;
