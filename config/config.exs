@@ -15,7 +15,7 @@ config :uptrack,
   frontend_url: "http://localhost:3000",
   cors_origins: ["http://localhost:3000"],
   # Check client: Gun (persistent) or Finch (pool). Gun is faster but newer.
-  check_client: Uptrack.Monitoring.CheckClient.Finch,
+  check_client: Uptrack.Monitoring.CheckClient.Gun,
   victoriametrics_vminsert_url: nil,
   victoriametrics_vmselect_url: nil
 
