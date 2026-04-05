@@ -66,41 +66,80 @@ defmodule Uptrack.Tools.WebsiteChecker do
     {region, do_check(url)}
   end
 
-  @doc "Performs a single HTTP check against a URL."
+  @doc "Performs a single HTTP check against a URL using Mint."
   def do_check(url) do
     start_time = System.monotonic_time(:millisecond)
 
     try do
-      result =
-        Req.get(url,
-          connect_options: [timeout: @timeout],
-          receive_timeout: @timeout,
-          redirect: true,
-          max_redirects: 5,
-          retry: false
-        )
+      uri = URI.parse(url)
+      scheme = if uri.scheme == "https", do: :https, else: :http
+      host = uri.host || "localhost"
+      port = uri.port || if(scheme == :https, do: 443, else: 80)
+      path = (uri.path || "/") <> if(uri.query, do: "?#{uri.query}", else: "")
 
-      response_time = System.monotonic_time(:millisecond) - start_time
+      case Mint.HTTP.connect(scheme, host, port,
+             transport_opts: [verify: :verify_none],
+             timeout: @timeout) do
+        {:ok, conn} ->
+          case Mint.HTTP.request(conn, "GET", path, [{"host", host}, {"user-agent", "Uptrack Checker/1.0"}], nil) do
+            {:ok, conn, ref} ->
+              {conn, status, _body} = collect_mint_response(conn, ref, @timeout)
+              response_time = System.monotonic_time(:millisecond) - start_time
+              Mint.HTTP.close(conn)
 
-      case result do
-        {:ok, resp} ->
-          %{
-            status: if(resp.status < 400, do: "up", else: "down"),
-            status_code: resp.status,
-            response_time: response_time
-          }
+              %{
+                status: if(status && status < 400, do: "up", else: "down"),
+                status_code: status,
+                response_time: response_time
+              }
 
-        {:error, %{reason: reason}} ->
-          %{
-            status: "down",
-            response_time: response_time,
-            error: to_string(reason)
+            {:error, conn, reason} ->
+              Mint.HTTP.close(conn)
+              response_time = System.monotonic_time(:millisecond) - start_time
+              %{status: "down", response_time: response_time, error: inspect(reason)}
+          end
+
+        {:error, reason} ->
+          response_time = System.monotonic_time(:millisecond) - start_time
+          %{status: "down", response_time: response_time, error: inspect(reason)
           }
       end
     rescue
       e ->
         response_time = System.monotonic_time(:millisecond) - start_time
         %{status: "down", response_time: response_time, error: Exception.message(e)}
+    end
+  end
+
+  defp collect_mint_response(conn, ref, timeout) do
+    collect_mint_response(conn, ref, timeout, nil, [])
+  end
+
+  defp collect_mint_response(conn, ref, timeout, status, body_parts) do
+    receive do
+      msg ->
+        case Mint.HTTP.stream(conn, msg) do
+          {:ok, conn, responses} ->
+            {status, body_parts, done?} =
+              Enum.reduce(responses, {status, body_parts, false}, fn
+                {:status, ^ref, s}, {_, b, _} -> {s, b, false}
+                {:headers, ^ref, _}, acc -> acc
+                {:data, ^ref, d}, {s, b, _} -> {s, [d | b], false}
+                {:done, ^ref}, {s, b, _} -> {s, b, true}
+                _, acc -> acc
+              end)
+
+            if done? do
+              {conn, status, body_parts |> Enum.reverse() |> IO.iodata_to_binary()}
+            else
+              collect_mint_response(conn, ref, timeout, status, body_parts)
+            end
+
+          {:error, conn, _reason, _} -> {conn, nil, ""}
+          :unknown -> collect_mint_response(conn, ref, timeout, status, body_parts)
+        end
+    after
+      timeout -> {conn, nil, ""}
     end
   end
 
