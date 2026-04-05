@@ -80,7 +80,9 @@ defmodule Uptrack.MixProject do
       {:nimble_totp, "~> 1.0"},
       {:samly, "~> 1.4"},
       {:boruta, "~> 2.3"},
-      {:gun, "~> 2.1"}
+      {:gun, "~> 2.1"},
+      {:mint, "~> 1.6"},
+      {:castore, "~> 1.0"}
     ]
   end
 

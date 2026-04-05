@@ -14,8 +14,8 @@ config :uptrack,
   app_url: "http://localhost:4000",
   frontend_url: "http://localhost:3000",
   cors_origins: ["http://localhost:3000"],
-  # Check client: Gun (persistent) or Finch (pool). Gun is faster but newer.
-  check_client: Uptrack.Monitoring.CheckClient.Gun,
+  # Check client: Mint (process-less, 22% less RAM) or Gun (persistent process) or Finch (pool)
+  check_client: Uptrack.Monitoring.CheckClient.Mint,
   # Region identifier for multi-region consensus (override via NODE_REGION env var)
   node_region: "eu",
   victoriametrics_vminsert_url: nil,
