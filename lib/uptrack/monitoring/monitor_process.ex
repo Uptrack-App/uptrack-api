@@ -5,21 +5,29 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   Self-schedules checks via Process.send_after. Tracks consecutive
   failures in memory. Writes results to DB (single INSERT per check).
 
-  Follows the Discord/WhatsApp pattern: one BEAM process per
-  long-lived entity. BEAM handles millions of these efficiently.
+  Uses CheckClient behaviour — Gun (persistent), Finch (pool), or Mock (test)
+  selected via `config :uptrack, :check_client`.
 
   ## Pipeline (per check tick)
 
-      execute_check → evaluate → record_to_db → maybe_alert → schedule_next
+      do_check → evaluate_result → record_result → maybe_trigger_alert
+
+  ## Elixir Principles
+  - Pipeline-oriented: each step transforms state
+  - Pure/impure separation: evaluate is pure, record/alert are at boundary
+  - Let it crash: Gun crash detected via Process.monitor, reconnects
+  - Behaviours: CheckClient injected via config
   """
 
   use GenServer
 
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.{Monitor, CheckExecutor, MonitorRegistry, Events}
+  alias Uptrack.Monitoring.{Monitor, GunConnection, MonitorRegistry, Events}
   alias Uptrack.Metrics.Writer, as: MetricsWriter
 
   require Logger
+
+  @check_client Application.compile_env(:uptrack, :check_client, Uptrack.Monitoring.CheckClient.Gun)
 
   defstruct [
     :monitor_id,
@@ -30,6 +38,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :confirmation_threshold,
     :incident_id,
     :status,
+    :conn,
     :last_check,
     :last_check_record,
     alerted_this_streak: false
@@ -53,10 +62,18 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     GenServer.cast(MonitorRegistry.via(monitor_id), :resume)
   end
 
-  # --- Callbacks ---
+  # --- Init ---
 
   @impl true
   def init(%Monitor{} = monitor) do
+    # Open check client connection (Gun: persistent, Finch: no-op, Mock: no-op)
+    conn = case @check_client.open_connection(monitor) do
+      {:ok, c} -> c
+      {:error, reason} ->
+        Logger.error("MonitorProcess #{monitor.id}: connection failed: #{inspect(reason)}")
+        nil
+    end
+
     state = %__MODULE__{
       monitor_id: monitor.id,
       organization_id: monitor.organization_id,
@@ -65,7 +82,8 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       consecutive_failures: 0,
       confirmation_threshold: monitor.confirmation_threshold || 3,
       incident_id: nil,
-      status: if(monitor.status == "active", do: :active, else: :paused)
+      status: if(monitor.status == "active", do: :active, else: :paused),
+      conn: conn
     }
 
     # Random jitter on first check to avoid thundering herd
@@ -75,6 +93,8 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     Logger.debug("MonitorProcess started: #{monitor.name} (#{monitor.id})")
     {:ok, state}
   end
+
+  # --- Check scheduling ---
 
   @impl true
   def handle_info(:check, %{status: :paused} = state) do
@@ -99,6 +119,53 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       {:noreply, state}
   end
 
+  # --- Gun lifecycle messages ---
+
+  def handle_info({:gun_up, _pid, _protocol}, state) do
+    Logger.debug("MonitorProcess #{state.monitor_id}: Gun connected")
+    {:noreply, %{state | conn: GunConnection.connected(state.conn)}}
+  end
+
+  def handle_info({:gun_down, _pid, _protocol, _reason, _}, state) do
+    Logger.debug("MonitorProcess #{state.monitor_id}: Gun disconnected (auto-reconnecting)")
+    {:noreply, %{state | conn: GunConnection.disconnected(state.conn)}}
+  end
+
+  def handle_info({:gun_error, _pid, reason}, state) do
+    Logger.warning("MonitorProcess #{state.monitor_id}: Gun error: #{inspect(reason)}")
+    {:noreply, state}
+  end
+
+  def handle_info({:gun_error, _pid, _stream, reason}, state) do
+    Logger.warning("MonitorProcess #{state.monitor_id}: Gun stream error: #{inspect(reason)}")
+    {:noreply, state}
+  end
+
+  # Gun process crashed — reconnect
+  def handle_info({:DOWN, ref, :process, _pid, reason}, %{conn: %GunConnection{ref: conn_ref}} = state)
+      when ref == conn_ref do
+    Logger.warning("MonitorProcess #{state.monitor_id}: Gun process died: #{inspect(reason)}, reconnecting")
+    conn = case @check_client.open_connection(state.monitor) do
+      {:ok, c} -> c
+      {:error, _} -> nil
+    end
+    {:noreply, %{state | conn: conn}}
+  end
+
+  # Catch-all for other DOWN messages
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
+    {:noreply, state}
+  end
+
+  # Ignore other Gun messages (gun_data, gun_push, etc.)
+  def handle_info({:gun_data, _pid, _stream, _fin, _data}, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(_msg, state), do: {:noreply, state}
+
+  # --- Config updates ---
+
   @impl true
   def handle_cast({:update_config, %Monitor{} = monitor}, state) do
     {:noreply, %{state |
@@ -118,10 +185,18 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     {:noreply, %{state | status: :active}}
   end
 
-  # --- Check Pipeline (pure-ish — DB writes at boundary) ---
+  # --- Terminate: close connection ---
+
+  @impl true
+  def terminate(_reason, state) do
+    if state.conn, do: @check_client.close_connection(state.conn)
+    :ok
+  end
+
+  # --- Check Pipeline ---
 
   defp do_check(state) do
-    check_attrs = CheckExecutor.execute(state.monitor)
+    check_attrs = @check_client.check(state.monitor, state.conn)
     %{state | last_check: check_attrs}
   end
 
@@ -135,7 +210,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   defp evaluate_result(state), do: state
 
-  defp record_result(%{last_check: check_attrs} = state) do
+  defp record_result(%{last_check: check_attrs} = state) when is_map(check_attrs) do
     case Monitoring.create_monitor_check(check_attrs) do
       {:ok, check} ->
         Events.broadcast_check_completed(check, state.monitor)
@@ -143,7 +218,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
         %{state | last_check_record: check}
 
       {:error, changeset} ->
-        Logger.error("MonitorProcess #{state.monitor_id}: failed to record check: #{inspect(changeset.errors)}")
+        Logger.error("MonitorProcess #{state.monitor_id}: record failed: #{inspect(changeset.errors)}")
         state
     end
   rescue
@@ -152,15 +227,15 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       state
   end
 
+  defp record_result(state), do: state
+
   defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t, alerted_this_streak: true} = state) when f >= t do
-    # Already alerted for this failure streak — don't send again
     state
   end
 
   defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t} = state) when f >= t do
     Logger.info("MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert")
 
-    # Alert asynchronously (don't block check pipeline)
     if state.last_check_record do
       Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
         Uptrack.Alerting.send_incident_alerts(state.monitor, state.last_check_record)
@@ -177,8 +252,4 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   defp schedule_check(delay_ms) do
     Process.send_after(self(), :check, delay_ms)
   end
-
-  # Removed: refresh_monitor was a DB call in the hot path.
-  # The process already holds the monitor state — use it directly.
-  # Config updates arrive via update_config/2 cast.
 end
