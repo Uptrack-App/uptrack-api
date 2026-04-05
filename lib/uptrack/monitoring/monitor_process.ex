@@ -36,7 +36,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   require Logger
 
   @check_client Application.compile_env(:uptrack, :check_client, Uptrack.Monitoring.CheckClient.Gun)
-  @region Application.compile_env(:uptrack, :node_region, "eu")
+  defp region, do: Application.get_env(:uptrack, :node_region, "eu")
 
   @consensus_timeout_ms 10_000
 
@@ -109,7 +109,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     jitter = :rand.uniform(max(state.interval_ms, 1000))
     schedule_check(jitter)
 
-    Logger.debug("MonitorProcess started: #{monitor.name} (#{monitor.id}) region=#{@region}")
+    Logger.debug("MonitorProcess started: #{monitor.name} (#{monitor.id}) region=#{region()}")
     {:ok, state}
   end
 
@@ -159,10 +159,10 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   # Receive async check result from local check
   def handle_info({:check_result, result}, state) do
     # 1. Add our result to consensus
-    consensus = Consensus.add_result(state.consensus, @region, result)
+    consensus = Consensus.add_result(state.consensus, region(), result)
 
     # 2. Broadcast to other regions (impure boundary)
-    broadcast_to_group(state.monitor_id, @region, result)
+    broadcast_to_group(state.monitor_id, region(), result)
 
     # 3. Start timeout timer on first result
     consensus = maybe_start_timer(consensus)
