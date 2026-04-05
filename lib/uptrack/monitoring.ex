@@ -253,6 +253,15 @@ defmodule Uptrack.Monitoring do
     |> AppRepo.one()
   end
 
+  @doc "Returns the latest check that has region_results data."
+  def get_latest_check_with_regions(monitor_id) do
+    MonitorCheck
+    |> where([mc], mc.monitor_id == ^monitor_id and not is_nil(mc.region_results))
+    |> order_by([mc], desc: mc.checked_at)
+    |> limit(1)
+    |> AppRepo.one()
+  end
+
   @doc """
   Returns uptime percentage for a monitor over the last N days.
   """
