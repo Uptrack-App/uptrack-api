@@ -66,7 +66,7 @@ in {
       MIX_ENV = "prod";
       RELEASE_COOKIE = "uptrack_prod_cookie";
       NODE_REGION = "us";
-      MAIN_NODES = "uptrack@100.64.1.1,uptrack@100.64.1.2";
+      MAIN_NODES = "uptrack@100.64.1.1,uptrack@100.112.11.29";
       RELEASE_TMP = "/var/lib/uptrack-worker/tmp";
     };
 
