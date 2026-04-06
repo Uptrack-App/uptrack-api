@@ -247,6 +247,24 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   # --- Check Pipeline (runs after consensus) ---
 
+  defp evaluate_result(%{last_check: %{status: "up"}, alerted_this_streak: true} = state) do
+    # Was down, now up — resolve incident
+    Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+      case Monitoring.get_ongoing_incident(state.monitor_id) do
+        nil -> :ok
+        incident ->
+          case Monitoring.resolve_incident(incident) do
+            {:ok, resolved} ->
+              Events.broadcast_incident_resolved(resolved, state.monitor)
+              Uptrack.Alerting.send_resolution_alerts(resolved, state.monitor)
+              Uptrack.Alerting.notify_subscribers_resolution(resolved, state.monitor)
+            _ -> :ok
+          end
+      end
+    end)
+    %{state | consecutive_failures: 0, alerted_this_streak: false}
+  end
+
   defp evaluate_result(%{last_check: %{status: "up"}} = state) do
     %{state | consecutive_failures: 0, alerted_this_streak: false}
   end
@@ -297,11 +315,24 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     if Consensus.home_node?(state.monitor_id, nodes) do
       Logger.info("MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert (home node)")
 
-      if state.last_check_record do
-        Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-          Uptrack.Alerting.send_incident_alerts(state.monitor, state.last_check_record)
-        end)
-      end
+      # Create incident in Postgres + send alerts
+      Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+        incident_attrs = %{
+          monitor_id: state.monitor_id,
+          organization_id: state.organization_id,
+          cause: state.last_check[:error_message] || "Monitor down"
+        }
+
+        case Monitoring.create_incident(incident_attrs) do
+          {:ok, incident} ->
+            Events.broadcast_incident_created(incident, state.monitor)
+            Uptrack.Alerting.send_incident_alerts(incident, state.monitor)
+            Uptrack.Alerting.notify_subscribers_incident(incident, state.monitor)
+
+          {:error, _} ->
+            Logger.error("MonitorProcess #{state.monitor_id}: failed to create incident")
+        end
+      end)
 
       %{state | alerted_this_streak: true}
     else
