@@ -15,6 +15,8 @@ defmodule Uptrack.Integrations do
 
   require Logger
 
+  @state_ttl_seconds 600  # 10 minutes
+
   # ---------------------------------------------------------------------------
   # Slack OAuth
   # ---------------------------------------------------------------------------
@@ -344,8 +346,6 @@ defmodule Uptrack.Integrations do
   # ---------------------------------------------------------------------------
   # OAuth State Management (CSRF Protection)
   # ---------------------------------------------------------------------------
-
-  @state_ttl_seconds 600  # 10 minutes
 
   defp generate_state(organization_id, user_id, provider) do
     state = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
