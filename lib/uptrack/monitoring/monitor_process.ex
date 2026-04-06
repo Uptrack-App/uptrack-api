@@ -5,8 +5,9 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   Self-schedules checks via Process.send_after. Tracks consecutive
   failures in memory. Writes results to DB (single INSERT per check).
 
-  Uses CheckClient behaviour — Gun (persistent), Finch (pool), or Mock (test)
-  selected via `config :uptrack, :check_client`.
+  Checks use fresh connections per execution via CheckExecutor — no
+  persistent connections. This eliminates stale connection issues and
+  correctly dispatches all monitor types (HTTP, SSL, TCP, DNS, ping).
 
   ## Multi-Region Consensus
 
@@ -22,20 +23,18 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   ## Elixir Principles
   - Pipeline-oriented: each step transforms state
   - Pure/impure separation: Consensus module is pure, pg/DB at boundary
-  - Let it crash: Gun crash → reconnect, node crash → pg auto-removes
-  - Behaviours: CheckClient injected via config
+  - Let it crash: connection fails → check records error, next tick retries
   - Principle of Attraction: Consensus struct owns all consensus data + logic
   """
 
   use GenServer
 
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.{Monitor, GunConnection, Consensus, MonitorRegistry, Events}
+  alias Uptrack.Monitoring.{Monitor, CheckExecutor, Consensus, MonitorRegistry, Events}
   alias Uptrack.Metrics.Writer, as: MetricsWriter
 
   require Logger
 
-  @check_client Application.compile_env(:uptrack, :check_client, Uptrack.Monitoring.CheckClient.Gun)
   defp region, do: Application.get_env(:uptrack, :node_region, "eu")
 
   @consensus_timeout_ms 10_000
@@ -49,7 +48,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :confirmation_threshold,
     :incident_id,
     :status,
-    :conn,
     :last_check,
     :last_check_record,
     checking: false,
@@ -79,14 +77,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   @impl true
   def init(%Monitor{} = monitor) do
-    # Open check client connection (Gun: persistent, Finch: no-op, Mock: no-op)
-    conn = case @check_client.open_connection(monitor) do
-      {:ok, c} -> c
-      {:error, reason} ->
-        Logger.error("MonitorProcess #{monitor.id}: connection failed: #{inspect(reason)}")
-        nil
-    end
-
     # Join pg group for cross-region result broadcasting
     :pg.join(:monitor_checks, monitor.id, self())
 
@@ -101,7 +91,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       confirmation_threshold: monitor.confirmation_threshold || 3,
       incident_id: nil,
       status: if(monitor.status == "active", do: :active, else: :paused),
-      conn: conn,
       consensus: %Consensus{expected_regions: expected}
     }
 
@@ -128,37 +117,29 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     {:noreply, state}
   end
 
-  # Fire check — Mint: synchronous (process-less), Gun: async Task
+  # Fire check — fresh connection per check via CheckExecutor
   def handle_info(:check, %{status: :active, checking: false} = state) do
     schedule_check(state.interval_ms)
 
-    if mint_client?() do
-      {result, state} = do_check_sync(state)
-      send(self(), {:check_result, result})
-      {:noreply, state}
-    else
-      parent = self()
-      monitor = state.monitor
-      conn = state.conn
-      check_client = @check_client
+    parent = self()
+    monitor = state.monitor
 
-      Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-        result = try do
-          check_client.check(monitor, conn)
-        rescue
-          e -> %{monitor_id: monitor.id, status: "down", response_time: 0,
-                 checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
-                 error_message: "Check error: #{Exception.message(e)}"}
-        catch
-          kind, reason -> %{monitor_id: monitor.id, status: "down", response_time: 0,
-                            checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
-                            error_message: "Check #{kind}: #{inspect(reason)}"}
-        end
-        send(parent, {:check_result, result})
-      end)
+    Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+      result = try do
+        CheckExecutor.execute(monitor)
+      rescue
+        e -> %{monitor_id: monitor.id, status: "down", response_time: 0,
+               checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
+               error_message: "Check error: #{Exception.message(e)}"}
+      catch
+        kind, reason -> %{monitor_id: monitor.id, status: "down", response_time: 0,
+                          checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
+                          error_message: "Check #{kind}: #{inspect(reason)}"}
+      end
+      send(parent, {:check_result, result})
+    end)
 
-      {:noreply, %{state | checking: true}}
-    end
+    {:noreply, %{state | checking: true}}
   end
 
   # --- Check result + consensus ---
@@ -193,46 +174,8 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     {:noreply, try_consensus(state)}
   end
 
-  # --- Gun lifecycle messages ---
-
-  def handle_info({:gun_up, _pid, _protocol}, state) do
-    Logger.debug("MonitorProcess #{state.monitor_id}: Gun connected")
-    {:noreply, %{state | conn: GunConnection.connected(state.conn)}}
-  end
-
-  def handle_info({:gun_down, _pid, _protocol, _reason, _}, state) do
-    Logger.debug("MonitorProcess #{state.monitor_id}: Gun disconnected (auto-reconnecting)")
-    {:noreply, %{state | conn: GunConnection.disconnected(state.conn)}}
-  end
-
-  def handle_info({:gun_error, _pid, reason}, state) do
-    Logger.warning("MonitorProcess #{state.monitor_id}: Gun error: #{inspect(reason)}")
-    {:noreply, state}
-  end
-
-  def handle_info({:gun_error, _pid, _stream, reason}, state) do
-    Logger.warning("MonitorProcess #{state.monitor_id}: Gun stream error: #{inspect(reason)}")
-    {:noreply, state}
-  end
-
-  # Gun process crashed — reconnect
-  def handle_info({:DOWN, ref, :process, _pid, reason}, %{conn: %GunConnection{ref: conn_ref}} = state)
-      when ref == conn_ref do
-    Logger.warning("MonitorProcess #{state.monitor_id}: Gun process died: #{inspect(reason)}, reconnecting")
-    conn = case @check_client.open_connection(state.monitor) do
-      {:ok, c} -> c
-      {:error, _} -> nil
-    end
-    {:noreply, %{state | conn: conn}}
-  end
-
-  # Catch-all for other DOWN messages
+  # Catch-all for unexpected messages (Task :DOWN, etc.)
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
-    {:noreply, state}
-  end
-
-  # Ignore other Gun messages (gun_data, gun_push, etc.)
-  def handle_info({:gun_data, _pid, _stream, _fin, _data}, state) do
     {:noreply, state}
   end
 
@@ -259,11 +202,10 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     {:noreply, %{state | status: :active}}
   end
 
-  # --- Terminate: close connection, leave pg group ---
+  # --- Terminate ---
 
   @impl true
   def terminate(_reason, state) do
-    if state.conn, do: @check_client.close_connection(state.conn)
     cancel_consensus_timer(state.consensus)
     :ok
   end
@@ -423,34 +365,4 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     end)
   end
 
-  # --- Mint support ---
-
-  defp mint_client? do
-    @check_client == Uptrack.Monitoring.CheckClient.Mint
-  end
-
-  defp do_check_sync(state) do
-    try do
-      raw = @check_client.check(state.monitor, state.conn)
-      {updated_conn, clean_result} = pop_mint_conn(raw)
-      conn = updated_conn || state.conn
-      {clean_result, %{state | conn: conn}}
-    rescue
-      e ->
-        result = %{monitor_id: state.monitor_id, status: "down", response_time: 0,
-                   checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
-                   error_message: "Check error: #{Exception.message(e)}"}
-        {result, state}
-    catch
-      kind, reason ->
-        result = %{monitor_id: state.monitor_id, status: "down", response_time: 0,
-                   checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
-                   error_message: "Check #{kind}: #{inspect(reason)}"}
-        {result, state}
-    end
-  end
-
-  defp pop_mint_conn(result) when is_map(result) do
-    {Map.get(result, :__mint_conn__), Map.delete(result, :__mint_conn__)}
-  end
 end

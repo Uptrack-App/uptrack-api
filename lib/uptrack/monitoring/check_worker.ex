@@ -24,7 +24,6 @@ defmodule Uptrack.Monitoring.CheckWorker do
     Record.extract(:Validity, from_lib: "public_key/include/OTP-PUB-KEY.hrl")
   )
 
-  @user_agent "Uptrack Monitor/1.0"
 
   @doc """
   Executes only the raw network check (no DB write, no alerts).
@@ -130,66 +129,29 @@ defmodule Uptrack.Monitoring.CheckWorker do
 
   # Performs HTTP/HTTPS check.
   defp check_http(%Monitor{} = monitor) do
-    headers = [
-      {"User-Agent", @user_agent},
-      {"Accept", "*/*"}
-    ]
-
-    # Add custom headers from monitor settings
     headers =
       case Map.get(monitor.settings, "headers") do
-        nil ->
-          headers
-
-        custom_headers when is_map(custom_headers) ->
-          custom_headers
-          |> Enum.reduce(headers, fn {key, value}, acc ->
-            [{key, value} | acc]
-          end)
-
-        _ ->
-          headers
+        nil -> []
+        custom_headers when is_map(custom_headers) -> Enum.to_list(custom_headers)
+        _ -> []
       end
 
-    method = Map.get(monitor.settings, "method", "GET") |> String.downcase() |> String.to_atom()
+    method = Map.get(monitor.settings, "method", "GET")
+    timeout = monitor.timeout * 1000
 
-    req_opts = [
-      headers: headers,
-      receive_timeout: monitor.timeout * 1000,
-      pool_timeout: monitor.timeout * 1000,
-      redirect: true,
-      max_redirects: 5,
-      retry: false,
-      finch: Uptrack.Finch
-    ]
-
-    # Add request body for methods that support it
-    req_opts =
+    body =
       case {method, Map.get(monitor.settings, "body")} do
-        {m, body} when m in [:post, :put, :patch] and is_binary(body) and body != "" ->
-          content_type = get_content_type(headers)
-          if content_type =~ "json" do
-            Keyword.put(req_opts, :json, Jason.decode!(body))
-          else
-            Keyword.put(req_opts, :body, body)
-          end
-        _ ->
-          req_opts
+        {m, b} when m in ["POST", "PUT", "PATCH", "post", "put", "patch"]
+                     and is_binary(b) and b != "" -> b
+        _ -> nil
       end
 
-    case Req.request([method: method, url: monitor.url] ++ req_opts) do
-      {:ok, %Req.Response{status: status, headers: response_headers, body: body}} ->
-        {:ok, status, Map.new(response_headers), body}
-
-      {:error, %Req.TransportError{reason: reason}} ->
-        {:error, "Transport error: #{reason}"}
-
-      {:error, %Req.HTTPError{reason: reason}} ->
-        {:error, "HTTP error: #{reason}"}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    Uptrack.Monitoring.HttpCheck.check(monitor.url,
+      method: method,
+      headers: headers,
+      body: body,
+      timeout: timeout
+    )
   end
 
   # Performs TCP port check.
@@ -607,13 +569,6 @@ defmodule Uptrack.Monitoring.CheckWorker do
   end
   defp truncate_body(_, _max_length), do: nil
 
-  defp get_content_type(headers) do
-    Enum.find_value(headers, "text/plain", fn
-      {key, value} when is_binary(key) ->
-        if String.downcase(key) == "content-type", do: value
-      _ -> nil
-    end)
-  end
 
   # Response time degradation detection.
   # If the monitor has a response_time_threshold in settings, and the check
