@@ -310,9 +310,13 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   end
 
   defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t} = state) when f >= t do
-    nodes = [node() | Node.list()] |> Enum.sort()
+    # Only app nodes (not workers) can create incidents — filter to uptrack@ nodes
+    app_nodes =
+      [node() | Node.list()]
+      |> Enum.filter(fn n -> n |> to_string() |> String.starts_with?("uptrack@") end)
+      |> Enum.sort()
 
-    if Consensus.home_node?(state.monitor_id, nodes) do
+    if Consensus.home_node?(state.monitor_id, app_nodes) do
       Logger.info("MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert (home node)")
 
       # Create incident in Postgres + send alerts
