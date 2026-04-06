@@ -17,11 +17,11 @@ defmodule Uptrack.Metrics.Writer do
   - `uptrack_monitor_http_status`
   """
   def write_check_result(monitor, check) do
-    case vminsert_url() do
-      nil ->
+    case vminsert_urls() do
+      [] ->
         :ok
 
-      url ->
+      urls ->
         timestamp = System.os_time(:millisecond)
         monitor_id = to_string(monitor.id)
         org_id = to_string(monitor.organization_id)
@@ -35,7 +35,8 @@ defmodule Uptrack.Metrics.Writer do
         ]
 
         body = Enum.join(lines, "\n")
-        do_write(url, body)
+        # Write to all VM instances for HA (fire-and-forget to secondaries)
+        Enum.each(urls, &do_write(&1, body))
     end
   end
 
@@ -43,11 +44,11 @@ defmodule Uptrack.Metrics.Writer do
   Writes an incident event metric.
   """
   def write_incident_event(monitor, event_type) do
-    case vminsert_url() do
-      nil ->
+    case vminsert_urls() do
+      [] ->
         :ok
 
-      url ->
+      urls ->
         timestamp = System.os_time(:millisecond)
         monitor_id = to_string(monitor.id)
         org_id = to_string(monitor.organization_id)
@@ -60,7 +61,7 @@ defmodule Uptrack.Metrics.Writer do
             timestamp
           )
 
-        do_write(url, body)
+        Enum.each(urls, &do_write(&1, body))
     end
   end
 
@@ -103,7 +104,11 @@ defmodule Uptrack.Metrics.Writer do
 
   defp escape_label_value(value), do: to_string(value)
 
-  defp vminsert_url do
-    Application.get_env(:uptrack, :victoriametrics_vminsert_url)
+  defp vminsert_urls do
+    case Application.get_env(:uptrack, :victoriametrics_vminsert_url) do
+      nil -> []
+      url when is_binary(url) -> String.split(url, ",", trim: true) |> Enum.map(&String.trim/1)
+      _ -> []
+    end
   end
 end

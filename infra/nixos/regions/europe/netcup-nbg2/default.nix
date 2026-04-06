@@ -1,6 +1,6 @@
 # Netcup Nuremberg Node 2 (nbg2) - Coordinator Standby + API
 # IP: 152.53.183.208
-# Tailscale: 100.112.11.29
+# Tailscale: 100.64.1.2
 # Services: Phoenix API, cloudflared, PostgreSQL Coordinator Standby,
 #           Patroni (coordinator), etcd (2/3), vmagent
 # HAProxy routes DB writes to current Patroni primary (nbg1 or nbg2),
@@ -22,8 +22,12 @@ in {
     ../../../modules/services/uptrack-app.nix
     ../../../modules/services/cloudflared.nix
     ../../../modules/services/node-exporter.nix
+    ../../../modules/services/victoria-metrics.nix
     ../../../modules/services/vmagent.nix
   ];
+
+  # VictoriaMetrics — time-series store for check results (HA: runs on both nbg1+nbg2)
+  services.uptrack.victoria-metrics.enable = true;
 
   # Hostname
   networking.hostName = "nbg2";
