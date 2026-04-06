@@ -17,6 +17,8 @@ defmodule Uptrack.Application do
         {Phoenix.PubSub, name: Uptrack.PubSub},
         # In-app cache for expensive queries
         {Uptrack.Cache, []},
+        # Metrics write batcher (flushes to VictoriaMetrics every 1s)
+        {Uptrack.Metrics.Batcher, []},
         # Oban job processing
         {Oban, Application.fetch_env!(:uptrack, Oban)},
         # Finch HTTP pool for monitoring checks (connection reuse)

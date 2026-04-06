@@ -261,8 +261,15 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     # Build a check struct for events/metrics without writing to Postgres
     check = struct(Uptrack.Monitoring.MonitorCheck, check_attrs)
 
-    # Write to VictoriaMetrics (scalable time-series store)
-    MetricsWriter.write_check_result(state.monitor, check)
+    # Buffer write to VictoriaMetrics (batched for throughput)
+    Uptrack.Metrics.Batcher.write(state.monitor, check)
+
+    # Cache latest check for instant API reads (no VM query needed)
+    Uptrack.Cache.put_latest_check(state.monitor_id, %{
+      status: check.status,
+      response_time: check.response_time,
+      checked_at: check.checked_at
+    })
 
     # Broadcast for real-time UI updates
     Events.broadcast_check_completed(check, state.monitor)
