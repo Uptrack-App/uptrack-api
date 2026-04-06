@@ -22,6 +22,13 @@ in {
   # Hostname
   networking.hostName = "nbg3";
 
+  # 2folk AI chat app — runs on this node alongside Uptrack worker
+  # Cloudflare (Flexible SSL) → port 80 → redirect → Phoenix :4001
+  networking.firewall.allowedTCPPorts = [ 80 ];
+  networking.firewall.extraCommands = ''
+    iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 4001
+  '';
+
   # Node-specific environment variables
   environment.variables = {
     NODE_NAME = "nbg3";
