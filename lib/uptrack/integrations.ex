@@ -87,7 +87,7 @@ defmodule Uptrack.Integrations do
 
     attrs = %{
       name: "Slack - #{team_name} ##{channel_name}",
-      type: :slack,
+      type: "slack",
       is_active: true,
       organization_id: organization_id,
       user_id: user_id,
@@ -178,7 +178,7 @@ defmodule Uptrack.Integrations do
 
     attrs = %{
       name: "Discord - #{webhook["name"]}",
-      type: :discord,
+      type: "discord",
       is_active: true,
       organization_id: organization_id,
       user_id: user_id,
@@ -280,7 +280,7 @@ defmodule Uptrack.Integrations do
   defp create_telegram_alert_channel(chat_id, chat_title, organization_id, user_id) do
     attrs = %{
       name: "Telegram - #{chat_title}",
-      type: :telegram,
+      type: "telegram",
       is_active: true,
       organization_id: organization_id,
       user_id: user_id,
