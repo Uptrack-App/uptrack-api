@@ -225,7 +225,10 @@ defmodule Uptrack.Integrations do
       {:ok, %{chat_id: chat_id, chat_title: title, state_token: state_token}} ->
         with {:ok, %{organization_id: org_id, user_id: user_id}} <- verify_state(state_token, :telegram),
              {:ok, alert_channel} <- create_telegram_alert_channel(chat_id, title, org_id, user_id) do
-          TelegramBot.send_message(chat_id, "✅ <b>Connected to Uptrack!</b>\nThis chat will receive monitoring alerts.")
+          case TelegramBot.send_message(chat_id, "✅ <b>Connected to Uptrack!</b>\nThis chat will receive monitoring alerts.") do
+            :ok -> :ok
+            {:error, reason} -> Logger.warning("Failed to send Telegram confirmation: #{inspect(reason)}")
+          end
           # Store result so frontend can poll for completion
           OAuthState.store("telegram_result:#{state_token}", %{
             channel_id: alert_channel.id,
@@ -257,7 +260,7 @@ defmodule Uptrack.Integrations do
   Checks if a Telegram connection has completed (frontend polls this).
   """
   def telegram_connection_status(state) do
-    case OAuthState.get_and_delete("telegram_result:#{state}") do
+    case OAuthState.get("telegram_result:#{state}") do
       %{connected: true, channel_id: channel_id} -> {:ok, channel_id}
       _ -> :pending
     end

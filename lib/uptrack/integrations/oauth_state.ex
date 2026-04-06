@@ -24,6 +24,19 @@ defmodule Uptrack.Integrations.OAuthState do
   end
 
   @doc """
+  Reads an OAuth state token without deleting it.
+
+  Used for polling (e.g. Telegram connection status) where the client
+  may need to read the same value multiple times.
+  """
+  def get(state) when is_binary(state) do
+    case :ets.lookup(@table_name, state) do
+      [{^state, data}] -> data
+      [] -> nil
+    end
+  end
+
+  @doc """
   Retrieves and deletes an OAuth state token.
 
   Returns nil if not found (single-use tokens).
