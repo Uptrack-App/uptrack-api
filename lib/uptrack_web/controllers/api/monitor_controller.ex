@@ -181,8 +181,15 @@ defmodule UptrackWeb.Api.MonitorController do
         {:error, :not_found}
 
       _monitor ->
-        {:ok, checks} = Uptrack.Metrics.Reader.get_recent_checks(monitor_id, limit)
-        render(conn, :checks_from_vm, checks: checks)
+        # Try VictoriaMetrics first, fall back to Postgres for historical data
+        case Uptrack.Metrics.Reader.get_recent_checks(monitor_id, limit) do
+          {:ok, checks} when checks != [] ->
+            render(conn, :checks_from_vm, checks: checks)
+
+          _ ->
+            checks = Monitoring.get_recent_checks(monitor_id, limit)
+            render(conn, :checks, checks: checks)
+        end
     end
   end
 
