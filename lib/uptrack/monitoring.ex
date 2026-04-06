@@ -66,18 +66,55 @@ defmodule Uptrack.Monitoring do
   Returns the list of monitors for an organization.
   """
   def list_monitors(organization_id) do
+    list_monitors(organization_id, %{})
+  end
+
+  def list_monitors(organization_id, params) do
+    page = params |> Map.get("page", "1") |> to_integer(1) |> max(1)
+    per_page = params |> Map.get("per_page", "20") |> to_integer(20) |> min(100)
+    search = Map.get(params, "search", "")
+    offset = (page - 1) * per_page
+
     latest_check_query =
       from(c in MonitorCheck,
         distinct: c.monitor_id,
         order_by: [desc: c.checked_at]
       )
 
-    Monitor
-    |> where([m], m.organization_id == ^organization_id)
-    |> order_by([m], desc: m.inserted_at)
-    |> preload(monitor_checks: ^latest_check_query)
-    |> AppRepo.all()
+    base_query =
+      Monitor
+      |> where([m], m.organization_id == ^organization_id)
+      |> order_by([m], desc: m.inserted_at)
+
+    base_query =
+      if search != "" do
+        pattern = "%#{search}%"
+        where(base_query, [m], ilike(m.name, ^pattern) or ilike(m.url, ^pattern))
+      else
+        base_query
+      end
+
+    total = AppRepo.aggregate(base_query, :count)
+
+    monitors =
+      base_query
+      |> limit(^per_page)
+      |> offset(^offset)
+      |> preload(monitor_checks: ^latest_check_query)
+      |> AppRepo.all()
+
+    %{monitors: monitors, total: total, page: page, per_page: per_page}
   end
+
+  defp to_integer(val, default) when is_binary(val) do
+    case Integer.parse(val) do
+      {n, _} -> n
+      :error -> default
+    end
+  end
+
+  defp to_integer(val, _default) when is_integer(val), do: val
+  defp to_integer(_, default), do: default
 
   @doc """
   Returns the list of active monitors for an organization.
