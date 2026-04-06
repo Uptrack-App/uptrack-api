@@ -86,6 +86,54 @@ defmodule UptrackWeb.Api.IntegrationController do
     redirect(conn, external: "#{frontend_url()}/dashboard/alerts?error=#{error}")
   end
 
+  # ---------------------------------------------------------------------------
+  # Telegram (deep link + webhook)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Generates Telegram deep link URLs for connecting.
+  GET /api/integrations/telegram/auth
+  """
+  def telegram_auth(conn, _params) do
+    user = conn.assigns.current_user
+    urls = Integrations.telegram_auth_url(user.organization_id, user.id)
+
+    json(conn, %{
+      group_url: urls.group_url,
+      dm_url: urls.dm_url,
+      state: urls.state
+    })
+  end
+
+  @doc """
+  Receives Telegram bot webhook updates.
+  POST /api/integrations/telegram/webhook
+  """
+  def telegram_webhook(conn, params) do
+    secret = get_req_header(conn, "x-telegram-bot-api-secret-token") |> List.first()
+
+    if Uptrack.Integrations.TelegramBot.valid_secret?(secret) do
+      Integrations.handle_telegram_webhook(params)
+      json(conn, %{ok: true})
+    else
+      conn |> put_status(403) |> json(%{error: "invalid secret"})
+    end
+  end
+
+  @doc """
+  Frontend polls this to check if Telegram connection completed.
+  GET /api/integrations/telegram/status?state=TOKEN
+  """
+  def telegram_status(conn, %{"state" => state}) do
+    case Integrations.telegram_connection_status(state) do
+      {:ok, channel_id} ->
+        json(conn, %{connected: true, channel_id: channel_id})
+
+      :pending ->
+        json(conn, %{connected: false})
+    end
+  end
+
   defp frontend_url do
     Application.get_env(:uptrack, :frontend_url, "http://localhost:3000")
   end
