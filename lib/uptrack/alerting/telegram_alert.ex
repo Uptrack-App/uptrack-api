@@ -72,8 +72,14 @@ defmodule Uptrack.Alerting.TelegramAlert do
       is_nil(bot_token) or bot_token == "" ->
         {:error, "No Telegram bot token configured"}
 
-      is_nil(chat_id) ->
+      is_nil(chat_id) or chat_id == "" ->
         {:error, "No Telegram chat ID configured"}
+
+      bot_token == "uptrack_managed" ->
+        case Application.get_env(:uptrack, :telegram_bot_token) do
+          nil -> {:error, "Uptrack Telegram bot not configured"}
+          token -> {:ok, token, to_string(chat_id)}
+        end
 
       true ->
         {:ok, bot_token, to_string(chat_id)}

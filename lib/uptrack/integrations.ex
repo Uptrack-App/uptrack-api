@@ -1,16 +1,19 @@
 defmodule Uptrack.Integrations do
   @moduledoc """
-  The Integrations context handles third-party OAuth connections.
+  The Integrations context handles third-party connections.
 
   Supports:
-  - Slack (incoming webhooks)
+  - Slack (incoming webhooks via OAuth2)
   - Discord (webhooks via OAuth2)
+  - Telegram (deep link + webhook via @UptrackAppBot)
 
-  OAuth flows create alert channels automatically after successful authorization.
+  All flows create alert channels automatically after successful authorization.
   """
 
   alias Uptrack.Monitoring
-  alias Uptrack.Integrations.OAuthState
+  alias Uptrack.Integrations.{OAuthState, TelegramBot}
+
+  require Logger
 
   # ---------------------------------------------------------------------------
   # Slack OAuth
@@ -185,6 +188,91 @@ defmodule Uptrack.Integrations do
         "channel_id" => webhook["channel_id"],
         "guild_id" => webhook["guild_id"],
         "name" => webhook["name"]
+      }
+    }
+
+    Monitoring.create_alert_channel(attrs)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Telegram (Deep Link + Webhook)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Generates a Telegram deep link URL for connecting a group or DM.
+
+  Stores state in ETS for CSRF protection, same as Slack/Discord.
+  Returns both group and DM links so the user can choose.
+  """
+  def telegram_auth_url(organization_id, user_id) do
+    state = generate_state(organization_id, user_id, :telegram)
+
+    %{
+      group_url: TelegramBot.group_deep_link(state),
+      dm_url: TelegramBot.dm_deep_link(state),
+      state: state
+    }
+  end
+
+  @doc """
+  Handles the Telegram webhook payload when a user sends /start to the bot.
+
+  Parses the command, verifies the state token, creates the alert channel,
+  and sends a confirmation reply.
+  """
+  def handle_telegram_webhook(payload) do
+    case TelegramBot.parse_connect_command(payload) do
+      {:ok, %{chat_id: chat_id, chat_title: title, state_token: state_token}} ->
+        with {:ok, %{organization_id: org_id, user_id: user_id}} <- verify_state(state_token, :telegram),
+             {:ok, alert_channel} <- create_telegram_alert_channel(chat_id, title, org_id, user_id) do
+          TelegramBot.send_message(chat_id, "✅ <b>Connected to Uptrack!</b>\nThis chat will receive monitoring alerts.")
+          # Store result so frontend can poll for completion
+          OAuthState.store("telegram_result:#{state_token}", %{
+            channel_id: alert_channel.id,
+            connected: true,
+            expires_at: DateTime.add(DateTime.utc_now(), 600, :second)
+          })
+          {:ok, alert_channel}
+        else
+          {:error, :invalid_state} ->
+            TelegramBot.send_message(chat_id, "❌ Invalid or expired link. Please click \"Connect Telegram\" again in Uptrack.")
+            {:error, :invalid_state}
+
+          {:error, :state_expired} ->
+            TelegramBot.send_message(chat_id, "❌ Link expired. Please click \"Connect Telegram\" again in Uptrack.")
+            {:error, :state_expired}
+
+          {:error, reason} ->
+            Logger.error("TelegramBot connect failed: #{inspect(reason)}")
+            TelegramBot.send_message(chat_id, "❌ Something went wrong. Please try again.")
+            {:error, reason}
+        end
+
+      :ignore ->
+        :ignore
+    end
+  end
+
+  @doc """
+  Checks if a Telegram connection has completed (frontend polls this).
+  """
+  def telegram_connection_status(state) do
+    case OAuthState.get_and_delete("telegram_result:#{state}") do
+      %{connected: true, channel_id: channel_id} -> {:ok, channel_id}
+      _ -> :pending
+    end
+  end
+
+  defp create_telegram_alert_channel(chat_id, chat_title, organization_id, user_id) do
+    attrs = %{
+      name: "Telegram - #{chat_title}",
+      type: :telegram,
+      is_active: true,
+      organization_id: organization_id,
+      user_id: user_id,
+      config: %{
+        "bot_token" => "uptrack_managed",
+        "chat_id" => to_string(chat_id)
       }
     }
 
