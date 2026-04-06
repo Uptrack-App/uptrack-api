@@ -19,12 +19,12 @@ defmodule Uptrack.Integrations.TelegramBot do
 
   @doc "Builds a Telegram deep link URL for adding the bot to a group."
   def group_deep_link(state_token) do
-    "https://t.me/#{bot_username()}?startgroup=#{URI.encode(state_token)}"
+    "https://t.me/#{bot_username()}?startgroup=#{state_token}"
   end
 
   @doc "Builds a Telegram deep link URL for starting a DM with the bot."
   def dm_deep_link(state_token) do
-    "https://t.me/#{bot_username()}?start=#{URI.encode(state_token)}"
+    "https://t.me/#{bot_username()}?start=#{state_token}"
   end
 
   @doc """
