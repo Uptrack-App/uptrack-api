@@ -74,6 +74,11 @@ defmodule UptrackWeb.Api.MonitorController do
          :ok <- check_interval(org, interval) do
       case Monitoring.create_monitor(attrs) do
         {:ok, monitor} ->
+          # Sync region assignments if provided
+          if region_ids = params["region_ids"] do
+            Monitoring.sync_monitor_regions(monitor.id, region_ids)
+          end
+
           Teams.log_action(org.id, user.id, "monitor.created", "monitor", monitor.id,
             metadata: %{name: monitor.name, monitor_type: monitor.monitor_type}
           )
@@ -131,6 +136,10 @@ defmodule UptrackWeb.Api.MonitorController do
 
       case Monitoring.update_monitor(monitor, params) do
         {:ok, updated} ->
+          if region_ids = params["region_ids"] do
+            Monitoring.sync_monitor_regions(updated.id, region_ids)
+          end
+
           Teams.log_action(org.id, user.id, "monitor.updated", "monitor", updated.id,
             metadata: %{name: updated.name}
           )

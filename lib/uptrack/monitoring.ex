@@ -248,6 +248,42 @@ defmodule Uptrack.Monitoring do
   @doc """
   Creates a monitor check.
   """
+  @doc """
+  Syncs the enabled regions for a monitor.
+
+  Deletes existing monitor_regions and inserts new ones for the given region_ids.
+  If region_ids is nil or empty, no regions are assigned (monitor checks all regions).
+  """
+  def sync_monitor_regions(_monitor_id, nil), do: :ok
+  def sync_monitor_regions(_monitor_id, []), do: :ok
+
+  def sync_monitor_regions(monitor_id, region_ids) when is_list(region_ids) do
+    import Ecto.Query
+
+    # Delete existing
+    MonitorRegion
+    |> where([mr], mr.monitor_id == ^monitor_id)
+    |> AppRepo.delete_all()
+
+    # Insert new
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    entries =
+      Enum.map(region_ids, fn region_id ->
+        %{
+          monitor_id: monitor_id,
+          region_id: region_id,
+          is_enabled: true,
+          priority: 0,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    AppRepo.insert_all(MonitorRegion, entries)
+    :ok
+  end
+
   def create_monitor_check(attrs) do
     MonitorCheck.create_changeset(attrs)
     |> AppRepo.insert()
