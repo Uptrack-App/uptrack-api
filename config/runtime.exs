@@ -129,6 +129,14 @@ if config_env() == :prod do
       slack_signing_secret: System.get_env("SLACK_SIGNING_SECRET")
   end
 
+  # Telegram bot (optional — Connect Telegram disabled if not set)
+  if tg_token = System.get_env("TELEGRAM_BOT_TOKEN") do
+    config :uptrack,
+      telegram_bot_token: tg_token,
+      telegram_bot_username: System.get_env("TELEGRAM_BOT_USERNAME", "UptrackAppBot"),
+      telegram_webhook_secret: System.get_env("TELEGRAM_WEBHOOK_SECRET", "uptrack_tg_#{:crypto.hash(:sha256, tg_token) |> Base.url_encode64(padding: false) |> binary_part(0, 16)}")
+  end
+
   # Paddle billing (optional — billing disabled if not set)
   if paddle_api_key = System.get_env("PADDLE_API_KEY") do
     config :uptrack, :paddle,

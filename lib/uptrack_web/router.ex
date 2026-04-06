@@ -239,6 +239,8 @@ defmodule UptrackWeb.Router do
     # Integration OAuth initiation (requires auth)
     get "/integrations/slack/auth", IntegrationController, :slack_auth
     get "/integrations/discord/auth", IntegrationController, :discord_auth
+    get "/integrations/telegram/auth", IntegrationController, :telegram_auth
+    get "/integrations/telegram/status", IntegrationController, :telegram_status
 
     # Billing
     post "/billing/checkout", BillingController, :checkout
@@ -272,6 +274,7 @@ defmodule UptrackWeb.Router do
 
     get "/slack/callback", IntegrationController, :slack_callback
     get "/discord/callback", IntegrationController, :discord_callback
+    post "/telegram/webhook", IntegrationController, :telegram_webhook
   end
 
   # Slack slash commands (verified by Slack signature, not user auth)

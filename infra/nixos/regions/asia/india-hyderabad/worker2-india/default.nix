@@ -1,6 +1,6 @@
 # Oracle Cloud India Hyderabad - Check Worker
 # worker2-india: 152.67.179.42
-# Tailscale: 100.96.28.118
+# Tailscale: 100.64.10.2
 # Role: Multi-region check worker (no DB, no Phoenix)
 # Shape: VM.Standard.A1.Flex (3 OCPU ARM64, 18GB RAM)
 { config, pkgs, lib, ... }:
