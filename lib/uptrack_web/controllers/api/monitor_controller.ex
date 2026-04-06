@@ -32,11 +32,11 @@ defmodule UptrackWeb.Api.MonitorController do
   Lists monitors for the current organization.
   GET /api/monitors
   """
-  def index(conn, _params) do
+  def index(conn, params) do
     org = conn.assigns.current_organization
-    monitors = Monitoring.list_monitors(org.id)
+    result = Monitoring.list_monitors(org.id, params)
 
-    render(conn, :index, monitors: monitors)
+    render(conn, :index, result: result)
   end
 
   @doc """

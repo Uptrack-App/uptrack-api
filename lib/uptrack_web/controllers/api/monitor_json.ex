@@ -5,8 +5,16 @@ defmodule UptrackWeb.Api.MonitorJSON do
 
   alias Uptrack.Monitoring.{Monitor, MonitorCheck}
 
-  def index(%{monitors: monitors}) do
-    %{data: for(monitor <- monitors, do: monitor_data(monitor))}
+  def index(%{result: %{monitors: monitors, total: total, page: page, per_page: per_page}}) do
+    %{
+      data: for(monitor <- monitors, do: monitor_data(monitor)),
+      meta: %{
+        total: total,
+        page: page,
+        per_page: per_page,
+        total_pages: ceil(total / max(per_page, 1))
+      }
+    }
   end
 
   def show(%{monitor: monitor}) do
@@ -42,6 +50,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
       description: monitor.description,
       confirmation_threshold: monitor.confirmation_threshold,
       escalation_policy_id: monitor.escalation_policy_id,
+      alert_contacts: monitor.alert_contacts || %{},
       created_at: monitor.inserted_at,
       updated_at: monitor.updated_at
     }
