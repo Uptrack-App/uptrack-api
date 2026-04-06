@@ -20,9 +20,13 @@ in {
     ../../../modules/services/uptrack-app.nix
     ../../../modules/services/cloudflared.nix
     ../../../modules/services/node-exporter.nix
+    ../../../modules/services/victoria-metrics.nix
     ../../../modules/services/vmagent.nix
     ../../../modules/services/vmalert.nix
   ];
+
+  # VictoriaMetrics — time-series store for check results
+  services.uptrack.victoria-metrics.enable = true;
 
   # Hostname
   networking.hostName = "nbg1";
