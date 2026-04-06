@@ -7,9 +7,10 @@ defmodule UptrackWeb.Api.MonitorJSON do
   alias Uptrack.Metrics.Reader
 
   def index(%{result: %{monitors: monitors, total: total, page: page, per_page: per_page}}) do
-    # Batch-fetch latest checks from VictoriaMetrics (1 query for all monitors)
+    # Read from Nebulex cache (populated by MonitorProcess on every check)
+    # Zero latency — no VM or Postgres query needed
     monitor_ids = Enum.map(monitors, & &1.id)
-    {:ok, latest_checks} = Reader.get_latest_checks_batch(monitor_ids)
+    latest_checks = Uptrack.Cache.get_latest_checks_batch(monitor_ids)
 
     %{
       data: for(monitor <- monitors, do: monitor_data(monitor, latest_checks)),
@@ -23,7 +24,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
   end
 
   def show(%{monitor: monitor}) do
-    {:ok, latest_checks} = Reader.get_latest_checks_batch([monitor.id])
+    latest_checks = Uptrack.Cache.get_latest_checks_batch([monitor.id])
     %{data: monitor_data(monitor, latest_checks)}
   end
 

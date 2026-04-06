@@ -50,6 +50,36 @@ defmodule Uptrack.Cache do
     delete_all()
   end
 
+  @ttl_check :timer.seconds(120)
+
+  @doc """
+  Caches the latest check status for a monitor.
+
+  Called by MonitorProcess after every check — always fresh.
+  Read by the API listing/detail views instead of querying VM.
+  """
+  def put_latest_check(monitor_id, check_data) do
+    put("latest_check:#{monitor_id}", check_data, ttl: @ttl_check)
+  end
+
+  def get_latest_check(monitor_id) do
+    get("latest_check:#{monitor_id}")
+  end
+
+  @doc """
+  Gets latest checks for multiple monitors from cache.
+
+  Returns a map of monitor_id => check_data.
+  Falls back to nil for uncached monitors.
+  """
+  def get_latest_checks_batch(monitor_ids) do
+    Map.new(monitor_ids, fn id ->
+      {to_string(id), get_latest_check(id)}
+    end)
+    |> Enum.reject(fn {_, v} -> is_nil(v) end)
+    |> Map.new()
+  end
+
   # Cache key builders
 
   def dashboard_stats_key(org_id), do: "dashboard_stats:#{org_id}"
