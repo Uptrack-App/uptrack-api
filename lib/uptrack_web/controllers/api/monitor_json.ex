@@ -7,8 +7,12 @@ defmodule UptrackWeb.Api.MonitorJSON do
   alias Uptrack.Metrics.Reader
 
   def index(%{result: %{monitors: monitors, total: total, page: page, per_page: per_page}}) do
+    # Batch-fetch latest checks from VictoriaMetrics (1 query for all monitors)
+    monitor_ids = Enum.map(monitors, & &1.id)
+    {:ok, latest_checks} = Reader.get_latest_checks_batch(monitor_ids)
+
     %{
-      data: for(monitor <- monitors, do: monitor_data(monitor)),
+      data: for(monitor <- monitors, do: monitor_data(monitor, latest_checks)),
       meta: %{
         total: total,
         page: page,
@@ -19,7 +23,8 @@ defmodule UptrackWeb.Api.MonitorJSON do
   end
 
   def show(%{monitor: monitor}) do
-    %{data: monitor_data(monitor)}
+    {:ok, latest_checks} = Reader.get_latest_checks_batch([monitor.id])
+    %{data: monitor_data(monitor, latest_checks)}
   end
 
   def checks(%{checks: checks}) do
@@ -49,7 +54,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
     }
   end
 
-  defp monitor_data(%Monitor{} = monitor) do
+  defp monitor_data(%Monitor{} = monitor, latest_checks \\ %{}) do
     base = %{
       id: monitor.id,
       name: monitor.name,
@@ -68,14 +73,9 @@ defmodule UptrackWeb.Api.MonitorJSON do
     }
 
     base =
-      case Reader.get_latest_check(monitor.id) do
-        {:ok, %{} = check} ->
-          Map.put(base, :last_check, %{
-            status: check.status,
-            response_time: check.response_time,
-            checked_at: check.checked_at
-          })
-
+      case Map.get(latest_checks, to_string(monitor.id)) do
+        %{} = check ->
+          Map.put(base, :last_check, check)
         _ ->
           base
       end

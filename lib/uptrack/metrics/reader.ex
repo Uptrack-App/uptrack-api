@@ -142,6 +142,72 @@ defmodule Uptrack.Metrics.Reader do
   end
 
   @doc """
+  Gets latest check status for multiple monitors in a single query.
+
+  Returns a map of monitor_id => %{status, response_time, checked_at}.
+  """
+  def get_latest_checks_batch(monitor_ids) when is_list(monitor_ids) do
+    case vmselect_url() do
+      nil -> {:ok, %{}}
+      _url ->
+        # Query all monitor statuses at once
+        status_query = "uptrack_monitor_status"
+        rt_query = "uptrack_monitor_response_time_ms"
+        now = DateTime.utc_now()
+
+        with {:ok, status_results} <- query_instant(status_query, now, :multi),
+             {:ok, rt_results} <- query_instant(rt_query, now, :multi) do
+          id_set = MapSet.new(monitor_ids, &to_string/1)
+
+          statuses = extract_instant_by_monitor(status_results, id_set)
+          response_times = extract_instant_by_monitor(rt_results, id_set)
+
+          result =
+            Map.new(statuses, fn {mid, {ts, val}} ->
+              rt = case Map.get(response_times, mid) do
+                {_, v} -> trunc(v)
+                nil -> 0
+              end
+
+              {mid, %{
+                status: if(val >= 0.5, do: "up", else: "down"),
+                response_time: rt,
+                checked_at: DateTime.from_unix!(trunc(ts))
+              }}
+            end)
+
+          {:ok, result}
+        end
+    end
+  end
+
+  defp extract_instant_by_monitor(results, id_set) do
+    results
+    |> Enum.filter(fn %{"metric" => m} -> MapSet.member?(id_set, m["monitor_id"]) end)
+    |> Map.new(fn %{"metric" => m, "value" => [ts, val]} ->
+      {m["monitor_id"], {ts, parse_float(val)}}
+    end)
+  end
+
+  defp query_instant(query, time, :multi) do
+    case vmselect_url() do
+      nil -> {:ok, []}
+      url ->
+        query_url = "#{url}/api/v1/query"
+        params = %{query: query, time: DateTime.to_unix(time)}
+
+        case Req.get(query_url, params: params) do
+          {:ok, %{status: 200, body: %{"status" => "success", "data" => %{"result" => results}}}} ->
+            {:ok, results}
+          _ ->
+            {:ok, []}
+        end
+    end
+  rescue
+    _ -> {:ok, []}
+  end
+
+  @doc """
   Queries recent check data points for a monitor.
 
   Returns a list of check-like maps for display in the recent checks table.
