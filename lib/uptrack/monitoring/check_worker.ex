@@ -573,7 +573,8 @@ defmodule Uptrack.Monitoring.CheckWorker do
   # Response time degradation detection.
   # If the monitor has a response_time_threshold in settings, and the check
   # exceeds it, create a "degraded" incident.
-  defp check_degradation(%Monitor{} = monitor, %MonitorCheck{} = check) do
+  @doc "Checks if response time exceeds threshold and creates degradation incident."
+  def check_degradation(%Monitor{} = monitor, %MonitorCheck{} = check) do
     threshold = get_in(monitor.settings || %{}, ["response_time_threshold"])
 
     cond do

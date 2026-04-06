@@ -181,8 +181,8 @@ defmodule UptrackWeb.Api.MonitorController do
         {:error, :not_found}
 
       _monitor ->
-        checks = Monitoring.get_recent_checks(monitor_id, limit)
-        render(conn, :checks, checks: checks)
+        {:ok, checks} = Uptrack.Metrics.Reader.get_recent_checks(monitor_id, limit)
+        render(conn, :checks_from_vm, checks: checks)
     end
   end
 
