@@ -221,6 +221,8 @@ defmodule Uptrack.Integrations do
   and sends a confirmation reply.
   """
   def handle_telegram_webhook(payload) do
+    Logger.info("TelegramBot webhook: #{inspect(payload, limit: 500)}")
+
     case TelegramBot.parse_connect_command(payload) do
       {:ok, %{chat_id: chat_id, chat_title: title, state_token: state_token}} ->
         with {:ok, %{organization_id: org_id, user_id: user_id}} <- verify_state(state_token, :telegram),
@@ -250,6 +252,15 @@ defmodule Uptrack.Integrations do
             TelegramBot.send_message(chat_id, "❌ Something went wrong. Please try again.")
             {:error, reason}
         end
+
+      {:bare_start, chat_id} ->
+        TelegramBot.send_message(chat_id,
+          "👋 <b>Welcome to Uptrack!</b>\n\n" <>
+          "To connect this chat for alerts, click <b>Connect Telegram</b> in your " <>
+          "<a href=\"https://uptrack.app/dashboard/alerts\">Uptrack dashboard</a>, " <>
+          "then use the link provided."
+        )
+        :ignore
 
       :ignore ->
         :ignore
