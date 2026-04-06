@@ -34,14 +34,23 @@ defmodule Uptrack.Integrations.TelegramBot do
   """
   def parse_connect_command(payload) do
     with %{"message" => message} <- payload,
-         %{"text" => text, "chat" => chat} <- message,
-         state_token when is_binary(state_token) <- extract_start_token(text) do
-      {:ok, %{
-        chat_id: chat["id"],
-        chat_title: chat["title"] || chat["first_name"] || "Telegram",
-        chat_type: chat["type"],
-        state_token: state_token
-      }}
+         %{"text" => text, "chat" => chat} <- message do
+      case extract_start_token(text) do
+        nil ->
+          if text == "/start" or text == "/start@#{bot_username()}" do
+            {:bare_start, chat["id"]}
+          else
+            :ignore
+          end
+
+        state_token ->
+          {:ok, %{
+            chat_id: chat["id"],
+            chat_title: chat["title"] || chat["first_name"] || "Telegram",
+            chat_type: chat["type"],
+            state_token: state_token
+          }}
+      end
     else
       _ -> :ignore
     end
