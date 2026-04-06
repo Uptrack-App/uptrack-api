@@ -4,6 +4,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
   """
 
   alias Uptrack.Monitoring.{Monitor, MonitorCheck}
+  alias Uptrack.Metrics.Reader
 
   def index(%{result: %{monitors: monitors, total: total, page: page, per_page: per_page}}) do
     %{
@@ -23,6 +24,17 @@ defmodule UptrackWeb.Api.MonitorJSON do
 
   def checks(%{checks: checks}) do
     %{data: for(check <- checks, do: check_data(check))}
+  end
+
+  def checks_from_vm(%{checks: checks}) do
+    %{data: Enum.map(checks, fn check ->
+      %{
+        status: check.status,
+        response_time: check.response_time,
+        status_code: check[:status_code],
+        checked_at: check.checked_at
+      }
+    end)}
   end
 
   defp check_data(%MonitorCheck{} = check) do
@@ -56,25 +68,13 @@ defmodule UptrackWeb.Api.MonitorJSON do
     }
 
     base =
-      case monitor.monitor_checks do
-        %Ecto.Association.NotLoaded{} ->
-          base
-
-        [latest | _] ->
-          last_check = %{
-            status: latest.status,
-            response_time: latest.response_time,
-            checked_at: latest.checked_at
-          }
-
-          last_check =
-            if latest.response_headers && latest.response_headers != %{} do
-              Map.put(last_check, :response_headers, latest.response_headers)
-            else
-              last_check
-            end
-
-          Map.put(base, :last_check, last_check)
+      case Reader.get_latest_check(monitor.id) do
+        {:ok, %{} = check} ->
+          Map.put(base, :last_check, %{
+            status: check.status,
+            response_time: check.response_time,
+            checked_at: check.checked_at
+          })
 
         _ ->
           base

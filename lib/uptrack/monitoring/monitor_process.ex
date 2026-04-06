@@ -30,7 +30,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   use GenServer
 
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.{Monitor, CheckExecutor, Consensus, MonitorRegistry, Events}
+  alias Uptrack.Monitoring.{Monitor, CheckExecutor, CheckWorker, Consensus, MonitorRegistry, Events}
   alias Uptrack.Metrics.Writer, as: MetricsWriter
 
   require Logger
@@ -258,16 +258,19 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   defp evaluate_result(state), do: state
 
   defp record_result(%{last_check: check_attrs} = state) when is_map(check_attrs) do
-    case Monitoring.create_monitor_check(check_attrs) do
-      {:ok, check} ->
-        Events.broadcast_check_completed(check, state.monitor)
-        MetricsWriter.write_check_result(state.monitor, check)
-        %{state | last_check_record: check}
+    # Build a check struct for events/metrics without writing to Postgres
+    check = struct(Uptrack.Monitoring.MonitorCheck, check_attrs)
 
-      {:error, changeset} ->
-        Logger.error("MonitorProcess #{state.monitor_id}: record failed: #{inspect(changeset.errors)}")
-        state
-    end
+    # Write to VictoriaMetrics (scalable time-series store)
+    MetricsWriter.write_check_result(state.monitor, check)
+
+    # Broadcast for real-time UI updates
+    Events.broadcast_check_completed(check, state.monitor)
+
+    # Check response time degradation on "up" checks
+    if check.status == "up", do: CheckWorker.check_degradation(state.monitor, check)
+
+    %{state | last_check_record: check}
   rescue
     e ->
       Logger.error("MonitorProcess #{state.monitor_id}: record_result error: #{Exception.message(e)}")
