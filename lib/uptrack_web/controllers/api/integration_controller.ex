@@ -99,8 +99,8 @@ defmodule UptrackWeb.Api.IntegrationController do
     urls = Integrations.telegram_auth_url(user.organization_id, user.id)
 
     json(conn, %{
-      group_url: urls.group_url,
       dm_url: urls.dm_url,
+      code: urls.code,
       state: urls.state
     })
   end
@@ -124,8 +124,9 @@ defmodule UptrackWeb.Api.IntegrationController do
   Frontend polls this to check if Telegram connection completed.
   GET /api/integrations/telegram/status?state=TOKEN
   """
-  def telegram_status(conn, %{"state" => state}) do
-    case Integrations.telegram_connection_status(state) do
+  def telegram_status(conn, %{"state" => state} = params) do
+    code = Map.get(params, "code", "")
+    case Integrations.telegram_connection_status(state, code) do
       {:ok, channel_id} ->
         json(conn, %{connected: true, channel_id: channel_id})
 

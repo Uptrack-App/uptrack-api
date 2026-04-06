@@ -2,13 +2,16 @@ defmodule Uptrack.Integrations.TelegramBot do
   @moduledoc """
   Uptrack's Telegram bot for one-click alert channel setup.
 
-  Users click "Connect Telegram" → open deep link → add bot to group →
-  bot receives /start with state token → creates alert channel automatically.
+  Supports DM, groups, and channels via a unified flow:
+  1. User clicks "Connect Telegram" → gets a short code (e.g. A3X9)
+  2. Adds @UptrackAppBot to group/channel OR opens DM
+  3. Sends /connect CODE
+  4. Bot verifies code → creates alert channel → confirms
 
   ## Elixir Principles
-  - Pure/impure separation: URL building + payload parsing are pure
-  - SRP: this module handles bot logic only, Integrations context orchestrates
-  - Let it crash: invalid webhooks return :ignore, Telegram retries on failure
+  - Pure/impure separation: payload parsing + code generation are pure
+  - SRP: bot logic only, Integrations context orchestrates
+  - Let it crash: invalid webhooks return :ignore
   """
 
   require Logger
@@ -17,46 +20,60 @@ defmodule Uptrack.Integrations.TelegramBot do
 
   # --- Pure functions ---
 
-  @doc "Builds a Telegram deep link URL for adding the bot to a group."
-  def group_deep_link(state_token) do
-    "https://t.me/#{bot_username()}?startgroup=#{state_token}"
-  end
-
-  @doc "Builds a Telegram deep link URL for starting a DM with the bot."
-  def dm_deep_link(state_token) do
-    "https://t.me/#{bot_username()}?start=#{state_token}"
+  @doc "Generates a short human-readable connect code (6 chars, uppercase alphanumeric)."
+  def generate_code do
+    :crypto.strong_rand_bytes(4)
+    |> Base.encode32(padding: false)
+    |> binary_part(0, 6)
+    |> String.upcase()
   end
 
   @doc """
-  Parses a Telegram webhook payload and extracts the /start command + state token.
+  Parses a Telegram webhook payload for /connect or /start commands.
 
-  Returns {:ok, %{chat_id, chat_title, state_token}} or :ignore.
+  Returns:
+  - {:connect, %{chat_id, chat_title, code}} — user sent /connect CODE
+  - {:start, %{chat_id, chat_title, token}} — user clicked deep link (DM)
+  - {:bare_start, chat_id} — user sent /start without params
+  - :ignore — not a relevant message
   """
-  def parse_connect_command(payload) do
+  def parse_command(payload) do
     with %{"message" => message} <- payload,
          %{"text" => text, "chat" => chat} <- message do
-      case extract_start_token(text) do
-        nil ->
-          if text == "/start" or text == "/start@#{bot_username()}" do
-            {:bare_start, chat["id"]}
-          else
-            :ignore
+      chat_info = %{
+        chat_id: chat["id"],
+        chat_title: chat["title"] || chat["first_name"] || "Telegram",
+        chat_type: chat["type"]
+      }
+
+      cond do
+        # /connect CODE — works in DM, groups, and channels
+        match?("/connect" <> _, text) ->
+          case extract_param(text, "/connect") do
+            nil -> :ignore
+            code -> {:connect, Map.put(chat_info, :code, String.upcase(code))}
           end
 
-        state_token ->
-          {:ok, %{
-            chat_id: chat["id"],
-            chat_title: chat["title"] || chat["first_name"] || "Telegram",
-            chat_type: chat["type"],
-            state_token: state_token
-          }}
+        # /start TOKEN — from deep link (DM only)
+        match?("/start " <> _, text) ->
+          case extract_param(text, "/start") do
+            nil -> :ignore
+            token -> {:start, Map.put(chat_info, :token, token)}
+          end
+
+        # Bare /start — reply with chat ID for manual setup
+        text == "/start" or text == "/start@#{bot_username()}" ->
+          {:bare_start, chat_info}
+
+        true ->
+          :ignore
       end
     else
       _ -> :ignore
     end
   end
 
-  @doc "Validates the webhook secret header matches our configured secret."
+  @doc "Validates the webhook secret header."
   def valid_secret?(header_value) when is_binary(header_value) do
     case webhook_secret() do
       nil -> false
@@ -87,11 +104,7 @@ defmodule Uptrack.Integrations.TelegramBot do
     end
   end
 
-  @doc """
-  Registers the webhook URL with Telegram.
-
-  Call once on app startup or config change.
-  """
+  @doc "Registers the webhook URL with Telegram."
   def register_webhook do
     url = "#{@telegram_api}/bot#{bot_token()}/setWebhook"
     webhook_url = app_url() <> "/api/integrations/telegram/webhook"
@@ -115,11 +128,20 @@ defmodule Uptrack.Integrations.TelegramBot do
     end
   end
 
+  @doc "Builds a deep link URL for DM (used as fallback)."
+  def dm_deep_link(state_token) do
+    "https://t.me/#{bot_username()}?start=#{state_token}"
+  end
+
   # --- Private helpers ---
 
-  defp extract_start_token(text) do
-    case String.split(text, " ", parts: 2) do
-      ["/start", token] -> String.trim(token)
+  defp extract_param(text, command) do
+    bot = bot_username()
+    text
+    |> String.replace("#{command}@#{bot}", command)
+    |> String.split(" ", parts: 2)
+    |> case do
+      [^command, param] -> String.trim(param)
       _ -> nil
     end
   end

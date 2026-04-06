@@ -206,10 +206,18 @@ defmodule Uptrack.Integrations do
   """
   def telegram_auth_url(organization_id, user_id) do
     state = generate_state(organization_id, user_id, :telegram)
+    code = TelegramBot.generate_code()
+
+    # Store the short code → user mapping (for /connect CODE in groups)
+    OAuthState.store("telegram_code:#{code}", %{
+      organization_id: organization_id,
+      user_id: user_id,
+      expires_at: DateTime.add(DateTime.utc_now(), @state_ttl_seconds, :second)
+    })
 
     %{
-      group_url: TelegramBot.group_deep_link(state),
       dm_url: TelegramBot.dm_deep_link(state),
+      code: code,
       state: state
     }
   end
@@ -223,43 +231,53 @@ defmodule Uptrack.Integrations do
   def handle_telegram_webhook(payload) do
     Logger.info("TelegramBot webhook: #{inspect(payload, limit: 500)}")
 
-    case TelegramBot.parse_connect_command(payload) do
-      {:ok, %{chat_id: chat_id, chat_title: title, state_token: state_token}} ->
-        with {:ok, %{organization_id: org_id, user_id: user_id}} <- verify_state(state_token, :telegram),
-             {:ok, alert_channel} <- create_telegram_alert_channel(chat_id, title, org_id, user_id) do
-          case TelegramBot.send_message(chat_id, "✅ <b>Connected to Uptrack!</b>\nThis chat will receive monitoring alerts.") do
-            :ok -> :ok
-            {:error, reason} -> Logger.warning("Failed to send Telegram confirmation: #{inspect(reason)}")
-          end
-          # Store result so frontend can poll for completion
-          OAuthState.store("telegram_result:#{state_token}", %{
-            channel_id: alert_channel.id,
-            connected: true,
-            expires_at: DateTime.add(DateTime.utc_now(), 600, :second)
-          })
-          {:ok, alert_channel}
-        else
-          {:error, :invalid_state} ->
-            TelegramBot.send_message(chat_id, "❌ Invalid or expired link. Please click \"Connect Telegram\" again in Uptrack.")
-            {:error, :invalid_state}
+    case TelegramBot.parse_command(payload) do
+      # /start TOKEN — from DM deep link (auto-connect)
+      {:start, %{chat_id: chat_id, chat_title: title, token: state_token}} ->
+        connect_chat(chat_id, title, state_token)
 
-          {:error, :state_expired} ->
-            TelegramBot.send_message(chat_id, "❌ Link expired. Please click \"Connect Telegram\" again in Uptrack.")
-            {:error, :state_expired}
+      # /connect CODE — from group/channel (auto-connect)
+      {:connect, %{chat_id: chat_id, chat_title: title, code: code}} ->
+        case OAuthState.get_and_delete("telegram_code:#{code}") do
+          %{organization_id: org_id, user_id: user_id} ->
+            case create_telegram_alert_channel(chat_id, title, org_id, user_id) do
+              {:ok, alert_channel} ->
+                TelegramBot.send_message(chat_id, "✅ <b>Connected to Uptrack!</b>\nThis chat will receive monitoring alerts.")
+                OAuthState.store("telegram_result:#{code}", %{
+                  channel_id: alert_channel.id, connected: true,
+                  expires_at: DateTime.add(DateTime.utc_now(), 600, :second)
+                })
+                {:ok, alert_channel}
 
-          {:error, reason} ->
-            Logger.error("TelegramBot connect failed: #{inspect(reason)}")
-            TelegramBot.send_message(chat_id, "❌ Something went wrong. Please try again.")
-            {:error, reason}
+              {:error, reason} ->
+                Logger.error("TelegramBot connect failed: #{inspect(reason)}")
+                TelegramBot.send_message(chat_id, "❌ Something went wrong. Please try again.")
+                {:error, reason}
+            end
+
+          nil ->
+            TelegramBot.send_message(chat_id, "❌ Invalid or expired code. Please click \"Connect Telegram\" again in Uptrack.")
+            {:error, :invalid_code}
         end
 
-      {:bare_start, chat_id} ->
-        TelegramBot.send_message(chat_id,
-          "👋 <b>Welcome to Uptrack!</b>\n\n" <>
-          "To connect this chat for alerts, click <b>Connect Telegram</b> in your " <>
-          "<a href=\"https://uptrack.app/dashboard/alerts\">Uptrack dashboard</a>, " <>
-          "then use the link provided."
-        )
+      # Bare /start — show Chat ID for manual setup (groups/channels)
+      {:bare_start, %{chat_id: chat_id, chat_type: chat_type}} ->
+        if chat_type in ["group", "supergroup", "channel"] do
+          TelegramBot.send_message(chat_id,
+            "👋 <b>Uptrack Bot</b>\n\n" <>
+            "Your Chat ID: <code>#{chat_id}</code>\n\n" <>
+            "To connect automatically, click <b>Connect Telegram</b> in your " <>
+            "<a href=\"https://uptrack.app/dashboard/alerts\">Uptrack dashboard</a> " <>
+            "and send the code here.\n\n" <>
+            "Or paste this Chat ID in the manual \"Add Channel\" form."
+          )
+        else
+          TelegramBot.send_message(chat_id,
+            "👋 <b>Welcome to Uptrack!</b>\n\n" <>
+            "To connect for alerts, click <b>Connect Telegram</b> in your " <>
+            "<a href=\"https://uptrack.app/dashboard/alerts\">Uptrack dashboard</a>."
+          )
+        end
         :ignore
 
       :ignore ->
@@ -270,10 +288,40 @@ defmodule Uptrack.Integrations do
   @doc """
   Checks if a Telegram connection has completed (frontend polls this).
   """
-  def telegram_connection_status(state) do
+  def telegram_connection_status(state, code) do
+    # Check both state-based (DM deep link) and code-based (group /connect) results
     case OAuthState.get("telegram_result:#{state}") do
       %{connected: true, channel_id: channel_id} -> {:ok, channel_id}
-      _ -> :pending
+      _ ->
+        case OAuthState.get("telegram_result:#{code}") do
+          %{connected: true, channel_id: channel_id} -> {:ok, channel_id}
+          _ -> :pending
+        end
+    end
+  end
+
+  defp connect_chat(chat_id, title, state_token) do
+    with {:ok, %{organization_id: org_id, user_id: user_id}} <- verify_state(state_token, :telegram),
+         {:ok, alert_channel} <- create_telegram_alert_channel(chat_id, title, org_id, user_id) do
+      TelegramBot.send_message(chat_id, "✅ <b>Connected to Uptrack!</b>\nThis chat will receive monitoring alerts.")
+      OAuthState.store("telegram_result:#{state_token}", %{
+        channel_id: alert_channel.id, connected: true,
+        expires_at: DateTime.add(DateTime.utc_now(), 600, :second)
+      })
+      {:ok, alert_channel}
+    else
+      {:error, :invalid_state} ->
+        TelegramBot.send_message(chat_id, "❌ Invalid or expired link. Please click \"Connect Telegram\" again in Uptrack.")
+        {:error, :invalid_state}
+
+      {:error, :state_expired} ->
+        TelegramBot.send_message(chat_id, "❌ Link expired. Please click \"Connect Telegram\" again in Uptrack.")
+        {:error, :state_expired}
+
+      {:error, reason} ->
+        Logger.error("TelegramBot connect failed: #{inspect(reason)}")
+        TelegramBot.send_message(chat_id, "❌ Something went wrong. Please try again.")
+        {:error, reason}
     end
   end
 
