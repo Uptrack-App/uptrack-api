@@ -141,6 +141,64 @@ defmodule Uptrack.Metrics.Reader do
     {:ok, Map.new(results)}
   end
 
+  @doc """
+  Queries recent check data points for a monitor.
+
+  Returns a list of check-like maps for display in the recent checks table.
+  """
+  def get_recent_checks(monitor_id, limit \\ 20) do
+    now = DateTime.utc_now()
+    # Look back far enough to find `limit` data points at 30s intervals
+    start_time = DateTime.add(now, -limit * 60, :second)
+
+    status_query = "uptrack_monitor_status{monitor_id=\"#{monitor_id}\"}"
+    rt_query = "uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}"
+    http_query = "uptrack_monitor_http_status{monitor_id=\"#{monitor_id}\"}"
+
+    with {:ok, status_points} <- query_range(status_query, start_time, now, "30s"),
+         {:ok, rt_points} <- query_range(rt_query, start_time, now, "30s"),
+         {:ok, http_points} <- query_range(http_query, start_time, now, "30s") do
+      statuses = extract_time_values(status_points)
+      response_times = extract_time_values(rt_points)
+      http_statuses = extract_time_values(http_points)
+
+      checks =
+        statuses
+        |> Enum.map(fn {ts, status_val} ->
+          %{
+            status: if(status_val >= 0.5, do: "up", else: "down"),
+            response_time: Map.get(response_times, ts, 0) |> trunc(),
+            status_code: Map.get(http_statuses, ts, 0) |> trunc(),
+            checked_at: DateTime.from_unix!(trunc(ts))
+          }
+        end)
+        |> Enum.sort_by(& &1.checked_at, {:desc, DateTime})
+        |> Enum.take(limit)
+
+      {:ok, checks}
+    end
+  end
+
+  @doc """
+  Gets the latest check status for a monitor.
+
+  Returns `{:ok, %{status, response_time, checked_at}}` or `{:ok, nil}`.
+  """
+  def get_latest_check(monitor_id) do
+    case get_recent_checks(monitor_id, 1) do
+      {:ok, [check | _]} -> {:ok, check}
+      {:ok, []} -> {:ok, nil}
+      {:error, _} -> {:ok, nil}
+    end
+  end
+
+  defp extract_time_values(results) do
+    results
+    |> List.first(%{})
+    |> Map.get("values", [])
+    |> Map.new(fn [ts, val] -> {ts, parse_float(val)} end)
+  end
+
   defp query_instant(query, time) do
     case vmselect_url() do
       nil ->

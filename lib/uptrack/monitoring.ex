@@ -75,12 +75,6 @@ defmodule Uptrack.Monitoring do
     search = Map.get(params, "search", "")
     offset = (page - 1) * per_page
 
-    latest_check_query =
-      from(c in MonitorCheck,
-        distinct: c.monitor_id,
-        order_by: [desc: c.checked_at]
-      )
-
     base_query =
       Monitor
       |> where([m], m.organization_id == ^organization_id)
@@ -100,7 +94,6 @@ defmodule Uptrack.Monitoring do
       base_query
       |> limit(^per_page)
       |> offset(^offset)
-      |> preload(monitor_checks: ^latest_check_query)
       |> AppRepo.all()
 
     %{monitors: monitors, total: total, page: page, per_page: per_page}
@@ -182,11 +175,8 @@ defmodule Uptrack.Monitoring do
   Gets a monitor by organization. Returns nil if not found.
   """
   def get_organization_monitor(organization_id, monitor_id) do
-    latest_check_query = from(mc in MonitorCheck, order_by: [desc: mc.checked_at], limit: 1)
-
     Monitor
     |> where([m], m.organization_id == ^organization_id and m.id == ^monitor_id)
-    |> preload(monitor_checks: ^latest_check_query)
     |> AppRepo.one()
   end
 
