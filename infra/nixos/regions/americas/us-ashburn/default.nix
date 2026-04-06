@@ -1,6 +1,6 @@
 # RackNerd US Ashburn - Check Worker
 # worker1-us-ashburn: 204.152.220.248
-# Tailscale: 100.69.152.35
+# Tailscale: 100.64.10.1
 # Role: Multi-region check worker (no DB, no Phoenix)
 { config, pkgs, lib, ... }:
 
