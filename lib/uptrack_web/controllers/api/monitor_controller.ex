@@ -169,6 +169,22 @@ defmodule UptrackWeb.Api.MonitorController do
   end
 
   @doc """
+  Lists available check regions.
+  GET /api/regions
+  """
+  def regions(conn, _params) do
+    import Ecto.Query
+    regions =
+      Uptrack.Monitoring.Region
+      |> where([r], r.is_active == true)
+      |> order_by([r], asc: r.code)
+      |> Uptrack.AppRepo.all()
+      |> Enum.map(fn r -> %{id: r.id, code: r.code, name: r.name} end)
+
+    json(conn, %{data: regions})
+  end
+
+  @doc """
   Lists recent checks for a monitor.
   GET /api/monitors/:monitor_id/checks
   """
