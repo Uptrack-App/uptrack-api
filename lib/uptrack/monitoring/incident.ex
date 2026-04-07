@@ -18,6 +18,8 @@ defmodule Uptrack.Monitoring.Incident do
     field :cause, :string
     field :acknowledged_at, :utc_datetime
     field :acknowledged_by_id, Uniq.UUID
+    field :last_reminder_sent_at, :utc_datetime
+    field :reminder_count, :integer, default: 0
 
     belongs_to :organization, Organization
     belongs_to :monitor, Monitor
@@ -39,6 +41,8 @@ defmodule Uptrack.Monitoring.Incident do
       :cause,
       :acknowledged_at,
       :acknowledged_by_id,
+      :last_reminder_sent_at,
+      :reminder_count,
       :organization_id,
       :monitor_id,
       :first_check_id,

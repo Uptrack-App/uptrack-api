@@ -31,6 +31,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Monitor, CheckExecutor, CheckWorker, Consensus, MonitorRegistry, Events}
+  alias Uptrack.Alerting.IncidentReminder
 
   require Logger
 
@@ -274,7 +275,7 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       end)
     end
 
-    %{state | consecutive_failures: 0, alerted_this_streak: false}
+    %{state | consecutive_failures: 0, alerted_this_streak: false, incident_id: nil}
   end
 
   defp evaluate_result(%{last_check: %{status: "up"}} = state) do
@@ -317,6 +318,47 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   defp record_result(state), do: state
 
   # Home node check — only the assigned node fires alerts (pure check, impure action)
+  #
+  # Already alerted this streak: consider firing a "still down" reminder if
+  # the monitor has reminders enabled and the next reminder is due.
+  defp maybe_trigger_alert(
+         %{
+           consecutive_failures: f,
+           confirmation_threshold: t,
+           alerted_this_streak: true,
+           last_check: %{status: "down"}
+         } = state
+       )
+       when f >= t do
+    case state.monitor.reminder_interval_minutes do
+      nil ->
+        state
+
+      _interval ->
+        app_nodes =
+          [node() | Node.list()]
+          |> Enum.filter(fn n -> n |> to_string() |> String.starts_with?("uptrack@") end)
+          |> Enum.sort()
+
+        if Consensus.home_node?(state.monitor_id, app_nodes) do
+          monitor_id = state.monitor_id
+          monitor = state.monitor
+
+          Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+            case Monitoring.get_ongoing_incident(monitor_id) do
+              nil ->
+                :ok
+
+              incident ->
+                IncidentReminder.maybe_send(incident.id, monitor)
+            end
+          end)
+        end
+
+        state
+    end
+  end
+
   defp maybe_trigger_alert(%{consecutive_failures: f, confirmation_threshold: t, alerted_this_streak: true} = state) when f >= t do
     state
   end

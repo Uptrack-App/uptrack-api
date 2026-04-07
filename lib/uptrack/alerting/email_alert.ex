@@ -116,6 +116,111 @@ defmodule Uptrack.Alerting.EmailAlert do
   end
 
   @doc """
+  Sends a "still down" reminder email.
+  """
+  def send_incident_reminder(
+        %AlertChannel{} = channel,
+        %Incident{} = incident,
+        %Monitor{} = monitor,
+        _user \\ nil
+      ) do
+    recipient_email = channel.config["email"]
+
+    if is_nil(recipient_email) or recipient_email == "" do
+      {:error, "No email address configured"}
+    else
+      elapsed = format_duration(DateTime.diff(DateTime.utc_now(), incident.started_at))
+
+      email =
+        new()
+        |> to(recipient_email)
+        |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
+        |> subject("[Still Down] #{monitor.name} — down for #{elapsed}")
+        |> html_body(reminder_html_body(incident, monitor, elapsed))
+        |> text_body(reminder_text_body(incident, monitor, elapsed))
+
+      case Mailer.deliver(email) do
+        {:ok, _metadata} ->
+          Logger.info("Reminder email sent to #{recipient_email} for monitor #{monitor.name}")
+          {:ok, recipient_email}
+
+        {:error, reason} ->
+          Logger.error("Failed to send reminder email to #{recipient_email}: #{inspect(reason)}")
+          {:error, reason}
+      end
+    end
+  end
+
+  defp reminder_html_body(incident, monitor, elapsed) do
+    """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Still Down: #{monitor.name}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: #f59e0b; color: white; padding: 24px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 24px; }
+        .alert-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 16px; margin: 16px 0; }
+        .info-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        .info-table td { padding: 8px 0; border-bottom: 1px solid #e5e5e5; }
+        .info-table td:first-child { font-weight: 600; width: 140px; }
+        .footer { background: #f9f9f9; padding: 16px 24px; font-size: 14px; color: #666; text-align: center; }
+        .btn { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header"><h1>⏰ Still Down</h1></div>
+        <div class="content">
+          <div class="alert-box">
+            <h2 style="margin-top: 0; color: #f59e0b;">#{monitor.name} is still down</h2>
+            <p>This is a reminder — your monitor has been down for <strong>#{elapsed}</strong> and has not yet recovered.</p>
+          </div>
+          <table class="info-table">
+            <tr><td>Monitor:</td><td>#{monitor.name}</td></tr>
+            <tr><td>URL:</td><td>#{monitor.url}</td></tr>
+            <tr><td>Down for:</td><td>#{elapsed}</td></tr>
+            <tr><td>Incident Started:</td><td>#{Calendar.strftime(incident.started_at, "%B %d, %Y at %I:%M %p UTC")}</td></tr>
+          </table>
+          <a href="#{app_url()}/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
+          <p style="margin-top: 24px; color: #666; font-size: 13px;">
+            You're receiving this because you enabled still-down reminders for this monitor. Reminders stop when the monitor recovers or after 48 reminders.
+          </p>
+        </div>
+        <div class="footer"><p>Uptrack Monitoring</p></div>
+      </div>
+    </body>
+    </html>
+    """
+  end
+
+  defp reminder_text_body(incident, monitor, elapsed) do
+    """
+    ⏰ STILL DOWN: #{monitor.name}
+
+    This is a reminder — your monitor has been down for #{elapsed} and has not yet recovered.
+
+    Monitor Details:
+    ---------------
+    Name: #{monitor.name}
+    URL: #{monitor.url}
+    Down for: #{elapsed}
+    Incident Started: #{Calendar.strftime(incident.started_at, "%B %d, %Y at %I:%M %p UTC")}
+
+    View details: #{app_url()}/dashboard/monitors/#{monitor.id}
+
+    You're receiving this because you enabled still-down reminders for this monitor. Reminders stop when the monitor recovers or after 48 reminders.
+
+    ---
+    Uptrack Monitoring
+    """
+  end
+
+  @doc """
   Sends a test alert email to verify the email channel is configured correctly.
   """
   def send_test_alert(%AlertChannel{} = channel) do

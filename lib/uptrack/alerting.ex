@@ -107,6 +107,65 @@ defmodule Uptrack.Alerting do
   end
 
   @doc """
+  Sends a "still down" reminder for an open incident through every active
+  alert channel that passes the standard gates (user prefs, quiet hours,
+  per-channel monitor toggles).
+  """
+  def send_incident_reminder(%Incident{} = incident, %Monitor{} = monitor) do
+    Logger.info("Sending still-down reminder for incident #{incident.id} on monitor #{monitor.name}")
+
+    user = AppRepo.get!(User, monitor.user_id)
+
+    cond do
+      not User.should_notify?(user, :monitor_down) ->
+        Logger.info("User #{user.id} has disabled monitor down notifications — skipping reminder")
+        [{:skipped_user_preferences, user.id}]
+
+      in_quiet_hours?(user) ->
+        Logger.info("Skipping reminder for incident #{incident.id} due to quiet hours")
+        [{:skipped_quiet_hours, user.id}]
+
+      true ->
+        alert_channels = list_active_alert_channels(monitor.organization_id)
+        monitor_alert_contacts = if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
+
+        results =
+          Enum.map(alert_channels, fn channel ->
+            if should_send_alert?(channel, monitor_alert_contacts, user) do
+              enqueue_reminder(channel, incident, monitor)
+            else
+              {:skipped, channel.id}
+            end
+          end)
+
+        successful = Enum.count(results, &match?({:ok, _}, &1))
+        total = length(results)
+        Logger.info("Enqueued #{successful}/#{total} reminder deliveries for incident #{incident.id}")
+        results
+    end
+  end
+
+  defp enqueue_reminder(channel, incident, monitor) do
+    %{
+      channel_id: channel.id,
+      incident_id: incident.id,
+      monitor_id: monitor.id,
+      event_type: "incident_reminder"
+    }
+    |> AlertDeliveryWorker.new()
+    |> Oban.insert()
+    |> case do
+      {:ok, _job} ->
+        Logger.info("Enqueued reminder via #{channel.type} for incident #{incident.id}")
+        {:ok, :enqueued}
+
+      {:error, reason} ->
+        Logger.error("Failed to enqueue reminder: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Sends resolution notifications for a resolved incident.
   """
   def send_resolution_alerts(%Incident{} = incident, %Monitor{} = monitor) do
