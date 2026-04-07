@@ -61,7 +61,7 @@ defmodule UptrackWeb.Api.MonitorController do
     attrs =
       defaults
       |> Map.merge(%{organization_id: org.id, user_id: user.id})
-      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "monitor_type", "confirmation_threshold"]) |> atomize_keys())
+      |> Map.merge(params |> Map.take(["name", "interval", "timeout", "monitor_type", "confirmation_threshold", "reminder_interval_minutes"]) |> atomize_keys())
       |> Map.update(:settings, %{}, fn default_settings ->
         default_settings |> Map.merge(type_settings) |> Map.merge(user_settings)
       end)

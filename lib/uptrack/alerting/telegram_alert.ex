@@ -44,6 +44,24 @@ defmodule Uptrack.Alerting.TelegramAlert do
   end
 
   @doc """
+  Sends a "still down" reminder to Telegram.
+  """
+  def send_incident_reminder(
+        %AlertChannel{} = channel,
+        %Incident{} = incident,
+        %Monitor{} = monitor
+      ) do
+    case get_config(channel) do
+      {:ok, bot_token, chat_id} ->
+        message = build_reminder_message(incident, monitor)
+        send_telegram_message(bot_token, chat_id, message)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Sends a test alert to verify the Telegram bot is configured correctly.
   """
   def send_test_alert(%AlertChannel{} = channel) do
@@ -116,6 +134,23 @@ defmodule Uptrack.Alerting.TelegramAlert do
     *Resolved:* #{format_datetime(incident.resolved_at)}
 
     \\#uptrack \\#resolved
+    """
+  end
+
+  defp build_reminder_message(incident, monitor) do
+    name = escape_markdown(monitor.name)
+    url = escape_markdown(monitor.url)
+    elapsed = DateTime.diff(DateTime.utc_now(), incident.started_at)
+
+    """
+    ⏰ *STILL DOWN*
+
+    *Monitor:* #{name}
+    *URL:* `#{url}`
+    *Down for:* #{format_duration(elapsed)}
+    *Started:* #{format_datetime(incident.started_at)}
+
+    \\#uptrack \\#stilldown
     """
   end
 

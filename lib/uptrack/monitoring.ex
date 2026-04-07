@@ -879,6 +879,15 @@ defmodule Uptrack.Monitoring do
   def get_incident!(id), do: AppRepo.get!(Incident, id)
 
   @doc """
+  Updates an incident with the given attributes.
+  """
+  def update_incident(%Incident{} = incident, attrs) do
+    incident
+    |> Incident.changeset(attrs)
+    |> AppRepo.update()
+  end
+
+  @doc """
   Gets a single incident with preloaded associations.
   """
   def get_incident_with_updates!(id) do

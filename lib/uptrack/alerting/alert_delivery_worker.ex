@@ -98,4 +98,17 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
         {:error, :unsupported_type}
     end
   end
+
+  defp dispatch_alert(channel, incident, monitor, user, "incident_reminder") do
+    case channel.type do
+      "email" -> EmailAlert.send_incident_reminder(channel, incident, monitor, user)
+      "slack" -> SlackAlert.send_incident_reminder(channel, incident, monitor)
+      "discord" -> DiscordAlert.send_incident_reminder(channel, incident, monitor)
+      "telegram" -> TelegramAlert.send_incident_reminder(channel, incident, monitor)
+
+      type ->
+        Logger.error("Unsupported alert channel type for reminder: #{type}")
+        {:error, :unsupported_type}
+    end
+  end
 end

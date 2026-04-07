@@ -39,6 +39,24 @@ defmodule Uptrack.Alerting.SlackAlert do
   end
 
   @doc """
+  Sends a "still down" reminder to Slack.
+  """
+  def send_incident_reminder(
+        %AlertChannel{} = channel,
+        %Incident{} = incident,
+        %Monitor{} = monitor
+      ) do
+    webhook_url = channel.config["webhook_url"]
+
+    if is_nil(webhook_url) or webhook_url == "" do
+      {:error, "No Slack webhook URL configured"}
+    else
+      payload = build_reminder_payload(incident, monitor)
+      send_slack_message(webhook_url, payload)
+    end
+  end
+
+  @doc """
   Sends a test alert to verify the Slack webhook is configured correctly.
   """
   def send_test_alert(%AlertChannel{} = channel) do
@@ -153,6 +171,41 @@ defmodule Uptrack.Alerting.SlackAlert do
         }
       ]
     }
+  end
+
+  defp build_reminder_payload(incident, monitor) do
+    elapsed = elapsed_since(incident.started_at)
+
+    %{
+      text: "⏰ Still Down: #{monitor.name} has been down for #{elapsed}",
+      attachments: [
+        %{
+          color: "warning",
+          fields: [
+            %{title: "Monitor", value: monitor.name, short: true},
+            %{title: "URL", value: monitor.url, short: true},
+            %{title: "Down for", value: elapsed, short: true},
+            %{
+              title: "Started",
+              value: Calendar.strftime(incident.started_at, "%B %d, %Y at %I:%M %p UTC"),
+              short: true
+            }
+          ],
+          actions: [
+            %{
+              type: "button",
+              text: "View Details",
+              url: "#{app_url()}/dashboard/monitors/#{monitor.id}"
+            }
+          ]
+        }
+      ]
+    }
+  end
+
+  defp elapsed_since(started_at) do
+    seconds = DateTime.diff(DateTime.utc_now(), started_at)
+    format_duration(seconds)
   end
 
   defp send_slack_message(webhook_url, payload) do

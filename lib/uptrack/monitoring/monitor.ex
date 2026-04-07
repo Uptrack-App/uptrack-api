@@ -26,6 +26,7 @@ defmodule Uptrack.Monitoring.Monitor do
     field :confirmation_threshold, :integer, default: 2
     field :uptime_percentage, :float, virtual: true
     field :escalation_policy_id, Uniq.UUID
+    field :reminder_interval_minutes, :integer
 
     belongs_to :organization, Organization
     belongs_to :user, User
@@ -50,10 +51,14 @@ defmodule Uptrack.Monitoring.Monitor do
       :settings,
       :confirmation_threshold,
       :escalation_policy_id,
+      :reminder_interval_minutes,
       :organization_id,
       :user_id
     ])
     |> validate_required([:name, :url, :organization_id, :user_id])
+    |> validate_inclusion(:reminder_interval_minutes, [15, 30, 60, 180, 360],
+      message: "must be one of: 15, 30, 60, 180, 360"
+    )
     |> validate_length(:name, max: 100)
     |> validate_change(:name, fn :name, name ->
       if String.contains?(name, "://"), do: [name: "must not contain a URL"], else: []
