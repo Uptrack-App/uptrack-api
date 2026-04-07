@@ -42,6 +42,24 @@ defmodule Uptrack.Alerting.DiscordAlert do
   end
 
   @doc """
+  Sends a "still down" reminder to Discord.
+  """
+  def send_incident_reminder(
+        %AlertChannel{} = channel,
+        %Incident{} = incident,
+        %Monitor{} = monitor
+      ) do
+    webhook_url = channel.config["webhook_url"]
+
+    if is_nil(webhook_url) or webhook_url == "" do
+      {:error, "No Discord webhook URL configured"}
+    else
+      payload = build_reminder_payload(incident, monitor)
+      send_discord_message(webhook_url, payload)
+    end
+  end
+
+  @doc """
   Sends a test alert to verify the Discord webhook is configured correctly.
   """
   def send_test_alert(%AlertChannel{} = channel) do
@@ -110,6 +128,29 @@ defmodule Uptrack.Alerting.DiscordAlert do
           footer: %{
             text: "Uptrack Monitoring"
           }
+        }
+      ]
+    }
+  end
+
+  defp build_reminder_payload(incident, monitor) do
+    elapsed = format_duration(DateTime.diff(DateTime.utc_now(), incident.started_at))
+
+    %{
+      content: "⏰ Still Down: #{monitor.name} has been down for #{elapsed}",
+      embeds: [
+        %{
+          title: "Still Down",
+          description: "#{monitor.name} is still not responding",
+          color: 16_098_851,  # Amber/warning
+          fields: [
+            %{name: "Monitor", value: monitor.name, inline: true},
+            %{name: "URL", value: monitor.url, inline: true},
+            %{name: "Down for", value: elapsed, inline: true},
+            %{name: "Started", value: format_datetime(incident.started_at), inline: false}
+          ],
+          timestamp: DateTime.to_iso8601(DateTime.utc_now()),
+          footer: %{text: "Uptrack Monitoring"}
         }
       ]
     }

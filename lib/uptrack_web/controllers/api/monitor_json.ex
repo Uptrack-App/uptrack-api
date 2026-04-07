@@ -66,6 +66,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
       settings: monitor.settings,
       description: monitor.description,
       confirmation_threshold: monitor.confirmation_threshold,
+      reminder_interval_minutes: monitor.reminder_interval_minutes,
       escalation_policy_id: monitor.escalation_policy_id,
       alert_contacts: monitor.alert_contacts || %{},
       created_at: monitor.inserted_at,
