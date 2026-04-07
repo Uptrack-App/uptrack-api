@@ -126,7 +126,16 @@ if config_env() == :prod do
     config :uptrack,
       slack_client_id: slack_id,
       slack_client_secret: System.get_env("SLACK_CLIENT_SECRET"),
-      slack_signing_secret: System.get_env("SLACK_SIGNING_SECRET")
+      slack_signing_secret: System.get_env("SLACK_SIGNING_SECRET"),
+      slack_redirect_uri: System.get_env("SLACK_REDIRECT_URI")
+  end
+
+  # Discord OAuth
+  if discord_id = System.get_env("DISCORD_CLIENT_ID") do
+    config :uptrack,
+      discord_client_id: discord_id,
+      discord_client_secret: System.get_env("DISCORD_CLIENT_SECRET"),
+      discord_redirect_uri: System.get_env("DISCORD_REDIRECT_URI")
   end
 
   # Telegram bot (optional — Connect Telegram disabled if not set)
