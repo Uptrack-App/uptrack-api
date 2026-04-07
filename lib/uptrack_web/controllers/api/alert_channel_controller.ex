@@ -63,11 +63,11 @@ defmodule UptrackWeb.Api.AlertChannelController do
   defp check_channel_type_allowed(org, channel_type) do
     allowed = Billing.allowed_channel_types(org.plan)
 
-    if allowed == :all or channel_type in allowed do
+    if channel_type in allowed do
       :ok
     else
       {:error, :plan_limit,
-       "#{channel_type} alert channels are not available on the #{String.capitalize(org.plan)} plan. Upgrade to unlock more channel types."}
+       "#{channel_type} is not a supported alert channel type. Supported: #{Enum.join(allowed, ", ")}."}
     end
   end
 
