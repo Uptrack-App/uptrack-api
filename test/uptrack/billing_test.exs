@@ -70,7 +70,6 @@ defmodule Uptrack.BillingTest do
       assert limits.min_interval == 30
       assert limits.fast_monitors == :unlimited
       assert limits.retention_days == 1825
-      assert limits.sms_alerts == 200
       assert limits.subscribers == 10_000
     end
 
@@ -171,25 +170,22 @@ defmodule Uptrack.BillingTest do
   end
 
   describe "allowed_channel_types/1" do
-    test "free plan allows email, slack, and discord" do
-      types = Billing.allowed_channel_types("free")
-      assert "email" in types
-      assert "slack" in types
-      assert "discord" in types
-      refute "telegram" in types
+    test "all plans allow exactly the 4 supported types" do
+      for plan <- ["free", "pro", "team", "business"] do
+        types = Billing.allowed_channel_types(plan)
+        assert types == ["email", "slack", "discord", "telegram"]
+      end
     end
 
-    test "pro plan allows common channels" do
-      types = Billing.allowed_channel_types("pro")
-      assert "email" in types
-      assert "slack" in types
-      assert "discord" in types
-      assert "webhook" in types
-    end
-
-    test "team and business plans allow all channels" do
-      assert Billing.allowed_channel_types("team") == :all
-      assert Billing.allowed_channel_types("business") == :all
+    test "rejects unsupported types regardless of plan" do
+      for plan <- ["free", "pro", "team", "business"] do
+        types = Billing.allowed_channel_types(plan)
+        refute "webhook" in types
+        refute "sms" in types
+        refute "phone" in types
+        refute "teams" in types
+        refute "mattermost" in types
+      end
     end
   end
 

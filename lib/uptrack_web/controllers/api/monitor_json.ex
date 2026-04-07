@@ -4,7 +4,6 @@ defmodule UptrackWeb.Api.MonitorJSON do
   """
 
   alias Uptrack.Monitoring.{Monitor, MonitorCheck}
-  alias Uptrack.Metrics.Reader
 
   def index(%{result: %{monitors: monitors, total: total, page: page, per_page: per_page}}) do
     # Read from Nebulex cache (populated by MonitorProcess on every check)

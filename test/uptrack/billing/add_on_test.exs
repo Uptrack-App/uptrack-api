@@ -4,13 +4,12 @@ defmodule Uptrack.Billing.AddOnTest do
   alias Uptrack.Billing.AddOn
 
   describe "valid_types/0" do
-    test "returns 5 add-on types" do
+    test "returns 4 add-on types" do
       types = AddOn.valid_types()
-      assert length(types) == 5
+      assert length(types) == 4
       assert "extra_monitors" in types
       assert "extra_fast_slots" in types
       assert "extra_teammates" in types
-      assert "extra_sms" in types
       assert "extra_subscribers" in types
     end
   end
@@ -20,7 +19,6 @@ defmodule Uptrack.Billing.AddOnTest do
       assert AddOn.unit_price("extra_monitors") == 20
       assert AddOn.unit_price("extra_fast_slots") == 100
       assert AddOn.unit_price("extra_teammates") == 500
-      assert AddOn.unit_price("extra_sms") == 10
       assert AddOn.unit_price("extra_subscribers") == 1
     end
 

@@ -31,7 +31,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Monitor, CheckExecutor, CheckWorker, Consensus, MonitorRegistry, Events}
-  alias Uptrack.Metrics.Writer, as: MetricsWriter
 
   require Logger
 
