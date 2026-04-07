@@ -14,26 +14,26 @@ defmodule Uptrack.Billing.Plans do
   @plan_limits %{
     "free" => %{
       monitors: 50, alert_channels: 3, status_pages: 5, team_members: 2,
-      min_interval: 30, fast_monitors: 10, quick_monitors: :unlimited, webhooks_per_monitor: 1,
-      regions: 3, retention_days: 30, sms_alerts: 0, subscribers: 100,
+      min_interval: 30, fast_monitors: 10, quick_monitors: :unlimited,
+      regions: 3, retention_days: 30, subscribers: 100,
       notify_only_seats: 0
     },
     "pro" => %{
       monitors: 50, alert_channels: 5, status_pages: 5, team_members: 3,
-      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 2,
-      regions: 5, retention_days: 730, sms_alerts: 30, subscribers: 1_000,
+      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited,
+      regions: 5, retention_days: 730, subscribers: 1_000,
       notify_only_seats: 1
     },
     "team" => %{
       monitors: 200, alert_channels: :unlimited, status_pages: :unlimited, team_members: 5,
-      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 5,
-      regions: 15, retention_days: 730, sms_alerts: 100, subscribers: 5_000,
+      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited,
+      regions: 15, retention_days: 730, subscribers: 5_000,
       notify_only_seats: 3
     },
     "business" => %{
       monitors: 1000, alert_channels: :unlimited, status_pages: :unlimited, team_members: 15,
-      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited, webhooks_per_monitor: 10,
-      regions: 15, retention_days: 1825, sms_alerts: 200, subscribers: 10_000,
+      min_interval: 30, fast_monitors: :unlimited, quick_monitors: :unlimited,
+      regions: 15, retention_days: 1825, subscribers: 10_000,
       notify_only_seats: 5
     }
   }
@@ -53,7 +53,7 @@ defmodule Uptrack.Billing.Plans do
   @business_features ~w(whitelabel custom_email_sender sso rbac priority_support)a
   @team_features ~w(status_page_customization custom_domain password_protection
                      incident_updates maintenance_scheduling search_engine_optout
-                     weekly_reports mattermost)a
+                     weekly_reports)a
 
   @doc """
   Checks if the organization's plan includes a specific feature.
@@ -70,10 +70,10 @@ defmodule Uptrack.Billing.Plans do
   def can_use_feature?(_org, _feature), do: true
 
   @doc """
-  Returns the list of allowed alert channel types for a plan.
+  Returns the list of allowed alert channel types for any plan.
+  All plans get the same 4 channels.
   """
-  def allowed_channel_types("free"), do: ["email", "slack", "discord", "telegram", "ms_teams", "webhook", "mattermost"]
-  def allowed_channel_types(_plan), do: :all
+  def allowed_channel_types(_plan), do: ["email", "slack", "discord", "telegram"]
 
   # --- Plan enforcement (pure — callers provide counts) ---
 

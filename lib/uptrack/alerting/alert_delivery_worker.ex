@@ -5,6 +5,8 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
   Each alert channel delivery is enqueued as a separate job, allowing
   independent retries with exponential backoff. Failed deliveries retry
   up to 5 times over ~30 minutes.
+
+  Supported channel types: email, slack, discord, telegram.
   """
 
   use Oban.Worker,
@@ -18,16 +20,10 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
     SlackAlert,
     DiscordAlert,
     TelegramAlert,
-    TeamsAlert,
-    TelnyxAlert,
-    WebhookAlert,
-    MattermostAlert,
-    QuotaTracker,
     DeliveryTracker
   }
 
   alias Uptrack.Monitoring
-  alias Uptrack.Organizations
   alias Uptrack.Accounts
   require Logger
 
@@ -83,14 +79,10 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "slack" -> SlackAlert.send_incident_alert(channel, incident, monitor)
       "discord" -> DiscordAlert.send_incident_alert(channel, incident, monitor)
       "telegram" -> TelegramAlert.send_incident_alert(channel, incident, monitor)
-      "teams" -> TeamsAlert.send_incident_alert(channel, incident, monitor)
-      "webhook" -> WebhookAlert.send_incident_alert(channel, incident, monitor)
-      "sms" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_sms_incident_alert(channel, incident, monitor) end)
-      "phone" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_phone_incident_alert(channel, incident, monitor) end)
-      "mattermost" -> MattermostAlert.send_incident_alert(channel, incident, monitor)
+
       type ->
-        Logger.error("Unknown alert channel type: #{type}")
-        {:error, :unknown_type}
+        Logger.error("Unsupported alert channel type: #{type}")
+        {:error, :unsupported_type}
     end
   end
 
@@ -100,32 +92,10 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       "slack" -> SlackAlert.send_resolution_alert(channel, incident, monitor)
       "discord" -> DiscordAlert.send_resolution_alert(channel, incident, monitor)
       "telegram" -> TelegramAlert.send_resolution_alert(channel, incident, monitor)
-      "teams" -> TeamsAlert.send_resolution_alert(channel, incident, monitor)
-      "webhook" -> WebhookAlert.send_resolution_alert(channel, incident, monitor)
-      "sms" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_sms_resolution_alert(channel, incident, monitor) end)
-      "phone" -> with_sms_quota(monitor.organization_id, fn -> TelnyxAlert.send_phone_resolution_alert(channel, incident, monitor) end)
-      "mattermost" -> MattermostAlert.send_resolution_alert(channel, incident, monitor)
+
       type ->
-        Logger.error("Unknown alert channel type: #{type}")
-        {:error, :unknown_type}
-    end
-  end
-
-  defp with_sms_quota(organization_id, send_fn) do
-    case Organizations.get_organization(organization_id) do
-      nil ->
-        Logger.error("SMS quota check: organization #{organization_id} not found")
-        {:error, :organization_not_found}
-
-      org ->
-        case QuotaTracker.check_and_increment(organization_id, org.plan) do
-          :ok ->
-            send_fn.()
-
-          {:error, :quota_exhausted} ->
-            Logger.warning("SMS/call quota exhausted for org #{organization_id}, skipping delivery")
-            {:error, :quota_exhausted}
-        end
+        Logger.error("Unsupported alert channel type: #{type}")
+        {:error, :unsupported_type}
     end
   end
 end

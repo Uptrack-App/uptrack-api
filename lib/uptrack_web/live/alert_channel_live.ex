@@ -107,19 +107,6 @@ defmodule UptrackWeb.AlertChannelLive do
             put_flash(socket, :error, "Failed to send test Slack message: #{reason}")
         end
 
-      "webhook" ->
-        case Uptrack.Alerting.WebhookAlert.send_incident_alert(
-               alert_channel,
-               test_incident,
-               test_monitor
-             ) do
-          {:ok, _} ->
-            put_flash(socket, :info, "Test webhook sent successfully!")
-
-          {:error, reason} ->
-            put_flash(socket, :error, "Failed to send test webhook: #{reason}")
-        end
-
       _ ->
         put_flash(socket, :error, "Unknown alert channel type")
     end

@@ -6,7 +6,7 @@ defmodule Uptrack.Billing.AddOn do
   @foreign_key_type Uniq.UUID
   @schema_prefix "app"
 
-  @valid_types ~w(extra_monitors extra_fast_slots extra_teammates extra_sms extra_subscribers)
+  @valid_types ~w(extra_monitors extra_fast_slots extra_teammates extra_subscribers)
 
   schema "add_ons" do
     field :type, :string
@@ -32,7 +32,6 @@ defmodule Uptrack.Billing.AddOn do
   def unit_price("extra_monitors"), do: 20        # $0.20/mo
   def unit_price("extra_fast_slots"), do: 100     # $1.00/mo
   def unit_price("extra_teammates"), do: 500      # $5.00/mo
-  def unit_price("extra_sms"), do: 10             # $0.10/ea
   def unit_price("extra_subscribers"), do: 1      # $0.01/mo
   def unit_price(_), do: 0
 end

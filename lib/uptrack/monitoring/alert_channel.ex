@@ -5,7 +5,7 @@ defmodule Uptrack.Monitoring.AlertChannel do
   alias Uptrack.Accounts.User
   alias Uptrack.Organizations.Organization
 
-  @types ~w(email slack discord telegram teams webhook sms phone mattermost)
+  @types ~w(email slack discord telegram)
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
   @foreign_key_type Uniq.UUID
@@ -52,19 +52,6 @@ defmodule Uptrack.Monitoring.AlertChannel do
           add_error(changeset, :config, "webhook_url must be a valid Slack webhook URL")
         end
 
-      {"webhook", %{"url" => url} = webhook_config} when is_binary(url) ->
-        case URI.parse(url) do
-          %URI{scheme: scheme, host: host}
-          when scheme in ["http", "https"] and not is_nil(host) ->
-            # Validate optional secret and headers
-            changeset
-            |> validate_webhook_secret(webhook_config["secret"])
-            |> validate_webhook_headers(webhook_config["headers"])
-
-          _ ->
-            add_error(changeset, :config, "url must be a valid HTTP or HTTPS URL")
-        end
-
       {"discord", %{"webhook_url" => url}} when is_binary(url) ->
         if String.starts_with?(url, "https://discord.com/api/webhooks/") ||
              String.starts_with?(url, "https://discordapp.com/api/webhooks/") do
@@ -77,26 +64,6 @@ defmodule Uptrack.Monitoring.AlertChannel do
       when is_binary(token) and (is_binary(chat_id) or is_integer(chat_id)) ->
         changeset
 
-      {"teams", %{"webhook_url" => url}} when is_binary(url) ->
-        if String.contains?(url, ".webhook.office.com/") do
-          changeset
-        else
-          add_error(changeset, :config, "webhook_url must be a valid Microsoft Teams webhook URL")
-        end
-
-      {"sms", %{"phone_number" => phone}} when is_binary(phone) ->
-        changeset
-
-      {"phone", %{"phone_number" => phone}} when is_binary(phone) ->
-        changeset
-
-      {"mattermost", %{"webhook_url" => url}} when is_binary(url) ->
-        if String.starts_with?(url, "http") do
-          changeset
-        else
-          add_error(changeset, :config, "webhook_url must be a valid Mattermost webhook URL")
-        end
-
       {nil, _} ->
         changeset
 
@@ -106,34 +73,4 @@ defmodule Uptrack.Monitoring.AlertChannel do
   end
 
   def types, do: @types
-
-  # Webhook-specific validations
-
-  defp validate_webhook_secret(changeset, nil), do: changeset
-  defp validate_webhook_secret(changeset, secret) when is_binary(secret) do
-    if String.length(secret) < 16 do
-      add_error(changeset, :config, "webhook secret must be at least 16 characters for security")
-    else
-      changeset
-    end
-  end
-  defp validate_webhook_secret(changeset, _), do: changeset
-
-  defp validate_webhook_headers(changeset, nil), do: changeset
-  defp validate_webhook_headers(changeset, headers) when is_map(headers) do
-    # Validate headers is a map of string keys to string values
-    invalid_headers =
-      Enum.filter(headers, fn {key, value} ->
-        not (is_binary(key) and is_binary(value))
-      end)
-
-    if Enum.empty?(invalid_headers) do
-      changeset
-    else
-      add_error(changeset, :config, "webhook headers must be a map of string keys to string values")
-    end
-  end
-  defp validate_webhook_headers(changeset, _) do
-    add_error(changeset, :config, "webhook headers must be a map")
-  end
 end

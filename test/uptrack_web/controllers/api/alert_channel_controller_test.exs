@@ -59,16 +59,16 @@ defmodule UptrackWeb.Api.AlertChannelControllerTest do
       assert response["data"]["type"] == "slack"
     end
 
-    test "rejects telegram channel on free plan", %{conn: conn} do
+    test "rejects unsupported channel types", %{conn: conn} do
       conn =
         post(conn, "/api/alert-channels", %{
-          "name" => "Telegram",
-          "type" => "telegram",
-          "config" => %{"bot_token" => "123:ABC", "chat_id" => "456"}
+          "name" => "Webhook",
+          "type" => "webhook",
+          "config" => %{"url" => "https://example.com/webhook"}
         })
 
       assert %{"error" => %{"message" => msg}} = json_response(conn, 402)
-      assert msg =~ "not available on the Free plan"
+      assert msg =~ "not a supported alert channel type"
     end
   end
 
