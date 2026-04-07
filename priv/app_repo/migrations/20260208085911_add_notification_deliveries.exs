@@ -21,5 +21,7 @@ defmodule Uptrack.AppRepo.Migrations.AddNotificationDeliveries do
     create index(:notification_deliveries, [:incident_id], prefix: :app)
     create index(:notification_deliveries, [:status], prefix: :app)
     create index(:notification_deliveries, [:organization_id, :inserted_at], prefix: :app)
+
+    execute "GRANT ALL PRIVILEGES ON TABLE app.notification_deliveries TO uptrack_app_user"
   end
 end
