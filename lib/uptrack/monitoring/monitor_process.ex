@@ -248,20 +248,33 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   # --- Check Pipeline (runs after consensus) ---
 
   defp evaluate_result(%{last_check: %{status: "up"}, alerted_this_streak: true} = state) do
-    # Was down, now up — resolve incident
-    Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-      case Monitoring.get_ongoing_incident(state.monitor_id) do
-        nil -> :ok
-        incident ->
-          case Monitoring.resolve_incident(incident) do
-            {:ok, resolved} ->
-              Events.broadcast_incident_resolved(resolved, state.monitor)
-              Uptrack.Alerting.send_resolution_alerts(resolved, state.monitor)
-              Uptrack.Alerting.notify_subscribers_resolution(resolved, state.monitor)
-            _ -> :ok
-          end
-      end
-    end)
+    # Was down, now up — resolve incident (only on home node to avoid duplicates)
+    app_nodes =
+      [node() | Node.list()]
+      |> Enum.filter(fn n -> n |> to_string() |> String.starts_with?("uptrack@") end)
+      |> Enum.sort()
+
+    if Consensus.home_node?(state.monitor_id, app_nodes) do
+      Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+        case Monitoring.get_ongoing_incident(state.monitor_id) do
+          nil ->
+            # No ongoing incident — nothing to resolve, no alerts
+            :ok
+
+          incident ->
+            case Monitoring.resolve_incident(incident) do
+              {:ok, resolved} ->
+                Events.broadcast_incident_resolved(resolved, state.monitor)
+                Uptrack.Alerting.send_resolution_alerts(resolved, state.monitor)
+                Uptrack.Alerting.notify_subscribers_resolution(resolved, state.monitor)
+
+              _ ->
+                :ok
+            end
+        end
+      end)
+    end
+
     %{state | consecutive_failures: 0, alerted_this_streak: false}
   end
 
