@@ -88,7 +88,7 @@ defmodule Uptrack.Tools.WebsiteChecker do
               Mint.HTTP.close(conn)
 
               %{
-                status: if(status && status < 400, do: "up", else: "down"),
+                status: if(status && status < 500, do: "up", else: "down"),
                 status_code: status,
                 response_time: response_time
               }
