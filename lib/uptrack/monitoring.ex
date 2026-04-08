@@ -435,6 +435,8 @@ defmodule Uptrack.Monitoring do
   def get_ongoing_incident(monitor_id) do
     Incident
     |> where([i], i.monitor_id == ^monitor_id and i.status == "ongoing")
+    |> order_by([i], asc: i.inserted_at)
+    |> limit(1)
     |> AppRepo.one()
   end
 
@@ -446,6 +448,8 @@ defmodule Uptrack.Monitoring do
     Incident
     |> where([i], i.monitor_id == ^monitor_id)
     |> where([i], i.status in ["ongoing", "investigating", "identified"])
+    |> order_by([i], asc: i.inserted_at)
+    |> limit(1)
     |> AppRepo.one()
   end
 
