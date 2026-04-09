@@ -416,14 +416,16 @@ defmodule Uptrack.Monitoring do
            incident
            |> Incident.changeset(%{acknowledged_at: now, acknowledged_by_id: user_id})
            |> AppRepo.update() do
-      create_incident_update(%{
-        incident_id: incident.id,
-        user_id: user_id,
-        status: "investigating",
-        title: "Incident acknowledged",
-        description: "Escalation paused — someone is looking into this.",
-        posted_at: now
-      })
+      if user_id do
+        create_incident_update(%{
+          incident_id: incident.id,
+          user_id: user_id,
+          status: "investigating",
+          title: "Incident acknowledged",
+          description: "Escalation paused — someone is looking into this.",
+          posted_at: now
+        })
+      end
 
       {:ok, updated}
     end

@@ -6,6 +6,7 @@ defmodule Uptrack.Alerting.TelegramAlert do
   https://core.telegram.org/bots/api
   """
 
+  alias Uptrack.Alerting.AckToken
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   require Logger
 
@@ -18,7 +19,8 @@ defmodule Uptrack.Alerting.TelegramAlert do
     case get_config(channel) do
       {:ok, bot_token, chat_id} ->
         message = build_incident_message(incident, monitor)
-        send_telegram_message(bot_token, chat_id, message)
+        keyboard = build_keyboard(incident, monitor)
+        send_telegram_message(bot_token, chat_id, message, keyboard)
 
       {:error, reason} ->
         {:error, reason}
@@ -54,7 +56,8 @@ defmodule Uptrack.Alerting.TelegramAlert do
     case get_config(channel) do
       {:ok, bot_token, chat_id} ->
         message = build_reminder_message(incident, monitor)
-        send_telegram_message(bot_token, chat_id, message)
+        keyboard = build_keyboard(incident, monitor)
+        send_telegram_message(bot_token, chat_id, message, keyboard)
 
       {:error, reason} ->
         {:error, reason}
@@ -154,15 +157,28 @@ defmodule Uptrack.Alerting.TelegramAlert do
     """
   end
 
-  defp send_telegram_message(bot_token, chat_id, message) do
+  defp build_keyboard(incident, monitor) do
+    %{
+      inline_keyboard: [
+        [
+          %{text: "✓ Acknowledge", url: "#{app_url()}/ack/#{AckToken.sign(incident.id)}"},
+          %{text: "View Monitor", url: "#{app_url()}/dashboard/monitors/#{monitor.id}"}
+        ]
+      ]
+    }
+  end
+
+  defp send_telegram_message(bot_token, chat_id, message, reply_markup \\ nil) do
     url = "#{@telegram_api_base}/bot#{bot_token}/sendMessage"
 
-    payload = %{
-      chat_id: chat_id,
-      text: message,
-      parse_mode: "MarkdownV2",
-      disable_web_page_preview: true
-    }
+    payload =
+      %{
+        chat_id: chat_id,
+        text: message,
+        parse_mode: "MarkdownV2",
+        disable_web_page_preview: true
+      }
+      |> then(fn p -> if reply_markup, do: Map.put(p, :reply_markup, reply_markup), else: p end)
 
     case Req.post(url, json: payload) do
       {:ok, %{status: 200, body: %{"ok" => true}}} ->
@@ -189,6 +205,8 @@ defmodule Uptrack.Alerting.TelegramAlert do
   end
 
   # Telegram MarkdownV2 requires escaping special characters
+  defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
+
   defp escape_markdown(nil), do: "Unknown"
 
   defp escape_markdown(text) when is_binary(text) do
