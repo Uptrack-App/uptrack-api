@@ -6,6 +6,7 @@ defmodule Uptrack.Alerting.DiscordAlert do
   See: https://discord.com/developers/docs/resources/webhook
   """
 
+  alias Uptrack.Alerting.AckToken
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   require Logger
 
@@ -88,12 +89,15 @@ defmodule Uptrack.Alerting.DiscordAlert do
   end
 
   defp build_incident_payload(incident, monitor) do
+    ack_url = "#{app_url()}/ack/#{AckToken.sign(incident.id)}"
+    monitor_url = "#{app_url()}/dashboard/monitors/#{monitor.id}"
+
     %{
       content: "Monitor Alert: #{monitor.name} is DOWN",
       embeds: [
         %{
           title: "Monitor DOWN",
-          description: "#{monitor.name} is not responding",
+          description: "#{monitor.name} is not responding\n\n[✓ Acknowledge](#{ack_url}) · [View Monitor](#{monitor_url})",
           color: 15_158_332,  # Red
           fields: [
             %{name: "Monitor", value: monitor.name, inline: true},
@@ -135,13 +139,15 @@ defmodule Uptrack.Alerting.DiscordAlert do
 
   defp build_reminder_payload(incident, monitor) do
     elapsed = format_duration(DateTime.diff(DateTime.utc_now(), incident.started_at))
+    ack_url = "#{app_url()}/ack/#{AckToken.sign(incident.id)}"
+    monitor_url = "#{app_url()}/dashboard/monitors/#{monitor.id}"
 
     %{
       content: "⏰ Still Down: #{monitor.name} has been down for #{elapsed}",
       embeds: [
         %{
           title: "Still Down",
-          description: "#{monitor.name} is still not responding",
+          description: "#{monitor.name} is still not responding\n\n[✓ Acknowledge](#{ack_url}) · [View Monitor](#{monitor_url})",
           color: 16_098_851,  # Amber/warning
           fields: [
             %{name: "Monitor", value: monitor.name, inline: true},
@@ -155,6 +161,8 @@ defmodule Uptrack.Alerting.DiscordAlert do
       ]
     }
   end
+
+  defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
   defp send_discord_message(webhook_url, payload) do
     case Req.post(webhook_url, json: payload) do
