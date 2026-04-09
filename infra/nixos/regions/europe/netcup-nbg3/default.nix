@@ -41,8 +41,7 @@ in {
     port = 4001;
   };
 
-  # Cloudflare → HAProxy :443 → Phoenix :4001 (HAProxy config in haproxy-twofolk.cfg)
-  networking.firewall.allowedTCPPorts = [ 80 ];
+  # Cloudflare → nginx :80 → Phoenix :4001 (nginx configured in twofolk/app.nix)
 
   # Node-specific environment variables
   environment.variables = {

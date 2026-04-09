@@ -120,5 +120,26 @@ in
         UPLOAD_DIR = "/var/data/2folk/uploads";
       };
     };
+
+    # Nginx reverse proxy: Cloudflare (port 80) → Phoenix (port 4001)
+    # Cloudflare handles TLS termination; origin receives plain HTTP.
+    services.nginx = {
+      enable = true;
+      virtualHosts.${cfg.host} = {
+        listen = [{ addr = "0.0.0.0"; port = 80; }];
+        locations."/" = {
+          proxyPass = "http://127.0.0.1:${toString cfg.port}";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+          '';
+        };
+      };
+    };
+
+    networking.firewall.allowedTCPPorts = [ 80 ];
   };
 }
