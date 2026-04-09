@@ -188,7 +188,7 @@ defmodule Uptrack.Alerting.EmailAlert do
           </table>
           <a href="#{app_url()}/dashboard/monitors/#{monitor.id}" class="btn">View Monitor Details</a>
           <p style="margin-top: 24px; color: #666; font-size: 13px;">
-            You're receiving this because you enabled still-down reminders for this monitor. Reminders stop when the monitor recovers or after 48 reminders.
+            You're receiving this because you enabled still-down reminders for this monitor. Reminders stop when the monitor recovers or the incident is acknowledged.
           </p>
         </div>
         <div class="footer"><p>Uptrack Monitoring</p></div>
@@ -213,7 +213,7 @@ defmodule Uptrack.Alerting.EmailAlert do
 
     View details: #{app_url()}/dashboard/monitors/#{monitor.id}
 
-    You're receiving this because you enabled still-down reminders for this monitor. Reminders stop when the monitor recovers or after 48 reminders.
+    You're receiving this because you enabled still-down reminders for this monitor. Reminders stop when the monitor recovers or the incident is acknowledged.
 
     ---
     Uptrack Monitoring
