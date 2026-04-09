@@ -6,7 +6,7 @@ defmodule Uptrack.Alerting.IncidentReminder do
   ## Pure / Impure separation
 
   - `due?/3` is pure: takes incident, monitor, and current time, returns
-    one of `:disabled`, `:not_due`, `:resolved`, `:capped`, or
+    one of `:disabled`, `:not_due`, `:resolved`, `:acknowledged`, or
     `{:due, snapped_last_reminder_at}`.
   - `maybe_send/2` is the impure boundary: loads the incident, calls
     `due?/3`, dispatches alerts, and updates the incident.
@@ -27,13 +27,11 @@ defmodule Uptrack.Alerting.IncidentReminder do
   alias Uptrack.Monitoring.{Incident, Monitor}
   require Logger
 
-  @max_reminders 48
-
   @type due_result ::
           :disabled
           | :resolved
           | :not_due
-          | :capped
+          | :acknowledged
           | {:due, DateTime.t()}
 
   @doc """
@@ -45,8 +43,9 @@ defmodule Uptrack.Alerting.IncidentReminder do
 
   def due?(%Incident{status: status}, _monitor, _now) when status != "ongoing", do: :resolved
 
-  def due?(%Incident{reminder_count: count}, _monitor, _now) when count >= @max_reminders,
-    do: :capped
+  def due?(%Incident{acknowledged_at: acknowledged_at}, _monitor, _now)
+      when not is_nil(acknowledged_at),
+      do: :acknowledged
 
   def due?(%Incident{} = incident, %Monitor{reminder_interval_minutes: minutes}, now)
       when is_integer(minutes) do
@@ -107,5 +106,4 @@ defmodule Uptrack.Alerting.IncidentReminder do
       {:error, Exception.message(e)}
   end
 
-  def max_reminders, do: @max_reminders
 end
