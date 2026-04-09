@@ -69,6 +69,9 @@ in {
   # Environment variables for Uptrack app
   "uptrack-env.age".publicKeys = allNodes;
 
+  # Environment variables for 2folk app (runs on nbg3)
+  "twofolk-env.age".publicKeys = adminKeys ++ nbg3Key;
+
   # ========================================
   # DATABASE SECRETS (Patroni nodes: nbg1-4)
   # ========================================

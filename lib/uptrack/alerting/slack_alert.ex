@@ -3,6 +3,7 @@ defmodule Uptrack.Alerting.SlackAlert do
   Handles Slack notifications for incidents.
   """
 
+  alias Uptrack.Alerting.AckToken
   alias Uptrack.Monitoring.{AlertChannel, Incident, Monitor}
   require Logger
 
@@ -120,11 +121,8 @@ defmodule Uptrack.Alerting.SlackAlert do
             }
           ],
           actions: [
-            %{
-              type: "button",
-              text: "View Details",
-              url: "#{app_url()}/dashboard/monitors/#{monitor.id}"
-            }
+            %{type: "button", text: "View Details", url: "#{app_url()}/dashboard/monitors/#{monitor.id}"},
+            %{type: "button", text: "✓ Acknowledge", url: "#{app_url()}/ack/#{AckToken.sign(incident.id)}", style: "primary"}
           ]
         }
       ]
@@ -192,11 +190,8 @@ defmodule Uptrack.Alerting.SlackAlert do
             }
           ],
           actions: [
-            %{
-              type: "button",
-              text: "View Details",
-              url: "#{app_url()}/dashboard/monitors/#{monitor.id}"
-            }
+            %{type: "button", text: "View Details", url: "#{app_url()}/dashboard/monitors/#{monitor.id}"},
+            %{type: "button", text: "✓ Acknowledge", url: "#{app_url()}/ack/#{AckToken.sign(incident.id)}", style: "primary"}
           ]
         }
       ]

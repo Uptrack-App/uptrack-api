@@ -17,17 +17,32 @@ in {
     ../../../modules/services/node-exporter.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/victoria-metrics.nix
+    ../../../modules/services/twofolk/app.nix
   ];
 
   # Hostname
   networking.hostName = "nbg3";
 
-  # 2folk AI chat app — runs on this node alongside Uptrack worker
-  # Cloudflare (Flexible SSL) → port 80 → redirect → Phoenix :4001
+  # ── 2folk AI chat app ─────────────────────────────────────────────
+
+  # Decrypt twofolk secrets at boot → /run/agenix/twofolk-env
+  age.secrets.twofolk-env = {
+    file = ../../../secrets/twofolk-env.age;
+    owner = "twofolk";
+    group = "twofolk";
+    mode = "0400";
+  };
+
+  services.twofolk = {
+    enable = true;
+    environmentFile = config.age.secrets.twofolk-env.path;
+    releaseDir = "/opt/twofolk";
+    host = "app.2folk.com";
+    port = 4001;
+  };
+
+  # Cloudflare → HAProxy :443 → Phoenix :4001 (HAProxy config in haproxy-twofolk.cfg)
   networking.firewall.allowedTCPPorts = [ 80 ];
-  networking.firewall.extraCommands = ''
-    iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 4001
-  '';
 
   # Node-specific environment variables
   environment.variables = {
