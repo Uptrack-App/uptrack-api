@@ -59,7 +59,7 @@ defmodule Uptrack.MCP.Tools do
     monitors = if is_map(result) and Map.has_key?(result, :monitors), do: result.monitors, else: result
 
     {:ok, Enum.map(monitors, fn m ->
-      latest = List.first(m.monitor_checks)
+      latest = get_latest_check(m)
       %{
         id: m.id,
         name: m.name,
@@ -78,7 +78,7 @@ defmodule Uptrack.MCP.Tools do
       nil -> {:error, "Monitor not found"}
       monitor ->
         uptime = Monitoring.get_uptime_percentage(id, 30)
-        latest = List.first(monitor.monitor_checks)
+        latest = get_latest_check(monitor)
         {:ok, %{
           id: monitor.id, name: monitor.name, url: monitor.url,
           type: monitor.monitor_type, interval: monitor.interval,
@@ -240,6 +240,10 @@ defmodule Uptrack.MCP.Tools do
   def call(tool_name, _args, _org_id) do
     {:error, "Unknown tool: #{tool_name}"}
   end
+
+  defp get_latest_check(%{monitor_checks: %Ecto.Association.NotLoaded{}}), do: nil
+  defp get_latest_check(%{monitor_checks: checks}), do: List.first(checks)
+  defp get_latest_check(_), do: nil
 
   defp build_alert_channel_config("email", destination), do: %{"email" => destination}
   defp build_alert_channel_config(type, destination) when type in ["slack", "discord"], do: %{"webhook_url" => destination}

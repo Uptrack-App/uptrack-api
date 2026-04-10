@@ -31,7 +31,10 @@ defmodule Uptrack.MCP.Resources do
     monitors = if is_map(result) and Map.has_key?(result, :monitors), do: result.monitors, else: result
 
     data = Enum.map(monitors, fn m ->
-      latest = List.first(m.monitor_checks)
+      latest = case m.monitor_checks do
+        %Ecto.Association.NotLoaded{} -> nil
+        checks -> List.first(checks)
+      end
       uptime = Monitoring.get_uptime_percentage(m.id, 30)
       %{
         id: m.id,
