@@ -9,7 +9,7 @@ defmodule Uptrack.OAuth.Scopes do
     monitors:read monitors:write
     incidents:read incidents:write
     status_pages:read
-    alerts:read
+    alerts:read alerts:write
     analytics:read
   )
 
@@ -19,8 +19,10 @@ defmodule Uptrack.OAuth.Scopes do
     "monitors:read" => ~w(list_monitors get_monitor get_monitor_analytics),
     "monitors:write" => ~w(create_monitor delete_monitor pause_monitor resume_monitor),
     "incidents:read" => ~w(list_incidents),
+    "incidents:write" => ~w(acknowledge_incident),
     "status_pages:read" => ~w(list_status_pages),
     "alerts:read" => ~w(list_alert_channels),
+    "alerts:write" => ~w(create_alert_channel),
     "analytics:read" => ~w(get_dashboard_stats get_monitor_analytics)
   }
 
