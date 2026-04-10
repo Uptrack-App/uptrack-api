@@ -107,4 +107,12 @@ in {
   # Cloudflare Tunnel token for public API access
   # Create with: agenix -e cloudflared-tunnel-token.age
   "cloudflared-tunnel-token.age".publicKeys = apiNodes;
+
+  # Cloudflare API token for Let's Encrypt DNS-01 challenge (SMTP TLS cert)
+  # Content: CLOUDFLARE_DNS_API_TOKEN=<token>
+  "cloudflare-api-token.age".publicKeys = adminKeys ++ nbg1Key;
+
+  # SMTP auth password for Gmail Send-as (Stalwart external submission)
+  # Content: just the password string
+  "smtp-password.age".publicKeys = adminKeys ++ nbg1Key;
 }
