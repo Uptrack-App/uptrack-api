@@ -30,10 +30,16 @@
 - [x] 5.2 Add `acknowledge_incident` tool to `tools.ex` (incident_id)
 - [x] 5.3 Add scope handling for new tools in `oauth/scopes.ex` (`alerts:write`, `incidents:write`)
 
-## 6. Validation
-- [ ] 6.1 Run `openspec validate improve-mcp-for-directory --strict`
-- [ ] 6.2 Manual test: `tools/list` returns titles on all tools
-- [ ] 6.3 Manual test: `resources/list` returns 3 resources
-- [ ] 6.4 Manual test: `resources/read` returns correct data per URI
-- [ ] 6.5 Manual test: `prompts/list` returns 3 prompts
-- [ ] 6.6 Manual test: `prompts/get` returns filled message for each prompt
+## 6. Bug Fixes (discovered during testing)
+- [x] 6.1 Fix `list_monitors` — returns `%{monitors: [...]}` paginated map, not plain list
+- [x] 6.2 Fix `monitor_checks` association — not preloaded by `list_monitors`; handle `%Ecto.Association.NotLoaded{}` gracefully in tools.ex and resources.ex
+
+## 7. Validation
+- [x] 7.1 Run `openspec validate improve-mcp-for-directory --strict` — passed
+- [x] 7.2 Protocol version `2025-11-25` confirmed via live endpoint
+- [x] 7.3 `tools/list` returns titles on all 13 tools — confirmed
+- [x] 7.4 `resources/list` returns 3 resources — confirmed
+- [x] 7.5 `resources/read` returns correct data for all 3 URIs — confirmed
+- [x] 7.6 `prompts/list` returns 3 prompts — confirmed
+- [x] 7.7 `prompts/get` returns filled messages for all 3 prompts — confirmed
+- [x] 7.8 All tool calls (`list_monitors`, `get_dashboard_stats`, `list_incidents`, `list_alert_channels`, `list_status_pages`) return no errors — confirmed
