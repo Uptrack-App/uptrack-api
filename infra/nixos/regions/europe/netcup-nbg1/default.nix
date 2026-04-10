@@ -34,6 +34,10 @@ in {
   services.uptrack.stalwart = {
     enable = true;
     bindAddresses = [ "127.0.0.1" "100.64.1.1" ];
+    externalSubmission = {
+      enable = true;
+      passwordFile = config.age.secrets.smtp-password.path;
+    };
   };
 
   # Hostname
@@ -107,6 +111,20 @@ in {
     file = ../../../secrets/uptrack-env.age;
     owner = "uptrack";
     group = "uptrack";
+    mode = "0400";
+  };
+
+  age.secrets.cloudflare-api-token = {
+    file = ../../../secrets/cloudflare-api-token.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
+  age.secrets.smtp-password = {
+    file = ../../../secrets/smtp-password.age;
+    owner = "stalwart-mail";
+    group = "stalwart-mail";
     mode = "0400";
   };
 
