@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in – Uptrack</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    }
+    .logo {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 1.5rem;
+    }
+    .logo span { color: #6366f1; }
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #111;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 0.4rem;
+    }
+    input[type="email"] {
+      width: 100%;
+      padding: 0.65rem 0.875rem;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 1rem;
+    }
+    input[type="email"]:focus { border-color: #6366f1; }
+    .btn-submit {
+      width: 100%;
+      padding: 0.75rem;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-submit:hover { opacity: 0.85; }
+    .sent-msg {
+      text-align: center;
+      color: #22c55e;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .error-msg {
+      text-align: center;
+      color: #ef4444;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Up<span>track</span></div>
+
+    <h1>Sign in to authorize</h1>
+    <p class="subtitle"><%= @client_name %> is asking for access to your Uptrack account</p>
+
+    <form id="magic-form">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+      <button type="submit" class="btn-submit">Send sign-in link</button>
+    </form>
+
+    <p class="sent-msg" id="sent-msg">Check your email for a sign-in link!</p>
+    <p class="error-msg" id="error-msg">Something went wrong. Please try again.</p>
+  </div>
+
+  <script>
+    // Store pending OAuth params in sessionStorage so we can restore after login
+    const pending = {
+      <%= for {k, v} <- @params do %>"<%= k %>": "<%= v %>",<% end %>
+    };
+    sessionStorage.setItem("pending_oauth", JSON.stringify(pending));
+
+    document.getElementById("magic-form").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const btn = this.querySelector("button");
+      btn.disabled = true;
+      btn.textContent = "Sending…";
+
+      try {
+        const res = await fetch("/api/auth/magic-link", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({email})
+        });
+
+        if (res.ok) {
+          document.getElementById("sent-msg").style.display = "block";
+          btn.textContent = "Link sent!";
+        } else {
+          document.getElementById("error-msg").style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "Send sign-in link";
+        }
+      } catch {
+        document.getElementById("error-msg").style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Send sign-in link";
+      }
+    });
+  </script>
+</body>
+</html>
