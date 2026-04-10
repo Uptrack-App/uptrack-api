@@ -157,7 +157,10 @@ defmodule UptrackWeb.Plugs.MCPAuth do
   defp require_auth(%{assigns: %{current_organization: _}} = conn), do: conn
 
   defp require_auth(conn) do
+    resource_metadata_url = "https://api.uptrack.app/.well-known/oauth-protected-resource"
+
     conn
+    |> put_resp_header("www-authenticate", "Bearer resource_metadata=\"#{resource_metadata_url}\"")
     |> put_status(:unauthorized)
     |> json(%{jsonrpc: "2.0", id: nil, error: %{code: -32_001, message: "Authentication required"}})
     |> halt()
