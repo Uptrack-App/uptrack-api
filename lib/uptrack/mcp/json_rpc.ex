@@ -1,7 +1,7 @@
 defmodule Uptrack.MCP.JsonRpc do
   @moduledoc "MCP JSON-RPC message builders."
 
-  @protocol_version "2024-11-05"
+  @protocol_version "2025-11-25"
 
   def protocol_version, do: @protocol_version
 
@@ -43,6 +43,11 @@ defmodule Uptrack.MCP.JsonRpc do
     schema = if required == [], do: schema, else: Map.put(schema, "required", required)
 
     tool = %{"name" => name, "description" => description, "inputSchema" => schema}
+
+    tool = case Keyword.get(opts, :title) do
+      nil -> tool
+      title -> Map.put(tool, "title", title)
+    end
 
     annotations = build_annotations(opts)
     if map_size(annotations) > 0, do: Map.put(tool, "annotations", annotations), else: tool

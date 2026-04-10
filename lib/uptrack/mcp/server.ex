@@ -1,7 +1,7 @@
 defmodule Uptrack.MCP.Server do
   @moduledoc "MCP Server for Uptrack — handles JSON-RPC protocol messages."
 
-  alias Uptrack.MCP.{JsonRpc, Tools}
+  alias Uptrack.MCP.{JsonRpc, Tools, Resources, Prompts}
   alias Uptrack.OAuth.Scopes
 
   require Logger
@@ -20,7 +20,7 @@ defmodule Uptrack.MCP.Server do
   defp handle_mcp_message(%{"jsonrpc" => "2.0", "method" => "initialize", "id" => id}, _org_id, _scopes) do
     JsonRpc.success_response(id, %{
       "protocolVersion" => JsonRpc.protocol_version(),
-      "capabilities" => %{"tools" => %{}, "resources" => %{}},
+      "capabilities" => %{"tools" => %{}, "resources" => %{}, "prompts" => %{}},
       "serverInfo" => %{"name" => "uptrack-mcp-server", "version" => "1.0.0"},
       "instructions" => server_instructions()
     })
@@ -48,7 +48,22 @@ defmodule Uptrack.MCP.Server do
   end
 
   defp handle_mcp_message(%{"jsonrpc" => "2.0", "method" => "resources/list", "id" => id}, _org_id, _scopes) do
-    JsonRpc.success_response(id, %{"resources" => []})
+    JsonRpc.success_response(id, %{"resources" => Resources.definitions()})
+  end
+
+  defp handle_mcp_message(
+         %{"jsonrpc" => "2.0", "method" => "resources/read", "id" => id, "params" => %{"uri" => uri}},
+         org_id,
+         _scopes
+       ) do
+    case Resources.read(uri, org_id) do
+      {:ok, content} ->
+        JsonRpc.success_response(id, %{
+          "contents" => [%{"uri" => uri, "mimeType" => "application/json", "text" => content}]
+        })
+      {:error, reason} ->
+        JsonRpc.error_response(id, -32_002, reason)
+    end
   end
 
   defp handle_mcp_message(%{"jsonrpc" => "2.0", "method" => "ping", "id" => id}, _org_id, _scopes) do
@@ -60,7 +75,20 @@ defmodule Uptrack.MCP.Server do
   end
 
   defp handle_mcp_message(%{"jsonrpc" => "2.0", "method" => "prompts/list", "id" => id}, _org_id, _scopes) do
-    JsonRpc.success_response(id, %{"prompts" => []})
+    JsonRpc.success_response(id, %{"prompts" => Prompts.definitions()})
+  end
+
+  defp handle_mcp_message(
+         %{"jsonrpc" => "2.0", "method" => "prompts/get", "id" => id, "params" => %{"name" => name} = params},
+         org_id,
+         _scopes
+       ) do
+    arguments = Map.get(params, "arguments", %{})
+
+    case Prompts.get(name, arguments, org_id) do
+      {:ok, prompt} -> JsonRpc.success_response(id, prompt)
+      {:error, reason} -> JsonRpc.error_response(id, -32_002, reason)
+    end
   end
 
   defp handle_mcp_message(%{"jsonrpc" => "2.0", "method" => _method, "id" => id}, _org_id, _scopes) do
@@ -92,15 +120,28 @@ defmodule Uptrack.MCP.Server do
     | Create a new monitor | `create_monitor` |
     | Pause/resume monitoring | `pause_monitor` / `resume_monitor` |
     | View recent incidents | `list_incidents` |
+    | Acknowledge an incident | `acknowledge_incident` |
     | Dashboard overview | `get_dashboard_stats` |
     | Response time trends | `get_monitor_analytics` |
     | View status pages | `list_status_pages` |
     | View alert channels | `list_alert_channels` |
+    | Add an alert channel | `create_alert_channel` |
+
+    ## Resources (read-only data)
+    - `uptrack://monitors` — all monitors with status and uptime
+    - `uptrack://incidents` — 50 most recent incidents
+    - `uptrack://dashboard` — aggregate stats
+
+    ## Prompts (guided workflows)
+    - `daily-report` — generate a daily uptime briefing
+    - `incident-summary` — summarize incidents for a monitor
+    - `monitor-health-check` — deep-dive health assessment for a monitor
 
     ## Quick Start
     - Use `list_monitors` to see all monitors and their current status
     - Use `get_dashboard_stats` for a quick overview of uptime and incidents
     - Use `create_monitor` to add a new URL to monitor
+    - Use the `daily-report` prompt for an AI-guided daily briefing
     """
   end
 end

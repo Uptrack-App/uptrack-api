@@ -1,0 +1,9 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Elixir, Phoenix, PostgreSQL (Citus distributed), NixOS deployment via Colmena
+  Domain: Uptime monitoring SaaS — monitors HTTP endpoints, sends alerts, tracks incidents
+  MCP server: JSON-RPC 2.0 over HTTP at /api/mcp, auth via OAuth Bearer / API key / session
+  Frontend: React + TanStack Router deployed on Cloudflare Pages
+  Infra: Netcup VPS (nbg1-4), Tailscale mesh, Stalwart SMTP relay, agenix secrets
+  Conventions: Elixir standard formatting, snake_case, module-per-context pattern
