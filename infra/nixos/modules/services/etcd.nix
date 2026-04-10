@@ -7,7 +7,7 @@ let
   # Tailscale IPs (static, assigned via Tailscale admin console)
   nodes = {
     nbg1 = "100.64.1.1";
-    nbg2 = "100.112.11.29";
+    nbg2 = "100.64.1.2";
     nbg3 = "100.117.191.50";
   };
 

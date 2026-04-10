@@ -48,8 +48,8 @@ defmodule Uptrack.Emails.InvitationEmailTest do
 
       email = InvitationEmail.invitation_email(invitation, "Org", "Admin")
 
-      assert email.html_body =~ "/api/invitations/my-unique-token"
-      assert email.text_body =~ "/api/invitations/my-unique-token"
+      assert email.html_body =~ "/invitations/my-unique-token"
+      assert email.text_body =~ "/invitations/my-unique-token"
     end
   end
 end

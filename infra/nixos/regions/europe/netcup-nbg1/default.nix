@@ -23,10 +23,18 @@ in {
     ../../../modules/services/victoria-metrics.nix
     ../../../modules/services/vmagent.nix
     ../../../modules/services/vmalert.nix
+    ../../../modules/services/stalwart.nix
   ];
 
   # VictoriaMetrics — time-series store for check results
   services.uptrack.victoria-metrics.enable = true;
+
+  # Stalwart outbound SMTP relay — listens on localhost + Tailscale IP.
+  # nbg2 uses 100.64.1.1:587 as its smtpFallbackHost.
+  services.uptrack.stalwart = {
+    enable = true;
+    bindAddresses = [ "127.0.0.1" "100.64.1.1" ];
+  };
 
   # Hostname
   networking.hostName = "nbg1";
@@ -62,6 +70,7 @@ in {
     nodeRegion = "europe";
     nodeProvider = "netcup";
     environmentFile = config.age.secrets.uptrack-env.path;
+    smtpFallbackHost = "100.64.1.2"; # nbg2 Tailscale IP
   };
 
   # VictoriaMetrics monitoring

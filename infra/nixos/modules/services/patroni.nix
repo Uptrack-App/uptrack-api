@@ -13,9 +13,9 @@ let
   # Tailscale IPs (static, assigned via Tailscale admin console)
   nodes = {
     nbg1 = "100.64.1.1";
-    nbg2 = "100.112.11.29";
-    nbg3 = "100.117.191.50";
-    nbg4 = "100.72.224.65";
+    nbg2 = "100.64.1.2";
+    nbg3 = "100.64.1.3";
+    nbg4 = "100.64.1.4";
   };
 
   # Cluster membership
@@ -39,8 +39,8 @@ let
   # All Tailscale IPs for pg_hba
   allNodeIPs = builtins.attrValues nodes;
 
-  # PostgreSQL 17 with Citus
-  pgPackage = pkgs.postgresql_17.withPackages (ps: [ ps.citus ]);
+  # PostgreSQL 17 with Citus and pgvector (pgvector required by twofolk FAQ search)
+  pgPackage = pkgs.postgresql_17.withPackages (ps: [ ps.citus ps.pgvector ]);
 
 in lib.mkIf isPatroniNode {
   # Declare agenix secrets for this node

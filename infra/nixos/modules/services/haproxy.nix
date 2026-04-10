@@ -22,7 +22,7 @@ let
 
   nodes = {
     nbg1 = "100.64.1.1";
-    nbg2 = "100.112.11.29";
+    nbg2 = "100.64.1.2";
   };
 
 in lib.mkIf isCoordinator {

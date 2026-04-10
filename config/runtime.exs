@@ -60,7 +60,10 @@ if config_env() == :prod do
     queues: [
       default: 10,
       # monitor_checks removed — GenServer-per-monitor handles checks
-      alerts: String.to_integer(System.get_env("OBAN_ALERTS_CONCURRENCY", "5"))
+      email_critical: String.to_integer(System.get_env("OBAN_EMAIL_CRITICAL_CONCURRENCY", "50")),
+      email_digest: String.to_integer(System.get_env("OBAN_EMAIL_DIGEST_CONCURRENCY", "10")),
+      email_system: String.to_integer(System.get_env("OBAN_EMAIL_SYSTEM_CONCURRENCY", "5")),
+      mailers: 5
     ],
     plugins: [
       {Oban.Plugins.Pruner, max_age: 604_800},  # 7 days
@@ -206,8 +209,23 @@ if config_env() == :prod do
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
   # Production mailer: configurable via MAILER_ADAPTER env var.
-  # Supported: "brevo", "mailgun", "postmark", "sendgrid". Falls back to logger.
+  # Supported: "smtp_fleet", "brevo", "mailgun", "postmark", "sendgrid". Falls back to logger.
   case System.get_env("MAILER_ADAPTER") do
+    "smtp_fleet" ->
+      # Self-hosted Stalwart via persistent connection fleet
+      # SMTP_HOST: primary Stalwart (default: localhost)
+      # SMTP_FALLBACK_HOST: other node's Stalwart (e.g. nbg2 Tailscale IP)
+      # SMTP_PORT: default 587
+      # SMTP_USERNAME / SMTP_PASSWORD: optional auth
+      config :uptrack, Uptrack.Mailer, adapter: Uptrack.SMTP.FleetAdapter
+
+      config :uptrack,
+        smtp_host: String.to_charlist(System.get_env("SMTP_HOST", "127.0.0.1")),
+        smtp_fallback_host: String.to_charlist(System.get_env("SMTP_FALLBACK_HOST", "127.0.0.1")),
+        smtp_port: String.to_integer(System.get_env("SMTP_PORT", "587")),
+        smtp_username: System.get_env("SMTP_USERNAME"),
+        smtp_password: System.get_env("SMTP_PASSWORD")
+
     "brevo" ->
       config :uptrack, Uptrack.Mailer,
         adapter: Swoosh.Adapters.Brevo,

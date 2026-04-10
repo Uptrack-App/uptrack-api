@@ -44,6 +44,9 @@ config :uptrack, UptrackWeb.Endpoint,
 # In test we don't send emails
 config :uptrack, Uptrack.Mailer, adapter: Swoosh.Adapters.Test
 
+# Use fake SMTP client so Worker tests don't need a real Stalwart
+config :uptrack, smtp_client: Uptrack.SMTP.FakeSMTPClient
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 
