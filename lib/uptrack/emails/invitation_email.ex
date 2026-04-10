@@ -11,7 +11,7 @@ defmodule Uptrack.Emails.InvitationEmail do
   defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
   def invitation_email(%TeamInvitation{} = invitation, organization_name, inviter_name) do
-    accept_url = "#{app_url()}/api/invitations/#{invitation.token}"
+    accept_url = "#{app_url()}/invitations/#{invitation.token}"
 
     new()
     |> to(invitation.email)
@@ -73,7 +73,7 @@ defmodule Uptrack.Emails.InvitationEmail do
                 </table>
 
                 <div style="text-align: center;">
-                    <a href="#{accept_url}" class="btn">Accept Invitation</a>
+                    <a href="#{accept_url}" class="btn" style="display: inline-block; background: #3b82f6; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 16px 0; font-weight: 600;">Accept Invitation</a>
                 </div>
 
                 <p class="link-fallback">Or copy and paste this link into your browser:<br>#{accept_url}</p>

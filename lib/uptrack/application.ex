@@ -30,6 +30,11 @@ defmodule Uptrack.Application do
         # pg scopes for multi-region consensus and config sync to workers
         %{id: :monitor_checks_pg, start: {:pg, :start_link, [:monitor_checks]}},
         %{id: :monitor_config_pg, start: {:pg, :start_link, [:monitor_config]}},
+        # Named pg scope for cluster-wide SMTP idle worker discovery
+        %{id: :smtp_workers_pg, start: {:pg, :start_link, [:smtp_workers]}},
+        # SMTP connection fleet (Dispatcher is a plain module, not a GenServer)
+        Uptrack.SMTP.WorkerSupervisor,
+        Uptrack.SMTP.Fleet,
         # Registry for monitor process lookup
         Uptrack.Monitoring.MonitorRegistry,
         # DynamicSupervisor for per-monitor GenServer processes

@@ -10,7 +10,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
   """
 
   use Oban.Worker,
-    queue: :alerts,
+    queue: :email_critical,
     max_attempts: 5,
     priority: 1
 

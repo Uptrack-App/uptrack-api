@@ -15,6 +15,14 @@ defmodule UptrackWeb.Router do
     plug UptrackWeb.Plugs.RateLimit, max_requests: 100, interval_ms: 60_000, bucket: "api"
   end
 
+  # Public API with optional session auth (loads user if session exists, but doesn't require it)
+  pipeline :api_optional_auth do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug UptrackWeb.Plugs.OptionalAuth
+    plug UptrackWeb.Plugs.RateLimit, max_requests: 100, interval_ms: 60_000, bucket: "api"
+  end
+
   pipeline :api_authenticated do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -302,6 +310,13 @@ defmodule UptrackWeb.Router do
     post "/paddle", WebhookController, :paddle
   end
 
+  # Invitation acceptance (optional auth — loads user from session if present)
+  scope "/api", UptrackWeb.Api do
+    pipe_through :api_optional_auth
+
+    post "/invitations/:token/accept", InvitationController, :accept
+  end
+
   # Public API routes (no authentication required)
   scope "/api", UptrackWeb.Api do
     pipe_through :api
@@ -309,9 +324,8 @@ defmodule UptrackWeb.Router do
     # OpenAPI specification
     get "/openapi", OpenApiController, :spec
 
-    # Invitation acceptance (token-based, may or may not be authenticated)
+    # Invitation details (public, no auth needed)
     get "/invitations/:token", InvitationController, :show_by_token
-    post "/invitations/:token/accept", InvitationController, :accept
 
     # Public billing info (no auth, cached)
     get "/billing/popular-plan", BillingController, :popular_plan

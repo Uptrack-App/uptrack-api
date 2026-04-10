@@ -140,7 +140,9 @@ config :uptrack, Oban,
   queues: [
     default: 10,
     # monitor_checks queue removed — checks now via GenServer-per-monitor
-    alerts: 5,
+    email_critical: 50,
+    email_digest: 10,
+    email_system: 5,
     mailers: 5
   ]
 

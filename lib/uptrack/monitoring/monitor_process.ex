@@ -94,9 +94,9 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       consensus: %Consensus{expected_regions: expected}
     }
 
-    # Random jitter on first check to avoid thundering herd
-    jitter = :rand.uniform(max(state.interval_ms, 1000))
-    schedule_check(jitter)
+    # First check runs quickly (1-3s jitter) so the user sees results immediately.
+    # Subsequent checks use the full interval.
+    schedule_check(:rand.uniform(2000) + 1000)
 
     Logger.debug("MonitorProcess started: #{monitor.name} (#{monitor.id}) region=#{region()}")
     {:ok, state}
