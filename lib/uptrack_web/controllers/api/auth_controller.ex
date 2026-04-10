@@ -382,9 +382,16 @@ defmodule UptrackWeb.Api.AuthController do
          {:ok, user} <- Accounts.find_or_create_user_by_email(email) do
       Logger.info("Magic link callback: signed in #{email}")
 
-      conn
-      |> put_session(:user_id, user.id)
-      |> redirect(external: "#{frontend}/dashboard")
+      pending_oauth = get_session(conn, :pending_oauth_params)
+
+      conn = conn |> put_session(:user_id, user.id)
+
+      if pending_oauth do
+        oauth_url = "/oauth/authorize?" <> URI.encode_query(pending_oauth)
+        conn |> delete_session(:pending_oauth_params) |> redirect(to: oauth_url)
+      else
+        redirect(conn, external: "#{frontend}/dashboard")
+      end
     else
       {:error, reason} ->
         error = case reason do

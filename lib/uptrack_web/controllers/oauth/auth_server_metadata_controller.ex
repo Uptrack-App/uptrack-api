@@ -22,8 +22,10 @@ defmodule UptrackWeb.OAuth.AuthServerMetadataController do
       grant_types_supported: ["authorization_code", "refresh_token"],
       response_types_supported: ["code"],
       code_challenge_methods_supported: ["S256"],
-      token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic"],
-      scopes_supported: Scopes.all_scopes()
+      token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic", "none"],
+      scopes_supported: Scopes.all_scopes(),
+      registration_endpoint: "#{issuer}/oauth/register",
+      client_id_metadata_document_supported: true
     })
   end
 

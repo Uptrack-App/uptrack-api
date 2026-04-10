@@ -40,6 +40,11 @@ defmodule UptrackWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :oauth_register do
+    plug :accepts, ["json"]
+    plug UptrackWeb.Plugs.RateLimit, max_requests: 10, interval_ms: 3_600_000, bucket: "oauth_register"
+  end
+
   pipeline :auth do
     plug :browser
     plug Ueberauth
@@ -115,10 +120,20 @@ defmodule UptrackWeb.Router do
     post "/revoke", TokenController, :revoke
   end
 
+  # Dynamic Client Registration (RFC7591) — rate-limited to 10/IP/hour, no auth required
   scope "/oauth", UptrackWeb.OAuth do
-    pipe_through [:api, :fetch_session]
+    pipe_through :oauth_register
+
+    post "/register", RegistrationController, :register
+  end
+
+  # OAuth authorize (browser flow — needs session + CSRF)
+  scope "/oauth", UptrackWeb.OAuth do
+    pipe_through [:browser]
 
     get "/authorize", AuthorizeController, :authorize
+    post "/authorize/approve", AuthorizeController, :approve
+    post "/authorize/deny", AuthorizeController, :deny
   end
 
   # RFC 8414 / RFC 9728 well-known endpoints
