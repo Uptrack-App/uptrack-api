@@ -82,7 +82,10 @@ defmodule Uptrack.MixProject do
       {:boruta, "~> 2.3"},
       {:gun, "~> 2.1"},
       {:mint, "~> 1.6"},
-      {:castore, "~> 1.0"}
+      {:castore, "~> 1.0"},
+      {:fuse, "~> 2.5"},
+      {:gen_smtp, "~> 1.0"},
+      {:mail, ">= 0.0.0"}
     ]
   end
 

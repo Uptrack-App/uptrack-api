@@ -91,6 +91,36 @@ in
       default = "unknown";
       description = "Infrastructure provider (e.g. netcup, oracle)";
     };
+
+    smtpFallbackHost = mkOption {
+      type = types.str;
+      default = "127.0.0.1";
+      description = ''
+        Tailscale IP of the other API node, used as SMTP fallback when the local
+        Stalwart is unreachable. Set to the peer node's Tailscale IP.
+      '';
+    };
+
+    mailerAdapter = mkOption {
+      type = types.str;
+      default = "smtp_fleet";
+      description = ''
+        Mailer adapter to use. Overrides MAILER_ADAPTER in the environment file.
+        Options: smtp_fleet, brevo, mailgun, postmark, sendgrid.
+      '';
+    };
+
+    smtpHost = mkOption {
+      type = types.str;
+      default = "127.0.0.1";
+      description = "SMTP relay host (local Stalwart). Overrides SMTP_HOST in the environment file.";
+    };
+
+    smtpPort = mkOption {
+      type = types.port;
+      default = 587;
+      description = "SMTP relay port. Overrides SMTP_PORT in the environment file.";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -154,6 +184,10 @@ in
         NODE_NAME = config.networking.hostName;
         NODE_REGION = cfg.nodeRegion;
         NODE_PROVIDER = cfg.nodeProvider;
+        SMTP_FALLBACK_HOST = cfg.smtpFallbackHost;
+        MAILER_ADAPTER = cfg.mailerAdapter;
+        SMTP_HOST = cfg.smtpHost;
+        SMTP_PORT = toString cfg.smtpPort;
       };
 
       serviceConfig = {

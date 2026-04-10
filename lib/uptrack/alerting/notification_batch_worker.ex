@@ -7,7 +7,7 @@ defmodule Uptrack.Alerting.NotificationBatchWorker do
   """
 
   use Oban.Worker,
-    queue: :alerts,
+    queue: :email_digest,
     max_attempts: 3
 
   import Swoosh.Email

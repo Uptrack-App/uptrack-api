@@ -20,6 +20,7 @@ in {
     ../../../modules/services/haproxy.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/uptrack-app.nix
+    ../../../modules/services/stalwart.nix
     ../../../modules/services/cloudflared.nix
     ../../../modules/services/node-exporter.nix
     ../../../modules/services/victoria-metrics.nix
@@ -28,6 +29,13 @@ in {
 
   # VictoriaMetrics — time-series store for check results (HA: runs on both nbg1+nbg2)
   services.uptrack.victoria-metrics.enable = true;
+
+  # Stalwart outbound SMTP relay — listens on localhost + Tailscale IP.
+  # nbg1 uses 100.64.1.2:587 as its smtpFallbackHost.
+  services.uptrack.stalwart = {
+    enable = true;
+    bindAddresses = [ "127.0.0.1" "100.64.1.2" ];
+  };
 
   # Hostname
   networking.hostName = "nbg2";
@@ -41,7 +49,7 @@ in {
   };
 
   # Tailscale VPN configuration
-  # Static IP: 100.112.11.29 (assigned via Tailscale admin console)
+  # Static IP: 100.64.1.2 (assigned via Tailscale admin console)
   services.uptrack.tailscale = {
     enable = true;
     hostname = "nbg2";
@@ -62,6 +70,7 @@ in {
     nodeRegion = "europe";
     nodeProvider = "netcup";
     environmentFile = config.age.secrets.uptrack-env.path;
+    smtpFallbackHost = "100.64.1.1"; # nbg1 Tailscale IP
   };
 
   # VictoriaMetrics monitoring
