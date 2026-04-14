@@ -1,7 +1,7 @@
 defmodule UptrackWeb.MagicLinkAuthTest do
   use UptrackWeb.ConnCase
 
-  import Uptrack.MonitoringFixtures
+  import Uptrack.AccountsFixtures
 
   alias Uptrack.Auth.MagicLink
 
@@ -15,7 +15,19 @@ defmodule UptrackWeb.MagicLinkAuthTest do
     end
 
     test "returns ok for existing user email", %{conn: conn} do
-      {user, _org} = user_with_org_fixture()
+      {:ok, org} =
+        Uptrack.Organizations.create_organization(%{
+          name: "Test Organization",
+          slug: "test-org-#{Ecto.UUID.generate()}"
+        })
+
+      {:ok, user} =
+        Uptrack.Accounts.create_user(%{
+          email: "user-#{Ecto.UUID.generate()}@example.com",
+          name: "Test User",
+          password: "secure_password_123",
+          organization_id: org.id
+        })
 
       conn = post(conn, "/api/auth/magic-link", %{"email" => user.email})
       response = json_response(conn, 200)
@@ -25,6 +37,28 @@ defmodule UptrackWeb.MagicLinkAuthTest do
     test "returns 422 without email", %{conn: conn} do
       conn = post(conn, "/api/auth/magic-link", %{})
       assert json_response(conn, 422)
+    end
+
+    test "still returns ok when mail delivery raises", %{conn: conn} do
+      original_mailer_config = Application.get_env(:uptrack, Uptrack.Mailer)
+
+      Application.put_env(:uptrack, Uptrack.Mailer,
+        Keyword.put(original_mailer_config, :adapter, Uptrack.TestSupport.RaisingMailerAdapter)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:uptrack, Uptrack.Mailer, original_mailer_config)
+      end)
+
+      conn =
+        conn
+        |> put_req_header("origin", "http://localhost:3000")
+        |> post("/api/auth/magic-link", %{"email" => "new@example.com"})
+
+      response = json_response(conn, 200)
+
+      assert response["ok"] == true
+      assert get_resp_header(conn, "access-control-allow-origin") == ["http://localhost:3000"]
     end
   end
 
