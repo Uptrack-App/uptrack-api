@@ -37,7 +37,11 @@ defmodule Mix.Tasks.Uptrack.Oauth.SeedClients do
   ]
 
   def run(_args) do
-    Mix.Task.run("app.start")
+    if Code.ensure_loaded?(Mix.Task) and function_exported?(Mix.Task, :run, 1) do
+      Mix.Task.run("app.start")
+    else
+      Application.ensure_all_started(:uptrack)
+    end
 
     Enum.each(@clients, &seed_client/1)
   end
@@ -48,9 +52,11 @@ defmodule Mix.Tasks.Uptrack.Oauth.SeedClients do
     import Ecto.Query
 
     # Check if a client with this alias already exists (stored in metadata)
+    search = Jason.encode!(%{"alias" => alias_key})
+
     existing =
       from(c in {"oauth_clients", Boruta.Ecto.Client},
-        where: fragment("?->>'alias' = ?", c.metadata, ^alias_key),
+        where: fragment("?::jsonb @> ?::jsonb", c.metadata, ^search),
         select: %{id: type(c.id, :string), name: c.name}
       )
       |> AppRepo.one(prefix: "app")

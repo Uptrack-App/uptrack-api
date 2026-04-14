@@ -174,7 +174,7 @@ defmodule Uptrack.StatusPageTranslations do
       powered_by: "Impulsado por"
     },
 
-    "pt" => %{
+    "pt-BR" => %{
       all_systems_operational: "Todos os sistemas operacionais",
       partial_system_outage: "Interrupcao parcial do sistema",
       major_system_outage: "Interrupcao grave do sistema",
@@ -327,19 +327,26 @@ defmodule Uptrack.StatusPageTranslations do
 
   @doc """
   Normalizes a language code to a supported language.
-  Handles variants like "en-US" -> "en", "pt-BR" -> "pt".
+  Handles variants like "en-US" -> "en", "pt-BR" -> "pt-BR", "pt" -> "pt-BR".
   """
   def normalize_language(nil), do: "en"
   def normalize_language(""), do: "en"
 
   def normalize_language(lang) when is_binary(lang) do
-    # Extract base language (e.g., "en-US" -> "en")
-    base = lang |> String.split(["-", "_"]) |> List.first() |> String.downcase()
+    # Normalize casing and check for exact match first (handles "pt-BR")
+    normalized = String.downcase(lang) |> String.replace("_", "-")
 
-    if base in @supported_languages do
-      base
-    else
-      "en"
+    cond do
+      normalized in @supported_languages ->
+        normalized
+
+      # Map "pt" or "pt-*" variants to "pt-BR"
+      String.starts_with?(normalized, "pt") ->
+        if "pt-BR" in @supported_languages, do: "pt-BR", else: "en"
+
+      true ->
+        base = normalized |> String.split("-") |> List.first()
+        if base in @supported_languages, do: base, else: "en"
     end
   end
 

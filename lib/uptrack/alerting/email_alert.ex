@@ -4,6 +4,7 @@ defmodule Uptrack.Alerting.EmailAlert do
   """
 
   import Swoosh.Email
+  use Gettext, backend: UptrackWeb.Gettext
   alias Uptrack.Mailer
   alias Uptrack.AppRepo
   alias Uptrack.Alerting.PendingNotification
@@ -35,11 +36,14 @@ defmodule Uptrack.Alerting.EmailAlert do
         queue_pending_notification(user, incident, monitor, recipient_email, "incident_created")
         {:delayed, recipient_email}
       else
+        locale = (user && user.preferred_locale) || "en"
+        Gettext.put_locale(UptrackWeb.Gettext, locale)
+
         email =
           new()
           |> to(recipient_email)
           |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
-          |> subject("🚨 Alert: #{monitor.name} is DOWN")
+          |> subject("🚨 " <> gettext("Alert: %{name} is DOWN", name: monitor.name))
           |> html_body(incident_html_body(incident, monitor))
           |> text_body(incident_text_body(incident, monitor))
 
@@ -86,13 +90,15 @@ defmodule Uptrack.Alerting.EmailAlert do
         queue_pending_notification(user, incident, monitor, recipient_email, "incident_resolved")
         {:delayed, recipient_email}
       else
+        locale = (user && user.preferred_locale) || "en"
+        Gettext.put_locale(UptrackWeb.Gettext, locale)
         duration_text = format_duration(incident.duration)
 
         email =
           new()
           |> to(recipient_email)
           |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
-          |> subject("✅ Resolved: #{monitor.name} is back UP")
+          |> subject("✅ " <> gettext("Resolved: %{name} is back UP", name: monitor.name))
           |> html_body(resolution_html_body(incident, monitor, duration_text))
           |> text_body(resolution_text_body(incident, monitor, duration_text))
 
@@ -135,7 +141,7 @@ defmodule Uptrack.Alerting.EmailAlert do
         new()
         |> to(recipient_email)
         |> from({"Uptrack Monitoring", "alerts@uptrack.app"})
-        |> subject("[Still Down] #{monitor.name} — down for #{elapsed}")
+        |> subject(gettext("[Still Down] %{name} — down for %{elapsed}", name: monitor.name, elapsed: elapsed))
         |> html_body(reminder_html_body(incident, monitor, elapsed))
         |> text_body(reminder_text_body(incident, monitor, elapsed))
 

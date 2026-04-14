@@ -8,6 +8,7 @@ defmodule Uptrack.Accounts.User do
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}
   @foreign_key_type Uniq.UUID
   @roles ~w(owner admin editor viewer notify_only)a
+  @supported_locales ~w(en ja de es pt-BR)
 
   @schema_prefix "app"
   schema "users" do
@@ -18,6 +19,7 @@ defmodule Uptrack.Accounts.User do
     field :hashed_password, :string
     field :password, :string, virtual: true
     field :confirmed_at, :naive_datetime
+    field :preferred_locale, :string, default: "en"
     field :notification_preferences, :map, default: %{}
     field :role, Ecto.Enum, values: @roles, default: :owner
     field :is_admin, :boolean, default: false
@@ -34,6 +36,7 @@ defmodule Uptrack.Accounts.User do
   Returns the list of valid roles.
   """
   def roles, do: @roles
+  def supported_locales, do: @supported_locales
 
   @doc false
   def changeset(user, attrs) do
@@ -123,6 +126,16 @@ defmodule Uptrack.Accounts.User do
   def valid_password?(_, _) do
     Bcrypt.no_user_verify()
     false
+  end
+
+  @doc """
+  Returns a changeset for updating the user's preferred locale.
+  """
+  def locale_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:preferred_locale])
+    |> validate_required([:preferred_locale])
+    |> validate_inclusion(:preferred_locale, @supported_locales)
   end
 
   @doc """

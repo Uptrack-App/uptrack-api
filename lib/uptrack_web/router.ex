@@ -8,6 +8,7 @@ defmodule UptrackWeb.Router do
     plug :put_root_layout, html: {UptrackWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug UptrackWeb.Plugs.SetLocale
   end
 
   pipeline :api do
@@ -28,6 +29,7 @@ defmodule UptrackWeb.Router do
     plug :fetch_session
     plug UptrackWeb.Plugs.ApiAuth
     plug UptrackWeb.Plugs.Impersonation
+    plug UptrackWeb.Plugs.SetLocale
     plug UptrackWeb.Plugs.RateLimit, max_requests: 200, interval_ms: 60_000, by: :user, bucket: "api_auth"
   end
 

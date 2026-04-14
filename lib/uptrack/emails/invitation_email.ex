@@ -4,19 +4,21 @@ defmodule Uptrack.Emails.InvitationEmail do
   """
 
   import Swoosh.Email
+  use Gettext, backend: UptrackWeb.Gettext
   alias Uptrack.Teams.TeamInvitation
 
   @from_email {"Uptrack", "team@uptrack.app"}
 
   defp app_url, do: Application.get_env(:uptrack, :app_url, "http://localhost:4000")
 
-  def invitation_email(%TeamInvitation{} = invitation, organization_name, inviter_name) do
+  def invitation_email(%TeamInvitation{} = invitation, organization_name, inviter_name, locale \\ "en") do
+    Gettext.put_locale(UptrackWeb.Gettext, locale)
     accept_url = "#{app_url()}/invitations/#{invitation.token}"
 
     new()
     |> to(invitation.email)
     |> from(@from_email)
-    |> subject("You've been invited to #{organization_name} on Uptrack")
+    |> subject(gettext("You've been invited to %{org} on Uptrack", org: organization_name))
     |> html_body(invitation_html(invitation, organization_name, inviter_name, accept_url))
     |> text_body(invitation_text(invitation, organization_name, inviter_name, accept_url))
   end
