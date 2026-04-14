@@ -157,6 +157,51 @@ defmodule UptrackWeb.Api.MonitorController do
   end
 
   @doc """
+  Bulk action on multiple monitors.
+  POST /api/monitors/bulk
+
+  Body: {"action": "pause"|"resume"|"delete"|"update_interval", "monitor_ids": [...], "interval": 60}
+  """
+  def bulk_action(conn, %{"action" => action, "monitor_ids" => ids} = params)
+      when action in ["pause", "resume", "delete", "update_interval"] and is_list(ids) do
+    org = conn.assigns.current_organization
+
+    # Filter to only monitors belonging to this org
+    owned_ids =
+      Monitoring.list_organization_monitor_ids(org.id, ids)
+
+    count =
+      case action do
+        "pause" ->
+          Monitoring.bulk_update_monitors(owned_ids, status: "paused")
+
+        "resume" ->
+          Monitoring.bulk_update_monitors(owned_ids, status: "active")
+
+        "delete" ->
+          Monitoring.bulk_delete_monitors(owned_ids)
+
+        "update_interval" ->
+          interval = params["interval"]
+          if is_integer(interval) and interval >= 30 do
+            Monitoring.bulk_update_monitors(owned_ids, interval: interval)
+          else
+            0
+          end
+      end
+
+    Teams.log_action_from_conn(conn, "monitor.bulk_#{action}", "monitor", nil,
+      metadata: %{count: count, ids: owned_ids}
+    )
+
+    json(conn, %{data: %{count: count, action: action}})
+  end
+
+  def bulk_action(conn, _params) do
+    conn |> put_status(:unprocessable_entity) |> json(%{error: "Invalid action or missing monitor_ids"})
+  end
+
+  @doc """
   Deletes a monitor.
   DELETE /api/monitors/:id
   """

@@ -227,6 +227,7 @@ defmodule UptrackWeb.Router do
 
     # Monitor API
     post "/monitors/smart-defaults", MonitorController, :smart_defaults
+    post "/monitors/bulk", MonitorController, :bulk_action
     resources "/monitors", MonitorController, only: [:index, :create, :show, :update, :delete]
     get "/monitors/:monitor_id/checks", MonitorController, :checks
     get "/regions", MonitorController, :regions
