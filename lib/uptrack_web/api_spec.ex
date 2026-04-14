@@ -30,6 +30,11 @@ defmodule UptrackWeb.ApiSpec do
       paths: Paths.from_router(Router),
       components: %Components{
         securitySchemes: %{
+          "bearerAuth" => %SecurityScheme{
+            type: "http",
+            scheme: "bearer",
+            description: "API key from your Uptrack dashboard (Settings → API Keys)"
+          },
           "session" => %SecurityScheme{
             type: "apiKey",
             in: "cookie",

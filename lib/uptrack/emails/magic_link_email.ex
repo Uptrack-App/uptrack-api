@@ -2,6 +2,7 @@ defmodule Uptrack.Emails.MagicLinkEmail do
   @moduledoc "Email template for magic link authentication."
 
   import Swoosh.Email
+  use Gettext, backend: UptrackWeb.Gettext
 
   @from_email {"Uptrack", "alerts@uptrack.app"}
 
@@ -10,14 +11,15 @@ defmodule Uptrack.Emails.MagicLinkEmail do
     if host == "localhost", do: "http://localhost:4000", else: "https://#{host}"
   end
 
-  def magic_link_email(email, raw_token) do
+  def magic_link_email(email, raw_token, locale \\ "en") do
+    Gettext.put_locale(UptrackWeb.Gettext, locale)
     # Link directly to API callback (same-origin cookie, SameSite=Lax safe)
     verify_url = "#{api_url()}/api/auth/magic-link/callback?token=#{raw_token}&email=#{URI.encode_www_form(email)}"
 
     new()
     |> to(email)
     |> from(@from_email)
-    |> subject("Sign in to Uptrack")
+    |> subject(gettext("Sign in to Uptrack"))
     |> html_body(html(verify_url))
     |> text_body(text(verify_url))
   end

@@ -50,9 +50,9 @@
 
 ## 8. Manual Verification
 
-- [ ] 8.1 Send a test notification through each channel type, verify delivery appears in log and health cards update
-- [ ] 8.2 Verify daily trend chart shows data points
-- [ ] 8.3 Verify per-org breakdown shows correct org attribution
-- [ ] 8.4 Verify error breakdown groups failures correctly
-- [ ] 8.5 Verify auto-cleanup removes old deliveries
-- [ ] 8.6 Verify non-admin users cannot access the page or endpoints
+- [x] 8.1 Send a test notification through each channel type, verify delivery appears in log and health cards update
+- [x] 8.2 Verify daily trend chart shows data points
+- [x] 8.3 Verify per-org breakdown shows correct org attribution
+- [x] 8.4 Verify error breakdown groups failures correctly
+- [x] 8.5 Verify auto-cleanup removes old deliveries
+- [x] 8.6 Verify non-admin users cannot access the page or endpoints

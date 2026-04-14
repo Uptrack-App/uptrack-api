@@ -298,6 +298,24 @@ defmodule Uptrack.Accounts do
   end
 
   @doc """
+  Updates the user's preferred display locale.
+
+  ## Examples
+
+      iex> update_locale(user, "ja")
+      {:ok, %User{}}
+
+      iex> update_locale(user, "xx")
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_locale(%User{} = user, locale) do
+    user
+    |> User.locale_changeset(%{preferred_locale: locale})
+    |> AppRepo.update()
+  end
+
+  @doc """
   Returns an `%Ecto.Changeset{}` for tracking notification preference changes.
 
   ## Examples

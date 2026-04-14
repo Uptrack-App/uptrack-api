@@ -37,6 +37,7 @@ defmodule UptrackWeb.Api.AuthJSON do
       provider: user.provider,
       role: user.role,
       is_admin: user.is_admin,
+      preferred_locale: user.preferred_locale,
       notification_preferences: user.notification_preferences,
       inserted_at: user.inserted_at
     }
