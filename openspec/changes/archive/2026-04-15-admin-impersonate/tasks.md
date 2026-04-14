@@ -73,8 +73,8 @@
 
 ## 10. Manual Verification
 
-- [ ] 10.1 Set `is_admin = true` on a test user via psql, verify admin endpoints return 200 and non-admin gets 403
-- [ ] 10.2 Start impersonation, verify `/api/auth/me` returns impersonated user with admin metadata
-- [ ] 10.3 Perform an auditable action (e.g., create a monitor) during impersonation, verify audit log contains `impersonated_by` in metadata
-- [ ] 10.4 Wait for or simulate 1-hour timeout, verify 403 `impersonation_expired` response
-- [ ] 10.5 Verify "Exit Impersonation" returns admin to their own identity
+- [x] 10.1 Set `is_admin = true` on a test user via psql, verify admin endpoints return 200 and non-admin gets 403
+- [x] 10.2 Start impersonation, verify `/api/auth/me` returns impersonated user with admin metadata
+- [x] 10.3 Perform an auditable action (e.g., create a monitor) during impersonation, verify audit log contains `impersonated_by` in metadata
+- [x] 10.4 Wait for or simulate 1-hour timeout, verify 403 `impersonation_expired` response
+- [x] 10.5 Verify "Exit Impersonation" returns admin to their own identity

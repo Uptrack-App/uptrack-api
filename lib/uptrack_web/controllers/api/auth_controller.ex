@@ -213,21 +213,30 @@ defmodule UptrackWeb.Api.AuthController do
   end
 
   @doc """
-  Updates the current user's profile (name).
+  Updates the current user's profile (name, preferred_locale).
   PATCH /api/auth/profile
   """
-  def update_profile(conn, %{"name" => _} = params) do
+  def update_profile(conn, params) do
     user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
-    case Accounts.update_user(user, Map.take(params, ["name"])) do
-      {:ok, updated_user} ->
-        render(conn, :user, user: updated_user, organization: org)
-
-      {:error, changeset} ->
-        {:error, changeset}
+    with {:ok, updated_user} <- maybe_update_name(user, params),
+         {:ok, updated_user} <- maybe_update_locale(updated_user, params) do
+      render(conn, :user, user: updated_user, organization: org)
     end
   end
+
+  defp maybe_update_name(user, %{"name" => _} = params) do
+    Accounts.update_user(user, Map.take(params, ["name"]))
+  end
+
+  defp maybe_update_name(user, _params), do: {:ok, user}
+
+  defp maybe_update_locale(user, %{"preferred_locale" => locale}) do
+    Accounts.update_locale(user, locale)
+  end
+
+  defp maybe_update_locale(user, _params), do: {:ok, user}
 
   @doc """
   Changes the current user's password.
@@ -316,7 +325,8 @@ defmodule UptrackWeb.Api.AuthController do
 
           case Accounts.store_magic_token(email, hashed_token) do
             {:ok, _token} ->
-              case MagicLinkEmail.magic_link_email(email, raw_token) |> Mailer.deliver() do
+              locale = conn.assigns[:locale] || "en"
+              case MagicLinkEmail.magic_link_email(email, raw_token, locale) |> Mailer.deliver() do
                 {:ok, _} -> Logger.info("Magic link email sent to #{email}")
                 {:error, reason} -> Logger.error("Magic link email failed for #{email}: #{inspect(reason)}")
               end

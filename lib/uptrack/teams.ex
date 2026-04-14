@@ -246,9 +246,10 @@ defmodule Uptrack.Teams do
   defp send_invitation_email(invitation, organization_id, invited_by_user_id) do
     org = Organizations.get_organization!(organization_id)
     inviter = Accounts.get_user!(invited_by_user_id)
+    locale = inviter.preferred_locale || "en"
 
     invitation
-    |> InvitationEmail.invitation_email(org.name, inviter.name)
+    |> InvitationEmail.invitation_email(org.name, inviter.name, locale)
     |> Mailer.deliver()
   rescue
     e ->

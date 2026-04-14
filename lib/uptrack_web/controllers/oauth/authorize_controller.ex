@@ -14,6 +14,10 @@ defmodule UptrackWeb.OAuth.AuthorizeController do
 
   use UptrackWeb, :controller
 
+  # OAuth consent pages are self-contained HTML — disable root layout
+  plug :put_root_layout, false
+  plug :put_layout, false
+
   alias Boruta.Oauth.AuthorizationSuccess
   alias Uptrack.Accounts
   alias Uptrack.OAuth
