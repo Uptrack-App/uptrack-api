@@ -18,6 +18,12 @@ defmodule UptrackWeb.Api.IncidentController do
     render(conn, :index, incidents: incidents)
   end
 
+  def monitor_incidents(conn, %{"monitor_id" => monitor_id}) do
+    org = conn.assigns.current_organization
+    incidents = Monitoring.list_monitor_incidents(org.id, monitor_id)
+    render(conn, :index, incidents: incidents)
+  end
+
   def show(conn, %{"id" => id}) do
     org = conn.assigns.current_organization
 

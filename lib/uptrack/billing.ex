@@ -41,23 +41,14 @@ defmodule Uptrack.Billing do
   Returns :ok or {:error, message}.
   """
   def check_interval_limit(%Organization{} = org, interval) when is_integer(interval) do
-    min = Plans.plan_limit(org.plan, :min_interval)
+    counts =
+      if interval <= 30 do
+        %{quick_monitors: Uptrack.Monitoring.count_quick_monitors(org.id)}
+      else
+        %{}
+      end
 
-    cond do
-      interval >= min ->
-        :ok
-
-      interval >= 120 ->
-        counts = %{fast_monitors: Uptrack.Monitoring.count_fast_monitors(org.id)}
-        Plans.check_interval_limit(org, interval, counts)
-
-      interval >= 60 ->
-        counts = %{quick_monitors: Uptrack.Monitoring.count_quick_monitors(org.id)}
-        Plans.check_interval_limit(org, interval, counts)
-
-      true ->
-        Plans.check_interval_limit(org, interval)
-    end
+    Plans.check_interval_limit(org, interval, counts)
   end
 
   # --- Plan enforcement (bridges pure Plans with DB counts) ---
