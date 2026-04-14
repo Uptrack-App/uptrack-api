@@ -311,16 +311,25 @@ defmodule UptrackWeb.Api.AuthController do
 
     case Hammer.check_rate(bucket, 300_000, 3) do
       {:allow, _} ->
-        {raw_token, hashed_token} = MagicLink.generate_token()
+        try do
+          {raw_token, hashed_token} = MagicLink.generate_token()
 
-        case Accounts.store_magic_token(email, hashed_token) do
-          {:ok, _token} ->
-            case MagicLinkEmail.magic_link_email(email, raw_token) |> Mailer.deliver() do
-              {:ok, _} -> Logger.info("Magic link email sent to #{email}")
-              {:error, reason} -> Logger.error("Magic link email failed for #{email}: #{inspect(reason)}")
-            end
-          {:error, reason} ->
-            Logger.error("Magic link token store failed: #{inspect(reason)}")
+          case Accounts.store_magic_token(email, hashed_token) do
+            {:ok, _token} ->
+              case MagicLinkEmail.magic_link_email(email, raw_token) |> Mailer.deliver() do
+                {:ok, _} -> Logger.info("Magic link email sent to #{email}")
+                {:error, reason} -> Logger.error("Magic link email failed for #{email}: #{inspect(reason)}")
+              end
+
+            {:error, reason} ->
+              Logger.error("Magic link token store failed: #{inspect(reason)}")
+          end
+        rescue
+          exception ->
+            Logger.error(
+              "Magic link request failed for #{email}: " <>
+                Exception.format(:error, exception, __STACKTRACE__)
+            )
         end
 
         # Always return 200 to prevent email enumeration
