@@ -52,6 +52,7 @@ defmodule Uptrack.Accounts do
 
   """
   def get_user!(id), do: AppRepo.get!(User, id)
+  def get_user(id), do: AppRepo.get(User, id)
 
   @doc """
   Creates a user.

@@ -1,7 +1,10 @@
 defmodule UptrackWeb.Api.AdminController do
   use UptrackWeb, :controller
 
-  alias Uptrack.{Accounts, Admin, Teams}
+  alias Uptrack.{Accounts, Admin, Teams, Alerting}
+  alias Uptrack.Alerting.DeliveryTracker
+  alias Uptrack.Metrics.Reader
+  alias Uptrack.Organizations
 
   @doc """
   POST /api/admin/impersonate
@@ -108,6 +111,116 @@ defmodule UptrackWeb.Api.AdminController do
 
     result = Admin.search_organizations(query, page: page, per_page: per_page)
     render(conn, :organizations, result: result)
+  end
+
+  # --- Notification Diagnostics ---
+
+  @doc """
+  GET /api/admin/notification-health
+  Returns notification delivery health metrics.
+  """
+  def notification_health(conn, _params) do
+    {:ok, stats} = Reader.get_notification_stats(7)
+    {:ok, latency} = Reader.get_notification_latency(7)
+    {:ok, daily_trend} = Reader.get_notification_daily_trend(7)
+    {:ok, per_org_stats} = Reader.get_notification_per_org_stats(7)
+    error_breakdown = DeliveryTracker.get_error_breakdown(7)
+    last_success = DeliveryTracker.get_last_success_per_channel_type(7)
+
+    # Enrich per_org with org names
+    org_ids = Enum.map(per_org_stats, & &1.org_id) |> Enum.uniq()
+    org_names = load_org_names(org_ids)
+
+    per_org_with_names =
+      Enum.map(per_org_stats, fn item ->
+        Map.put(item, :org_name, Map.get(org_names, item.org_id, "Unknown"))
+      end)
+
+    render(conn, :notification_health,
+      stats: stats,
+      latency: latency,
+      daily_trend: daily_trend,
+      per_org: per_org_with_names,
+      error_breakdown: error_breakdown,
+      last_success: last_success
+    )
+  end
+
+  @doc """
+  GET /api/admin/alert-channels?q=&page=&per_page=
+  Lists all alert channels across organizations.
+  """
+  def list_all_channels(conn, params) do
+    query = Map.get(params, "q", "")
+    page = parse_int(params["page"], 1)
+    per_page = parse_int(params["per_page"], 25)
+
+    result = Admin.list_all_channels(query, page: page, per_page: per_page)
+    render(conn, :alert_channels, result: result)
+  end
+
+  @doc """
+  POST /api/admin/test-notification
+  Sends a test notification through a specific alert channel.
+  """
+  def test_notification(conn, %{"channel_id" => channel_id}) do
+    admin = conn.assigns.current_user
+
+    case Alerting.get_alert_channel(channel_id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "channel_not_found"})
+
+      channel ->
+        Teams.log_action(
+          channel.organization_id,
+          admin.id,
+          "admin.notification_tested",
+          "alert_channel",
+          channel.id,
+          metadata: %{channel_type: channel.type, channel_name: channel.name}
+        )
+
+        case Alerting.send_test_alert(channel) do
+          {:ok, _} ->
+            json(conn, %{ok: true, channel_type: channel.type, channel_name: channel.name})
+
+          {:error, reason} ->
+            json(conn, %{ok: false, channel_type: channel.type, channel_name: channel.name, error: inspect(reason)})
+        end
+    end
+  end
+
+  def test_notification(conn, _params) do
+    conn |> put_status(:unprocessable_entity) |> json(%{error: "channel_id is required"})
+  end
+
+  @doc """
+  GET /api/admin/notification-deliveries?channel_type=&status=&page=&per_page=
+  Lists recent notification deliveries across all organizations.
+  """
+  def list_notification_deliveries(conn, params) do
+    opts = [
+      channel_type: params["channel_type"],
+      status: params["status"],
+      page: parse_int(params["page"], 1),
+      per_page: parse_int(params["per_page"], 50)
+    ]
+
+    result = DeliveryTracker.list_platform_deliveries(opts)
+    render(conn, :notification_deliveries, result: result)
+  end
+
+  defp load_org_names(org_ids) when org_ids == [], do: %{}
+
+  defp load_org_names(org_ids) do
+    import Ecto.Query
+    alias Uptrack.Organizations.Organization
+
+    Organization
+    |> where([o], o.id in ^org_ids)
+    |> select([o], {o.id, o.name})
+    |> Uptrack.AppRepo.all()
+    |> Map.new(fn {id, name} -> {to_string(id), name} end)
   end
 
   # --- Private helpers ---

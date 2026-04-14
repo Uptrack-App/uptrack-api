@@ -42,6 +42,10 @@ defmodule Uptrack.Teams.AuditLog do
     user.logged_in
     user.logged_out
     user.settings_updated
+    admin.impersonation_started
+    admin.impersonation_ended
+    admin.impersonation_expired
+    admin.notification_tested
   )
 
   @primary_key {:id, Uniq.UUID, version: 7, autogenerate: true}

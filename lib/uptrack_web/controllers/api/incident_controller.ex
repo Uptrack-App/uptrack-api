@@ -33,7 +33,7 @@ defmodule UptrackWeb.Api.IncidentController do
   end
 
   def create(conn, %{"monitor_id" => monitor_id} = params) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     monitor = Monitoring.get_organization_monitor(org.id, monitor_id)
@@ -49,7 +49,7 @@ defmodule UptrackWeb.Api.IncidentController do
 
       case Monitoring.create_incident(attrs) do
         {:ok, incident} ->
-          Teams.log_action(org.id, user.id, "incident.created", "incident", incident.id,
+          Teams.log_action_from_conn(conn, "incident.created", "incident", incident.id,
             metadata: %{monitor_id: monitor_id, cause: params["cause"]}
           )
 
@@ -68,7 +68,7 @@ defmodule UptrackWeb.Api.IncidentController do
   end
 
   def update(conn, %{"id" => id} = params) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     incident = Monitoring.get_incident!(id)
@@ -87,7 +87,7 @@ defmodule UptrackWeb.Api.IncidentController do
         {:ok, updated} ->
           action = if params["status"] == "resolved", do: "incident.resolved", else: "incident.updated"
 
-          Teams.log_action(org.id, user.id, action, "incident", updated.id)
+          Teams.log_action_from_conn(conn, action, "incident", updated.id)
 
           updated = Monitoring.get_incident_with_updates!(updated.id)
           render(conn, :show, incident: updated)
@@ -116,7 +116,7 @@ defmodule UptrackWeb.Api.IncidentController do
         else
           case Monitoring.acknowledge_incident(incident, user.id) do
             {:ok, updated} ->
-              Teams.log_action(org.id, user.id, "incident.acknowledged", "incident", updated.id)
+              Teams.log_action_from_conn(conn, "incident.acknowledged", "incident", updated.id)
 
               updated = Monitoring.get_incident_with_updates!(updated.id)
               render(conn, :show, incident: updated)

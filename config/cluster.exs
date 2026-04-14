@@ -128,9 +128,9 @@ config :uptrack, Uptrack.Cluster,
 config :uptrack, Uptrack.Regions,
   available_regions: [
     # Current Hetzner regions
-    %{code: "eu-north-1", name: "Europe (Helsinki)", provider: :hetzner, active: true},
-    %{code: "us-west-2", name: "US West (Oregon)", provider: :hetzner, active: true},
-    %{code: "ap-southeast-1", name: "Asia Pacific (Singapore)", provider: :hetzner, active: true}
+    %{code: "eu-north-1", name: "Europe (Nuremberg, Germany)", provider: :netcup, active: true},
+    %{code: "us-west-2", name: "Americas (Ashburn)", provider: :racknerd, active: true},
+    %{code: "ap-southeast-1", name: "Asia (Hyderabad, India)", provider: :oracle, active: true}
 
     # Future regions (commented out):
     # %{code: "us-east-1", name: "US East (N. Virginia)", provider: :vultr, active: false},

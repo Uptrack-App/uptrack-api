@@ -27,7 +27,16 @@ defmodule UptrackWeb.Router do
     plug :accepts, ["json"]
     plug :fetch_session
     plug UptrackWeb.Plugs.ApiAuth
+    plug UptrackWeb.Plugs.Impersonation
     plug UptrackWeb.Plugs.RateLimit, max_requests: 200, interval_ms: 60_000, by: :user, bucket: "api_auth"
+  end
+
+  pipeline :api_admin do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug UptrackWeb.Plugs.ApiAuth
+    plug UptrackWeb.Plugs.RequireAdmin
+    plug UptrackWeb.Plugs.RateLimit, max_requests: 30, interval_ms: 60_000, by: :user, bucket: "api_admin"
   end
 
   # Higher rate limit for heartbeat endpoints (services may ping frequently)
@@ -277,6 +286,22 @@ defmodule UptrackWeb.Router do
     get "/billing/add-ons", AddOnController, :index
     post "/billing/add-ons", AddOnController, :update
 
+  end
+
+  # Admin endpoints (platform staff only)
+  scope "/api/admin", UptrackWeb.Api do
+    pipe_through :api_admin
+
+    post "/impersonate", AdminController, :start_impersonation
+    delete "/impersonate", AdminController, :stop_impersonation
+    get "/users", AdminController, :search_users
+    get "/organizations", AdminController, :search_organizations
+
+    # Notification diagnostics
+    get "/notification-health", AdminController, :notification_health
+    get "/alert-channels", AdminController, :list_all_channels
+    post "/test-notification", AdminController, :test_notification
+    get "/notification-deliveries", AdminController, :list_notification_deliveries
   end
 
   # MCP endpoint — dual OAuth/API key auth (separate from api_authenticated)

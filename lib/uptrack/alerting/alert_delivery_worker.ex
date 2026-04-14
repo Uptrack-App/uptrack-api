@@ -25,6 +25,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
 
   alias Uptrack.Monitoring
   alias Uptrack.Accounts
+  alias Uptrack.Metrics.Writer
   require Logger
 
   @impl Oban.Worker
@@ -50,19 +51,24 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
       organization_id: monitor.organization_id
     }
 
+    start = System.monotonic_time(:millisecond)
     result = dispatch_alert(channel, incident, monitor, user, event_type)
+    duration_ms = System.monotonic_time(:millisecond) - start
 
     case result do
       {:ok, _} ->
         DeliveryTracker.record_success(delivery_attrs)
+        Writer.write_notification_delivery(channel.type, "delivered", duration_ms, monitor.organization_id)
         :ok
 
       {:delayed, _} ->
         DeliveryTracker.record_skipped(delivery_attrs, "delayed by notification preferences")
+        Writer.write_notification_delivery(channel.type, "skipped", duration_ms, monitor.organization_id)
         :ok
 
       {:error, reason} ->
         DeliveryTracker.record_failure(delivery_attrs, inspect(reason))
+        Writer.write_notification_delivery(channel.type, "failed", duration_ms, monitor.organization_id)
         {:error, reason}
     end
   end

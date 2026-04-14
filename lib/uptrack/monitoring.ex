@@ -560,25 +560,27 @@ defmodule Uptrack.Monitoring do
 
     monitor_ids = Enum.map(monitors, & &1.id)
 
-    latest_checks =
-      if Enum.any?(monitor_ids) do
-        subquery =
-          from mc in MonitorCheck,
-            where: mc.monitor_id in ^monitor_ids,
-            order_by: [desc: mc.checked_at],
-            distinct: mc.monitor_id,
-            select: mc
-
-        AppRepo.all(subquery)
-        |> Enum.group_by(& &1.monitor_id)
-      else
-        %{}
-      end
+    # Read latest checks from cache (populated by MonitorProcess),
+    # falling back to VictoriaMetrics if cache is empty
+    cached_checks = Uptrack.Cache.get_latest_checks_batch(monitor_ids)
 
     monitors_with_status =
       Enum.map(monitors, fn monitor ->
-        latest_check = Map.get(latest_checks, monitor.id, []) |> List.first()
-        %{monitor | monitor_checks: if(latest_check, do: [latest_check], else: [])}
+        mid = to_string(monitor.id)
+
+        case Map.get(cached_checks, mid) do
+          %{status: status, response_time: rt, checked_at: checked_at} ->
+            check = %MonitorCheck{
+              monitor_id: monitor.id,
+              status: status,
+              response_time: rt,
+              checked_at: checked_at
+            }
+            %{monitor | monitor_checks: [check]}
+
+          _ ->
+            %{monitor | monitor_checks: []}
+        end
       end)
 
     %{status_page | monitors: monitors_with_status}

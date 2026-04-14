@@ -79,7 +79,7 @@ defmodule UptrackWeb.Api.MonitorController do
             Monitoring.sync_monitor_regions(monitor.id, region_ids)
           end
 
-          Teams.log_action(org.id, user.id, "monitor.created", "monitor", monitor.id,
+          Teams.log_action_from_conn(conn, "monitor.created", "monitor", monitor.id,
             metadata: %{name: monitor.name, monitor_type: monitor.monitor_type}
           )
 
@@ -116,7 +116,7 @@ defmodule UptrackWeb.Api.MonitorController do
   PATCH /api/monitors/:id
   """
   def update(conn, %{"id" => id} = params) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     interval = params["interval"]
@@ -140,7 +140,7 @@ defmodule UptrackWeb.Api.MonitorController do
             Monitoring.sync_monitor_regions(updated.id, region_ids)
           end
 
-          Teams.log_action(org.id, user.id, "monitor.updated", "monitor", updated.id,
+          Teams.log_action_from_conn(conn, "monitor.updated", "monitor", updated.id,
             metadata: %{name: updated.name}
           )
 
@@ -161,12 +161,12 @@ defmodule UptrackWeb.Api.MonitorController do
   DELETE /api/monitors/:id
   """
   def delete(conn, %{"id" => id}) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     with monitor when not is_nil(monitor) <- Monitoring.get_organization_monitor(org.id, id),
          {:ok, _} <- Monitoring.delete_monitor(monitor) do
-      Teams.log_action(org.id, user.id, "monitor.deleted", "monitor", monitor.id,
+      Teams.log_action_from_conn(conn, "monitor.deleted", "monitor", monitor.id,
         metadata: %{name: monitor.name}
       )
 
