@@ -191,8 +191,15 @@ defmodule UptrackWeb.Api.AuthController do
   def me(conn, _params) do
     user = conn.assigns.current_user
     org = conn.assigns.current_organization
+    impersonating_admin = conn.assigns[:impersonating_admin]
+    started_at = get_session(conn, :impersonation_started_at)
 
-    render(conn, :user, user: user, organization: org)
+    render(conn, :user,
+      user: user,
+      organization: org,
+      impersonating_admin: impersonating_admin,
+      impersonation_started_at: started_at
+    )
   end
 
   @doc """

@@ -258,6 +258,130 @@ defmodule Uptrack.Metrics.Reader do
     end
   end
 
+  # --- Notification Diagnostics ---
+
+  @doc """
+  Queries notification delivery counts grouped by channel_type and status over last N days.
+  Returns `%{"email" => %{"delivered" => 312, "failed" => 1, ...}, ...}`.
+  """
+  def get_notification_stats(days \\ 7) do
+    now = DateTime.utc_now()
+    start_time = DateTime.add(now, -days * 86400, :second)
+
+    query = "sum by (channel_type, status) (uptrack_notification_delivery)"
+
+    case query_range(query, start_time, now, "#{days}d") do
+      {:ok, results} ->
+        stats =
+          results
+          |> Enum.reduce(%{}, fn %{"metric" => m, "values" => vals}, acc ->
+            channel_type = m["channel_type"]
+            status = m["status"]
+            count = vals |> List.last([0, "0"]) |> Enum.at(1) |> parse_float() |> trunc()
+
+            acc
+            |> Map.put_new(channel_type, %{})
+            |> update_in([channel_type], &Map.put(&1, status, count))
+          end)
+
+        {:ok, stats}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Queries p95 notification delivery duration per channel_type over last N days.
+  Returns `%{"email" => 1200.0, "slack" => 350.0, ...}`.
+  """
+  def get_notification_latency(days \\ 7) do
+    now = DateTime.utc_now()
+    range = "#{days * 24}h"
+
+    channel_types = ~w(email slack discord telegram)
+
+    results =
+      for ct <- channel_types do
+        query = "quantile_over_time(0.95, uptrack_notification_duration_ms{channel_type=\"#{ct}\"}[#{range}])"
+
+        case query_instant(query, now) do
+          {:ok, value} -> {ct, Float.round(value, 1)}
+          {:error, _} -> {ct, 0.0}
+        end
+      end
+
+    {:ok, Map.new(results)}
+  end
+
+  @doc """
+  Queries daily notification delivery counts per channel_type and status over last N days.
+  Returns list of `%{date: Date, channel_type: String, status: String, count: integer}`.
+  """
+  def get_notification_daily_trend(days \\ 7) do
+    now = DateTime.utc_now()
+    start_time = DateTime.add(now, -days * 86400, :second)
+
+    query = "sum by (channel_type, status) (uptrack_notification_delivery)"
+
+    case query_range(query, start_time, now, "1d") do
+      {:ok, results} ->
+        points =
+          results
+          |> Enum.flat_map(fn %{"metric" => m, "values" => vals} ->
+            Enum.map(vals, fn [ts, val] ->
+              %{
+                date: ts |> trunc() |> DateTime.from_unix!() |> DateTime.to_date() |> Date.to_iso8601(),
+                channel_type: m["channel_type"],
+                status: m["status"],
+                count: parse_float(val) |> trunc()
+              }
+            end)
+          end)
+
+        {:ok, points}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Queries notification delivery counts grouped by org_id and status over last N days.
+  Returns list of `%{org_id: String, delivered: integer, failed: integer}`.
+  """
+  def get_notification_per_org_stats(days \\ 7) do
+    now = DateTime.utc_now()
+    start_time = DateTime.add(now, -days * 86400, :second)
+
+    query = "sum by (org_id, status) (uptrack_notification_delivery)"
+
+    case query_range(query, start_time, now, "#{days}d") do
+      {:ok, results} ->
+        by_org =
+          results
+          |> Enum.reduce(%{}, fn %{"metric" => m, "values" => vals}, acc ->
+            org_id = m["org_id"]
+            status = m["status"]
+            count = vals |> List.last([0, "0"]) |> Enum.at(1) |> parse_float() |> trunc()
+
+            acc
+            |> Map.put_new(org_id, %{"delivered" => 0, "failed" => 0, "skipped" => 0})
+            |> update_in([org_id, status], fn _ -> count end)
+          end)
+
+        org_list =
+          Enum.map(by_org, fn {org_id, counts} ->
+            %{org_id: org_id, delivered: counts["delivered"] || 0, failed: counts["failed"] || 0}
+          end)
+
+        {:ok, org_list}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   defp extract_time_values(results) do
     results
     |> List.first(%{})

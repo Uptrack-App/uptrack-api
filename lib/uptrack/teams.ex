@@ -387,6 +387,41 @@ defmodule Uptrack.Teams do
   # ============================================================================
 
   @doc """
+  Creates an audit log entry from a Plug.Conn.
+
+  Extracts user_id, organization_id, and ip_address from conn assigns.
+  Automatically enriches metadata with `impersonated_by` when impersonation
+  is active (conn.assigns.impersonating_admin is present).
+  """
+  def log_action_from_conn(conn, action, resource_type, resource_id \\ nil, opts \\ []) do
+    user = conn.assigns[:current_user]
+    org = conn.assigns[:current_organization]
+
+    base_metadata = Keyword.get(opts, :metadata, %{})
+
+    metadata =
+      case conn.assigns[:impersonating_admin] do
+        nil -> base_metadata
+        admin -> Map.put(base_metadata, :impersonated_by, admin.id)
+      end
+
+    ip_address =
+      case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
+        [header | _] -> header |> String.split(",") |> List.first() |> String.trim()
+        [] -> to_string(:inet.ntoa(conn.remote_ip))
+      end
+
+    log_action(
+      org && org.id,
+      user && user.id,
+      action,
+      resource_type,
+      resource_id,
+      Keyword.merge(opts, metadata: metadata, ip_address: ip_address)
+    )
+  end
+
+  @doc """
   Creates an audit log entry.
   """
   def log_action(organization_id, user_id, action, resource_type, resource_id \\ nil, opts \\ []) do

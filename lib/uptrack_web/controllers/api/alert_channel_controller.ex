@@ -39,7 +39,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
 
       case Monitoring.create_alert_channel(attrs) do
         {:ok, channel} ->
-          Teams.log_action(org.id, user.id, "alert_channel.created", "alert_channel", channel.id,
+          Teams.log_action_from_conn(conn, "alert_channel.created", "alert_channel", channel.id,
             metadata: %{name: channel.name, type: channel.type}
           )
 
@@ -86,7 +86,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
   end
 
   def update(conn, %{"id" => id} = params) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     channel = Monitoring.get_alert_channel!(id)
@@ -94,7 +94,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
     if channel.organization_id == org.id do
       case Monitoring.update_alert_channel(channel, params) do
         {:ok, updated} ->
-          Teams.log_action(org.id, user.id, "alert_channel.updated", "alert_channel", updated.id,
+          Teams.log_action_from_conn(conn, "alert_channel.updated", "alert_channel", updated.id,
             metadata: %{name: updated.name}
           )
 
@@ -111,7 +111,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
   end
 
   def delete(conn, %{"id" => id}) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     channel = Monitoring.get_alert_channel!(id)
@@ -119,7 +119,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
     if channel.organization_id == org.id do
       case Monitoring.delete_alert_channel(channel) do
         {:ok, _} ->
-          Teams.log_action(org.id, user.id, "alert_channel.deleted", "alert_channel", channel.id,
+          Teams.log_action_from_conn(conn, "alert_channel.deleted", "alert_channel", channel.id,
             metadata: %{name: channel.name}
           )
 
@@ -136,7 +136,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
   end
 
   def test(conn, %{"id" => id}) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     channel = Monitoring.get_alert_channel!(id)
@@ -144,7 +144,7 @@ defmodule UptrackWeb.Api.AlertChannelController do
     if channel.organization_id == org.id do
       case Alerting.send_test_alert(channel) do
         {:ok, _} ->
-          Teams.log_action(org.id, user.id, "alert_channel.tested", "alert_channel", channel.id,
+          Teams.log_action_from_conn(conn, "alert_channel.tested", "alert_channel", channel.id,
             metadata: %{name: channel.name}
           )
 

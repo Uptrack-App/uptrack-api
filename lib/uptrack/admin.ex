@@ -9,6 +9,7 @@ defmodule Uptrack.Admin do
   alias Uptrack.AppRepo
   alias Uptrack.Accounts.User
   alias Uptrack.Organizations.Organization
+  alias Uptrack.Monitoring.AlertChannel
 
   @default_per_page 25
   @max_per_page 100
@@ -121,5 +122,53 @@ defmodule Uptrack.Admin do
       per_page: per_page,
       total: total
     }
+  end
+
+  @doc """
+  Lists all alert channels across organizations with org name.
+  Supports ILIKE search on channel name and org name.
+  """
+  def list_all_channels(query_string, opts \\ []) do
+    page = max(Keyword.get(opts, :page, 1), 1)
+    per_page = min(Keyword.get(opts, :per_page, @default_per_page), @max_per_page)
+    offset = (page - 1) * per_page
+
+    base =
+      from ac in AlertChannel,
+        join: o in Organization,
+        on: o.id == ac.organization_id,
+        select: %{
+          id: ac.id,
+          name: ac.name,
+          type: ac.type,
+          is_active: ac.is_active,
+          organization_id: ac.organization_id,
+          organization_name: o.name,
+          inserted_at: ac.inserted_at
+        },
+        order_by: [asc: o.name, asc: ac.name]
+
+    filtered =
+      if query_string && String.trim(query_string) != "" do
+        pattern = "%#{String.trim(query_string)}%"
+
+        where(
+          base,
+          [ac, o],
+          ilike(ac.name, ^pattern) or ilike(o.name, ^pattern)
+        )
+      else
+        base
+      end
+
+    total = AppRepo.aggregate(filtered, :count)
+
+    results =
+      filtered
+      |> limit(^per_page)
+      |> offset(^offset)
+      |> AppRepo.all()
+
+    %{data: results, page: page, per_page: per_page, total: total}
   end
 end

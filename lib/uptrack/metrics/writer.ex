@@ -65,6 +65,33 @@ defmodule Uptrack.Metrics.Writer do
     end
   end
 
+  @doc """
+  Writes notification delivery metrics to VictoriaMetrics.
+
+  Publishes:
+  - `uptrack_notification_delivery` (counter, 1 per delivery) with channel_type, status, org_id labels
+  - `uptrack_notification_duration_ms` (latency) with channel_type label
+  """
+  def write_notification_delivery(channel_type, status, duration_ms, org_id) do
+    case vminsert_urls() do
+      [] ->
+        :ok
+
+      urls ->
+        timestamp = System.os_time(:millisecond)
+
+        lines = [
+          metric_line("uptrack_notification_delivery", 1,
+            %{channel_type: channel_type, status: status, org_id: to_string(org_id)}, timestamp),
+          metric_line("uptrack_notification_duration_ms", duration_ms,
+            %{channel_type: channel_type}, timestamp)
+        ]
+
+        body = Enum.join(lines, "\n")
+        Enum.each(urls, &do_write(&1, body))
+    end
+  end
+
   defp do_write(url, body) do
     import_url = "#{url}/api/v1/import/prometheus"
 
