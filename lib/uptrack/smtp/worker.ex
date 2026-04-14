@@ -115,6 +115,7 @@ defmodule Uptrack.SMTP.Worker do
 
     case smtp_client().deliver(socket, {from, to, body}) do
       {:ok, _receipt, new_socket} -> {:ok, new_socket}
+      {:ok, _receipt} -> {:ok, socket}
       {:error, _type, message, new_socket} -> {{:error, message}, new_socket}
       {:error, reason} -> {{:error, reason}, socket}
     end

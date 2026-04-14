@@ -132,101 +132,104 @@ in
         certDir = if ext.enable
           then config.security.acme.certs.${ext.hostname}.directory
           else "/dev/null";
-      in {
-        # ── Listeners ──────────────────────────────────────────────
 
-        # Internal: localhost + Tailscale, no TLS, no auth
-        server.listener."smtp-internal" = {
-          bind = map (addr: "${addr}:${toString cfg.smtpPort}") cfg.bindAddresses;
-          protocol = "smtp";
-          tls.implicit = false;
+        baseSettings = {
+          # ── Listeners ──────────────────────────────────────────────
+
+          # Internal: localhost + Tailscale, no TLS, no auth
+          server.listener."smtp-internal" = {
+            bind = map (addr: "${addr}:${toString cfg.smtpPort}") cfg.bindAddresses;
+            protocol = "smtp";
+            tls.implicit = false;
+          };
+
+          # ── Auth (conditional per listener) ────────────────────────
+          session.auth.mechanisms = if ext.enable
+            then [
+              { "if" = "listener != 'smtps-external'"; "then" = false; }
+              { "else" = "[plain, login]"; }
+            ]
+            else [];
+
+          session.auth.require = if ext.enable
+            then [
+              { "if" = "listener != 'smtps-external'"; "then" = false; }
+              { "else" = true; }
+            ]
+            else false;
+
+          session.auth.directory = if ext.enable
+            then [
+              { "if" = "listener = 'smtps-external'"; "then" = "'gmail-relay'"; }
+              { "else" = false; }
+            ]
+            else false;
+
+          session.auth.must-match-sender = false;
+          session.auth.allow-plain-text = false;
+          session.auth.errors.total = 3;
+          session.auth.errors.wait = "5s";
+
+          # ── Relay ──────────────────────────────────────────────────
+          session.rcpt.relay = true;
+
+          # Disable spam filter — we're the sender, not a public-facing MX.
+          spam-filter.enable = false;
+
+          # ── DKIM signing ───────────────────────────────────────────
+          signature."rsa" = {
+            private-key = "%{file:${dkimKeyPath}}%";
+            domain = cfg.dkimDomain;
+            selector = cfg.dkimSelector;
+            headers = [
+              "From" "To" "Cc" "Date" "Subject" "Message-ID"
+              "MIME-Version" "Content-Type" "In-Reply-To" "References"
+            ];
+            algorithm = "rsa-sha256";
+            canonicalization = "relaxed/relaxed";
+            expire = "10d";
+            set-body-length = false;
+            report = true;
+          };
+
+          auth.dkim.sign = "['rsa']";
         };
 
-        # ── Auth (conditional per listener) ────────────────────────
-        # Internal listener: no auth required
-        # External listener: auth required with PLAIN + LOGIN
-        session.auth.mechanisms = if ext.enable
-          then [
-            { "if" = "listener != 'smtps-external'"; "then" = false; }
-            { "else" = "[plain, login]"; }
-          ]
-          else [];
+        # ── External submission (conditional) ─────────────────────
+        # Merged with recursiveUpdate so server.listener attrs are combined,
+        # not overwritten (which is what // would do).
+        extSettings = lib.optionalAttrs ext.enable {
+          # SMTPS listener: public, implicit TLS, auth required
+          server.listener."smtps-external" = {
+            bind = [ "[::]:${toString ext.port}" ];
+            protocol = "smtp";
+            tls.implicit = true;
+            tls.certificate = "acme";
+          };
 
-        session.auth.require = if ext.enable
-          then [
-            { "if" = "listener != 'smtps-external'"; "then" = false; }
-            { "else" = true; }
-          ]
-          else false;
+          # TLS certificate from Let's Encrypt
+          certificate."acme" = {
+            cert = "%{file:${certDir}/fullchain.pem}%";
+            private-key = "%{file:${certDir}/key.pem}%";
+          };
 
-        session.auth.directory = if ext.enable
-          then [
-            { "if" = "listener = 'smtps-external'"; "then" = "'gmail-relay'"; }
-            { "else" = false; }
-          ]
-          else false;
+          # Static user directory for Gmail Send-as auth
+          directory."gmail-relay" = {
+            type = "memory";
+            principals = [
+              {
+                class = "individual";
+                name = ext.username;
+                secret = "%{file:${ext.passwordFile}}%";
+                email = [ "hello@uptrack.app" "team@uptrack.app" "alerts@uptrack.app" ];
+              }
+            ];
+          };
 
-        session.auth.must-match-sender = false;
-        session.auth.allow-plain-text = false;
-        session.auth.errors.total = 3;
-        session.auth.errors.wait = "5s";
-
-        # ── Relay ──────────────────────────────────────────────────
-        session.rcpt.relay = true;
-
-        # Disable spam filter — we're the sender, not a public-facing MX.
-        spam-filter.enable = false;
-
-        # ── DKIM signing ───────────────────────────────────────────
-        signature."rsa" = {
-          private-key = "%{file:${dkimKeyPath}}%";
-          domain = cfg.dkimDomain;
-          selector = cfg.dkimSelector;
-          headers = [
-            "From" "To" "Cc" "Date" "Subject" "Message-ID"
-            "MIME-Version" "Content-Type" "In-Reply-To" "References"
-          ];
-          algorithm = "rsa-sha256";
-          canonicalization = "relaxed/relaxed";
-          expire = "10d";
-          set-body-length = false;
-          report = true;
+          # Use gmail-relay directory for auth lookups
+          storage.directory = "gmail-relay";
         };
-
-        auth.dkim.sign = "['rsa']";
-      }
-      # ── External submission (conditional) ─────────────────────
-      // (optionalAttrs ext.enable {
-        # SMTPS listener: public, implicit TLS, auth required
-        server.listener."smtps-external" = {
-          bind = [ "[::]:${toString ext.port}" ];
-          protocol = "smtp";
-          tls.implicit = true;
-          tls.certificate = "acme";
-        };
-
-        # TLS certificate from Let's Encrypt
-        certificate."acme" = {
-          cert = "%{file:${certDir}/fullchain.pem}%";
-          private-key = "%{file:${certDir}/key.pem}%";
-        };
-
-        # Static user directory for Gmail Send-as auth
-        directory."gmail-relay" = {
-          type = "memory";
-          principals = [
-            {
-              class = "individual";
-              name = ext.username;
-              secret = "%{file:${ext.passwordFile}}%";
-              email = [ "hello@uptrack.app" "team@uptrack.app" "alerts@uptrack.app" ];
-            }
-          ];
-        };
-
-        # Use gmail-relay directory for auth lookups
-        storage.directory = "gmail-relay";
-      });
+      in lib.recursiveUpdate baseSettings extSettings;
     };
   };
 }
