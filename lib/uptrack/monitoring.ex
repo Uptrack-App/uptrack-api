@@ -147,6 +147,72 @@ defmodule Uptrack.Monitoring do
   end
 
   @doc """
+  Returns monitor IDs from `candidate_ids` that belong to `org_id`.
+  Used to validate ownership before bulk operations.
+  """
+  def list_organization_monitor_ids(org_id, candidate_ids) when is_list(candidate_ids) do
+    if candidate_ids == [] do
+      []
+    else
+      from(m in Monitor,
+        where: m.organization_id == ^org_id and m.id in ^candidate_ids,
+        select: m.id
+      )
+      |> AppRepo.all()
+    end
+  end
+
+  @doc """
+  Bulk-updates a list of monitor IDs with the given fields.
+  Returns the count updated. Broadcasts update to worker nodes for each.
+  """
+  def bulk_update_monitors(monitor_ids, fields) when is_list(monitor_ids) do
+    if monitor_ids == [] do
+      0
+    else
+      fields_with_ts = Keyword.merge(fields, updated_at: DateTime.utc_now() |> DateTime.truncate(:second))
+
+      {count, _} =
+        from(m in Monitor, where: m.id in ^monitor_ids)
+        |> AppRepo.update_all(set: fields_with_ts)
+
+      # Reload and broadcast each updated monitor
+      from(m in Monitor, where: m.id in ^monitor_ids)
+      |> AppRepo.all()
+      |> Enum.each(fn monitor ->
+        invalidate_monitor_cache(monitor.id)
+        sync_monitor_process(monitor)
+        broadcast_to_workers({:monitor_updated, monitor})
+      end)
+
+      count
+    end
+  end
+
+  @doc """
+  Bulk-deletes monitors by ID. Returns the count deleted.
+  """
+  def bulk_delete_monitors(monitor_ids) when is_list(monitor_ids) do
+    if monitor_ids == [] do
+      0
+    else
+      monitors =
+        from(m in Monitor, where: m.id in ^monitor_ids)
+        |> AppRepo.all()
+
+      Enum.each(monitors, fn monitor ->
+        AppRepo.delete(monitor)
+        invalidate_org_cache(monitor.organization_id)
+        invalidate_monitor_cache(monitor.id)
+        stop_monitor_process(monitor.id)
+        broadcast_to_workers({:monitor_deleted, monitor.id})
+      end)
+
+      length(monitors)
+    end
+  end
+
+  @doc """
   Returns all active monitors across all users (for scheduler).
   """
   def get_all_active_monitors do
