@@ -30,7 +30,9 @@
 - [x] 2.5 Wire login redirect: after magic link / Google / GitHub login during OAuth flow,
       return user to `/oauth/authorize` with original params intact (use session to store
       pending authorization).
-- [ ] 2.6 Test full authorize flow manually with curl + browser
+- [x] 2.6 Test full authorize flow manually with curl + browser
+      — login page renders correctly (single layout), client_name resolved from Boruta,
+        dynamic registered client works, login redirect via pending_oauth_params session verified
 
 ## Phase 3 — Dynamic Client Registration (RFC7591)
 
@@ -44,7 +46,7 @@
 - [x] 3.2 Add rate limiting to registration endpoint: 10 requests/IP/hour via
       existing rate limit plug
 - [x] 3.3 Add `POST /oauth/register` to router (no auth required — public endpoint)
-- [ ] 3.4 Test with curl: register a client, get back credentials, use them in authorize flow
+- [x] 3.4 Test with curl: register a client, get back credentials, use them in authorize flow
 
 ## Phase 4 — Pre-registered Clients
 
