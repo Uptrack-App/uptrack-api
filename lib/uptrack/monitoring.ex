@@ -35,7 +35,7 @@ defmodule Uptrack.Monitoring do
   def count_quick_monitors(organization_id) do
     from(m in Monitor,
       where: m.organization_id == ^organization_id,
-      where: m.interval > 30 and m.interval <= 60
+      where: m.interval <= 30 and m.status != "deleted"
     )
     |> AppRepo.aggregate(:count)
   end
@@ -933,6 +933,15 @@ defmodule Uptrack.Monitoring do
       where: i.organization_id == ^organization_id,
       order_by: [desc: i.started_at],
       preload: [:monitor, :incident_updates]
+    )
+    |> AppRepo.all()
+  end
+
+  def list_monitor_incidents(organization_id, monitor_id) do
+    from(i in Incident,
+      where: i.organization_id == ^organization_id and i.monitor_id == ^monitor_id,
+      order_by: [desc: i.started_at],
+      limit: 20
     )
     |> AppRepo.all()
   end

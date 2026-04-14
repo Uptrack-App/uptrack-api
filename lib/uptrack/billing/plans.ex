@@ -14,7 +14,7 @@ defmodule Uptrack.Billing.Plans do
   @plan_limits %{
     "free" => %{
       monitors: 50, alert_channels: 3, status_pages: 5, team_members: 2,
-      min_interval: 30, fast_monitors: 10, quick_monitors: :unlimited,
+      min_interval: 30, fast_monitors: 10, quick_monitors: 10,
       regions: 3, retention_days: 30, subscribers: 100,
       notify_only_seats: 0
     },
@@ -101,33 +101,23 @@ defmodule Uptrack.Billing.Plans do
     min = plan_limit(org.plan, :min_interval)
 
     cond do
-      interval >= min ->
-        :ok
+      interval < 30 ->
+        {:error, "The minimum supported check interval is 30 seconds."}
 
-      interval >= 120 ->
-        check_slot_limit(
-          plan_limit(org.plan, :fast_monitors),
-          Map.get(slot_counts, :fast_monitors, 0),
-          "Fast Monitor",
-          "2-min"
-        )
+      interval < min ->
+        {:error, "30-second checks are available on Pro plans and above. Upgrade for faster monitoring."}
 
-      interval >= 60 ->
+      interval == 30 ->
+        # 30s is the fastest slot — gated by quick_monitors limit
         check_slot_limit(
           plan_limit(org.plan, :quick_monitors),
           Map.get(slot_counts, :quick_monitors, 0),
-          "Quick Monitor",
-          "1-min"
+          "30s Monitor",
+          "30s"
         )
 
-      interval >= 30 and min <= 30 ->
-        :ok
-
-      interval >= 30 ->
-        {:error, "30-second checks are available on Pro plans and above. Upgrade for faster monitoring."}
-
       true ->
-        {:error, "The minimum supported check interval is 30 seconds."}
+        :ok
     end
   end
 
