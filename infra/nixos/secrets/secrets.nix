@@ -108,9 +108,19 @@ in {
   # Create with: agenix -e cloudflared-tunnel-token.age
   "cloudflared-tunnel-token.age".publicKeys = apiNodes;
 
-  # Cloudflare API token for Let's Encrypt DNS-01 challenge (SMTP TLS cert)
+  # Cloudflare API token for Let's Encrypt DNS-01 challenge (SMTP TLS cert on nbg1)
   # Content: CLOUDFLARE_DNS_API_TOKEN=<token>
   "cloudflare-api-token.age".publicKeys = adminKeys ++ nbg1Key;
+
+  # Cloudflare API token for invoice9 ACME DNS-01 (invoice9.2folk.com cert on nbg4)
+  # Token: "invoice9 ACME DNS" — Zone DNS:Edit on 2folk.com only
+  # Content: CLOUDFLARE_DNS_API_TOKEN=<token>
+  "invoice9-cloudflare-token.age".publicKeys = adminKeys ++ nbg4Key;
+
+  # invoice9 app environment (DATABASE_URL, Shopify keys, Google OAuth, etc.)
+  # Create with: cd uptrack-api/infra/nixos/secrets && agenix -e invoice9-env.age
+  # Deployed to nbg4 only (invoice9 container runs there)
+  "invoice9-env.age".publicKeys = adminKeys ++ nbg4Key;
 
   # SMTP auth password for Gmail Send-as (Stalwart external submission)
   # Content: just the password string
