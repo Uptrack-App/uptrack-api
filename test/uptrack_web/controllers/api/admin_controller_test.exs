@@ -208,4 +208,82 @@ defmodule UptrackWeb.Api.AdminControllerTest do
       Enum.each(response["data"], fn org -> assert is_integer(org["member_count"]) end)
     end
   end
+
+  describe "GET /api/admin/notification-health" do
+    test "returns health data structure", %{conn: conn} do
+      {conn, _admin} = admin_conn(conn)
+
+      response = conn |> get(~p"/api/admin/notification-health") |> json_response(200)
+
+      assert is_map(response["channels"])
+      assert is_list(response["daily_trend"])
+      assert is_list(response["error_breakdown"])
+      assert is_list(response["per_org"])
+    end
+
+    test "non-admin gets 403", %{conn: conn} do
+      {user, _org} = user_with_org_fixture()
+      conn = init_test_session(conn, %{user_id: user.id})
+
+      assert json_response(get(conn, ~p"/api/admin/notification-health"), 403)["error"]["message"] == "forbidden"
+    end
+  end
+
+  describe "GET /api/admin/alert-channels" do
+    test "returns paginated channel list", %{conn: conn} do
+      {conn, _admin} = admin_conn(conn)
+
+      response = conn |> get(~p"/api/admin/alert-channels") |> json_response(200)
+
+      assert is_list(response["data"])
+      assert is_integer(response["total"])
+      assert response["page"] == 1
+    end
+  end
+
+  describe "POST /api/admin/test-notification" do
+    test "returns 404 for non-existent channel", %{conn: conn} do
+      {conn, _admin} = admin_conn(conn)
+
+      response =
+        conn
+        |> post(~p"/api/admin/test-notification", %{channel_id: Uniq.UUID.uuid7()})
+        |> json_response(404)
+
+      assert response["error"] == "channel_not_found"
+    end
+
+    test "returns 422 when channel_id missing", %{conn: conn} do
+      {conn, _admin} = admin_conn(conn)
+
+      response =
+        conn
+        |> post(~p"/api/admin/test-notification", %{})
+        |> json_response(422)
+
+      assert response["error"] == "channel_id is required"
+    end
+  end
+
+  describe "GET /api/admin/notification-deliveries" do
+    test "returns paginated delivery list", %{conn: conn} do
+      {conn, _admin} = admin_conn(conn)
+
+      response = conn |> get(~p"/api/admin/notification-deliveries") |> json_response(200)
+
+      assert is_list(response["data"])
+      assert is_integer(response["total"])
+    end
+
+    test "supports filtering by status", %{conn: conn} do
+      {conn, _admin} = admin_conn(conn)
+
+      response =
+        conn
+        |> get(~p"/api/admin/notification-deliveries", status: "failed")
+        |> json_response(200)
+
+      assert is_list(response["data"])
+    end
+  end
 end

@@ -122,7 +122,7 @@ defmodule UptrackWeb.Api.StatusPageController do
 
       case Monitoring.create_status_page(attrs) do
         {:ok, page} ->
-          Teams.log_action(org.id, user.id, "status_page.created", "status_page", page.id,
+          Teams.log_action_from_conn(conn, "status_page.created", "status_page", page.id,
             metadata: %{name: page.name, slug: page.slug}
           )
 
@@ -158,7 +158,7 @@ defmodule UptrackWeb.Api.StatusPageController do
   end
 
   def update(conn, %{"id" => id} = params) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     page = Monitoring.get_status_page!(id)
@@ -170,7 +170,7 @@ defmodule UptrackWeb.Api.StatusPageController do
             Monitoring.sync_status_page_monitors(updated, monitor_ids)
           end
 
-          Teams.log_action(org.id, user.id, "status_page.updated", "status_page", updated.id,
+          Teams.log_action_from_conn(conn, "status_page.updated", "status_page", updated.id,
             metadata: %{name: updated.name}
           )
 
@@ -188,7 +188,7 @@ defmodule UptrackWeb.Api.StatusPageController do
   end
 
   def delete(conn, %{"id" => id}) do
-    user = conn.assigns.current_user
+    _user = conn.assigns.current_user
     org = conn.assigns.current_organization
 
     page = Monitoring.get_status_page!(id)
@@ -196,7 +196,7 @@ defmodule UptrackWeb.Api.StatusPageController do
     if page.organization_id == org.id do
       case Monitoring.delete_status_page(page) do
         {:ok, _} ->
-          Teams.log_action(org.id, user.id, "status_page.deleted", "status_page", page.id,
+          Teams.log_action_from_conn(conn, "status_page.deleted", "status_page", page.id,
             metadata: %{name: page.name}
           )
 

@@ -248,6 +248,8 @@ defmodule Uptrack.Alerting do
   """
   def get_alert_channel!(id), do: AppRepo.get!(AlertChannel, id)
 
+  def get_alert_channel(id), do: AppRepo.get(AlertChannel, id)
+
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking alert channel changes.
   """

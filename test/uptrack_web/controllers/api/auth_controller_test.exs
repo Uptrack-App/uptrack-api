@@ -122,6 +122,40 @@ defmodule UptrackWeb.Api.AuthControllerTest do
 
       assert json_response(conn, 401)
     end
+
+    test "returns impersonation fields when impersonation is active", %{conn: conn} do
+      import Uptrack.MonitoringFixtures
+
+      {admin_user, _admin_org} = user_with_org_fixture()
+      admin = Uptrack.AppRepo.update!(Ecto.Changeset.change(admin_user, is_admin: true))
+      {target, _target_org} = user_with_org_fixture()
+
+      started_at = DateTime.utc_now() |> DateTime.to_iso8601()
+
+      conn =
+        conn
+        |> Phoenix.ConnTest.init_test_session(%{
+          user_id: admin.id,
+          impersonating_user_id: target.id,
+          impersonation_started_at: started_at
+        })
+        |> get("/api/auth/me")
+
+      response = json_response(conn, 200)
+      assert response["user"]["id"] == target.id
+      assert response["impersonating_admin"]["id"] == admin.id
+      assert response["impersonating_admin"]["email"] == admin.email
+      assert response["impersonation_started_at"] == started_at
+      assert response["impersonation_expires_at"] != nil
+    end
+
+    test "does not return impersonation fields when not impersonating", %{conn: conn} do
+      %{conn: conn} = setup_api_auth(conn)
+      conn = get(conn, "/api/auth/me")
+      response = json_response(conn, 200)
+      refute Map.has_key?(response, "impersonating_admin")
+      refute Map.has_key?(response, "impersonation_started_at")
+    end
   end
 
   describe "POST /api/auth/logout" do

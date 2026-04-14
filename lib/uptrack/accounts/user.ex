@@ -20,6 +20,7 @@ defmodule Uptrack.Accounts.User do
     field :confirmed_at, :naive_datetime
     field :notification_preferences, :map, default: %{}
     field :role, Ecto.Enum, values: @roles, default: :owner
+    field :is_admin, :boolean, default: false
 
     belongs_to :organization, Organization
     has_many :monitors, Monitor
@@ -53,6 +54,11 @@ defmodule Uptrack.Accounts.User do
     |> validate_inclusion(:role, @roles)
     |> unique_constraint(:email)
     |> ensure_notification_preferences()
+  end
+
+  def admin_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:is_admin])
   end
 
   def registration_changeset(user, attrs) do
