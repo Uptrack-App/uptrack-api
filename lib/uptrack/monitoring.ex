@@ -710,7 +710,8 @@ defmodule Uptrack.Monitoring do
   Returns a float between 0 and 100.
   """
   def get_status_page_uptime(status_page_id, days \\ 30) do
-    # Get all monitor IDs for this status page
+    alias Uptrack.Metrics.Reader
+
     monitor_ids =
       StatusPageMonitor
       |> where([spm], spm.status_page_id == ^status_page_id)
@@ -720,20 +721,22 @@ defmodule Uptrack.Monitoring do
     if Enum.empty?(monitor_ids) do
       100.0
     else
-      since = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
+      now = DateTime.utc_now()
+      start_time = DateTime.add(now, -days * 86400, :second)
 
-      # Calculate weighted uptime based on number of checks
-      {total_up, total_checks} =
-        MonitorCheck
-        |> where([mc], mc.monitor_id in ^monitor_ids)
-        |> where([mc], mc.checked_at >= ^since)
-        |> select([mc], {count(fragment("CASE WHEN ? = 'up' THEN 1 END", mc.status)), count()})
-        |> AppRepo.one()
+      # Collect all daily uptime points across all monitors from VictoriaMetrics
+      all_points =
+        Enum.flat_map(monitor_ids, fn monitor_id ->
+          case Reader.get_daily_uptime(monitor_id, start_time, now) do
+            {:ok, points} -> Enum.map(points, & &1.uptime)
+            _ -> []
+          end
+        end)
 
-      if total_checks > 0 do
-        (total_up || 0) / total_checks * 100.0
-      else
+      if Enum.empty?(all_points) do
         100.0
+      else
+        Float.round(Enum.sum(all_points) / length(all_points), 2)
       end
     end
   end
