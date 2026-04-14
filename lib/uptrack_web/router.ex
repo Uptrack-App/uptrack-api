@@ -230,6 +230,7 @@ defmodule UptrackWeb.Router do
     post "/monitors/bulk", MonitorController, :bulk_action
     resources "/monitors", MonitorController, only: [:index, :create, :show, :update, :delete]
     get "/monitors/:monitor_id/checks", MonitorController, :checks
+    get "/monitors/:monitor_id/incidents", IncidentController, :monitor_incidents
     get "/regions", MonitorController, :regions
 
     # Alert channel API
