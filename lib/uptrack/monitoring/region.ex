@@ -2,7 +2,7 @@ defmodule Uptrack.Monitoring.Region do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Uptrack.Monitoring.{MonitorRegion, MonitorCheck}
+  alias Uptrack.Monitoring.MonitorRegion
 
   @providers ~w(hetzner vultr linode contabo digitalocean)
 
@@ -16,7 +16,6 @@ defmodule Uptrack.Monitoring.Region do
     field :metadata, :map, default: %{}
 
     has_many :monitor_regions, MonitorRegion
-    has_many :monitor_checks, MonitorCheck
 
     timestamps(type: :utc_datetime)
   end

@@ -241,8 +241,7 @@ defmodule Uptrack.MCP.Tools do
     {:error, "Unknown tool: #{tool_name}"}
   end
 
-  defp get_latest_check(%{monitor_checks: %Ecto.Association.NotLoaded{}}), do: nil
-  defp get_latest_check(%{monitor_checks: checks}), do: List.first(checks)
+  defp get_latest_check(%{monitor_checks: checks}) when is_list(checks), do: List.first(checks)
   defp get_latest_check(_), do: nil
 
   defp build_alert_channel_config("email", destination), do: %{"email" => destination}
