@@ -39,6 +39,23 @@ defmodule UptrackWeb.UserAuth do
     end
   end
 
+  # LiveView on_mount hook for platform admin routes (staff only).
+  def on_mount(:require_admin_user, _params, session, socket) do
+    case session["user_id"] do
+      nil ->
+        {:halt, redirect(socket, to: "/auth/signup")}
+
+      user_id ->
+        user = Accounts.get_user!(user_id)
+
+        if user.is_admin do
+          {:cont, assign(socket, :current_user, user)}
+        else
+          {:halt, redirect(socket, to: "/dashboard")}
+        end
+    end
+  end
+
   # LiveView on_mount hook for optionally authenticated routes.
   # Loads user and organization if authenticated, but doesn't redirect if not.
   # Useful for public pages that show additional info for logged-in users.
