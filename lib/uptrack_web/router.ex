@@ -167,6 +167,9 @@ defmodule UptrackWeb.Router do
 
     # Convenience alias used by systemd postStart and external monitors
     get "/api/health", HealthController, :ready
+
+    # Monitoring system health — no DB queries, stays up even during DB outages
+    get "/api/health/monitoring", HealthController, :monitoring
   end
 
   # API auth routes (no authentication required)
