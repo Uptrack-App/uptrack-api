@@ -18,7 +18,7 @@ defmodule UptrackWeb.Router do
   end
 
   pipeline :sse do
-    plug :accepts, ["text/event-stream"]
+    plug :accepts, ["event-stream"]
   end
 
   # Public API with optional session auth (loads user if session exists, but doesn't require it)
