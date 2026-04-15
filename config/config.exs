@@ -7,6 +7,10 @@
 # General application configuration
 import Config
 
+config :mime, :types, %{
+  "text/event-stream" => ["event-stream"]
+}
+
 config :uptrack,
   env: config_env(),
   ecto_repos: [Uptrack.AppRepo, Uptrack.ObanRepo],
