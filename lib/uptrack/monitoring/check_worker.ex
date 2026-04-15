@@ -503,7 +503,6 @@ defmodule Uptrack.Monitoring.CheckWorker do
                 incident_attrs = %{
                   monitor_id: monitor.id,
                   organization_id: monitor.organization_id,
-                  first_check_id: nil,
                   cause: check.error_message
                 }
 

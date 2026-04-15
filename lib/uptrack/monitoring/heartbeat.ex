@@ -151,8 +151,7 @@ defmodule Uptrack.Monitoring.Heartbeat do
       organization_id: monitor.organization_id,
       status: :investigating,
       cause: :heartbeat_missed,
-      started_at: now,
-      first_check_id: nil
+      started_at: now
     })
   end
 
