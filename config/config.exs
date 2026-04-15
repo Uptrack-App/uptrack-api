@@ -148,11 +148,8 @@ config :uptrack, Oban,
     mailers: 5
   ]
 
-config :appsignal, :config,
-  otp_app: :uptrack,
-  name: "Uptrack API",
-  active: true
-
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
+
+import_config "appsignal.exs"
