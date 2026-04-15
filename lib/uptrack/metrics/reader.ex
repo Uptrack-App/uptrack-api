@@ -244,6 +244,45 @@ defmodule Uptrack.Metrics.Reader do
   end
 
   @doc """
+  Returns daily response time aggregates (avg/min/max/total) for a monitor.
+
+  Returns a list of `%{date, avg, min, max, total_checks}` maps ordered by date.
+  This is the VictoriaMetrics replacement for the Postgres get_response_time_trends query.
+  """
+  def get_response_time_trends(monitor_id, days \\ 30) do
+    now = DateTime.utc_now()
+    start_time = DateTime.add(now, -days * 86400, :second)
+    base = "uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}"
+
+    with {:ok, avg_r} <- query_range("avg_over_time(#{base}[1d])", start_time, now, "1d"),
+         {:ok, min_r} <- query_range("min_over_time(#{base}[1d])", start_time, now, "1d"),
+         {:ok, max_r} <- query_range("max_over_time(#{base}[1d])", start_time, now, "1d"),
+         {:ok, cnt_r} <- query_range("count_over_time(#{base}[1d])", start_time, now, "1d") do
+      avgs = extract_daily_values(avg_r)
+      mins = extract_daily_values(min_r)
+      maxs = extract_daily_values(max_r)
+      cnts = extract_daily_values(cnt_r)
+
+      result =
+        avgs
+        |> Enum.sort_by(fn {date, _} -> date end)
+        |> Enum.map(fn {date, avg} ->
+          %{
+            date: date,
+            avg: Float.round(avg, 2),
+            min: Map.get(mins, date, 0) |> trunc(),
+            max: Map.get(maxs, date, 0) |> trunc(),
+            total_checks: Map.get(cnts, date, 0) |> trunc()
+          }
+        end)
+
+      result
+    else
+      {:error, _} -> []
+    end
+  end
+
+  @doc """
   Queries response time percentiles for a monitor.
 
   Returns `{:ok, %{p50: float, p95: float, p99: float}}` for the given period.

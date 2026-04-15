@@ -1055,33 +1055,7 @@ defmodule Uptrack.Monitoring do
   Returns response time trends for a monitor over the last N days.
   """
   def get_response_time_trends(monitor_id, days \\ 30) do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
-
-    query =
-      from mc in MonitorCheck,
-        where:
-          mc.monitor_id == ^monitor_id and mc.checked_at >= ^cutoff_date and
-            not is_nil(mc.response_time),
-        select: %{
-          date: fragment("DATE(?)", mc.checked_at),
-          avg_response_time: avg(mc.response_time),
-          min_response_time: min(mc.response_time),
-          max_response_time: max(mc.response_time),
-          total_checks: count(mc.id)
-        },
-        group_by: fragment("DATE(?)", mc.checked_at),
-        order_by: [asc: fragment("DATE(?)", mc.checked_at)]
-
-    AppRepo.all(query)
-    |> Enum.map(fn stat ->
-      %{
-        date: stat.date,
-        avg: to_float(stat.avg_response_time, 0) |> Float.round(2),
-        min: stat.min_response_time || 0,
-        max: stat.max_response_time || 0,
-        total_checks: stat.total_checks
-      }
-    end)
+    Uptrack.Metrics.Reader.get_response_time_trends(monitor_id, days)
   end
 
   @doc """
