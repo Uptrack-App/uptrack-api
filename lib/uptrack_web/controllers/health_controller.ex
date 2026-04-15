@@ -49,6 +49,30 @@ defmodule UptrackWeb.HealthController do
     ]
 
   @doc """
+  GET /api/health/monitoring - Monitoring system health
+
+  Checks if the monitoring worker processes (MonitorRegistry) are running.
+  Does NOT touch the database — returns 200 even during DB outages.
+  This proves the monitoring system kept running while other components were down.
+  """
+  def monitoring(conn, _params) do
+    alias Uptrack.Monitoring.MonitorRegistry
+
+    active_count = MonitorRegistry.count()
+    healthy? = active_count > 0
+
+    conn
+    |> put_status(if healthy?, do: 200, else: 503)
+    |> json(%{
+      status: if(healthy?, do: "monitoring_active", else: "no_monitors"),
+      active_monitors: active_count,
+      node_region: System.get_env("NODE_REGION", "unknown"),
+      node_name: System.get_env("NODE_NAME", node_hostname()),
+      timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+    })
+  end
+
+  @doc """
   GET /healthz - Liveness probe
 
   Minimal check to verify the application is running.
@@ -128,6 +152,12 @@ defmodule UptrackWeb.HealthController do
     end
   catch
     :exit, _ -> %{}
+  end
+
+  defp node_hostname do
+    :inet.gethostname() |> elem(1) |> to_string()
+  rescue
+    _ -> "unknown"
   end
 
   defp app_version do
