@@ -21,10 +21,6 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
-  config :appsignal, :config,
-    push_api_key: System.get_env("APPSIGNAL_PUSH_API_KEY"),
-    env: :prod
-
   # Single database URL (same for app and oban)
   database_url =
     System.get_env("DATABASE_URL") ||
