@@ -2,7 +2,8 @@ defmodule UptrackWeb.Api.ExportController do
   use UptrackWeb, :controller
 
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.{MonitorCheck, Incident}
+  alias Uptrack.Monitoring.Incident
+  alias Uptrack.Metrics.Reader
 
   import Ecto.Query
 
@@ -119,35 +120,10 @@ defmodule UptrackWeb.Api.ExportController do
   # --------------------------------------------------------------------------
 
   defp get_daily_stats(monitor_id, start_date, end_date) do
-    start_dt = DateTime.new!(start_date, ~T[00:00:00])
-    end_dt = DateTime.new!(end_date, ~T[23:59:59])
-
-    query =
-      from mc in MonitorCheck,
-        where:
-          mc.monitor_id == ^monitor_id and
-            mc.checked_at >= ^start_dt and
-            mc.checked_at <= ^end_dt,
-        select: %{
-          date: fragment("DATE(?)", mc.checked_at),
-          total: count(mc.id),
-          up: filter(count(mc.id), mc.status == "up"),
-          avg_rt: avg(mc.response_time),
-          p95_rt: fragment("percentile_cont(0.95) WITHIN GROUP (ORDER BY ?)", mc.response_time),
-          p99_rt: fragment("percentile_cont(0.99) WITHIN GROUP (ORDER BY ?)", mc.response_time)
-        },
-        group_by: fragment("DATE(?)", mc.checked_at)
-
-    Uptrack.AppRepo.all(query)
-    |> Map.new(fn row ->
-      {row.date, %{
-        total: row.total,
-        up: row.up,
-        avg_rt: row.avg_rt,
-        p95_rt: row.p95_rt,
-        p99_rt: row.p99_rt
-      }}
-    end)
+    case Reader.get_daily_stats(monitor_id, start_date, end_date) do
+      {:ok, stats} -> stats
+      {:error, _} -> %{}
+    end
   end
 
   defp get_daily_incidents(monitor_id, start_date, end_date) do

@@ -35,7 +35,7 @@ defmodule Uptrack.MCP.Resources do
         %Ecto.Association.NotLoaded{} -> nil
         checks -> List.first(checks)
       end
-      uptime = Monitoring.get_uptime_percentage(m.id, 30)
+      {:ok, uptime} = Uptrack.Metrics.Reader.get_uptime_percentage(m.id, 30)
       %{
         id: m.id,
         name: m.name,

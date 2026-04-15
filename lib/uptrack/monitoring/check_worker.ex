@@ -109,22 +109,13 @@ defmodule Uptrack.Monitoring.CheckWorker do
           }
       end
 
-    case Monitoring.create_monitor_check(check_attrs) do
-      {:ok, check} ->
-        handle_check_result(monitor, check)
+    check = struct!(MonitorCheck, check_attrs)
 
-        # Broadcast the check completion event
-        Events.broadcast_check_completed(check, monitor)
+    handle_check_result(monitor, check)
+    Events.broadcast_check_completed(check, monitor)
+    MetricsWriter.write_check_result(monitor, check)
 
-        # Publish metrics to VictoriaMetrics
-        MetricsWriter.write_check_result(monitor, check)
-
-        {:ok, check}
-
-      {:error, changeset} ->
-        Logger.error("Failed to create monitor check: #{inspect(changeset.errors)}")
-        {:error, changeset}
-    end
+    {:ok, check}
   end
 
   # Performs HTTP/HTTPS check.
@@ -512,7 +503,7 @@ defmodule Uptrack.Monitoring.CheckWorker do
                 incident_attrs = %{
                   monitor_id: monitor.id,
                   organization_id: monitor.organization_id,
-                  first_check_id: check.id,
+                  first_check_id: nil,
                   cause: check.error_message
                 }
 
