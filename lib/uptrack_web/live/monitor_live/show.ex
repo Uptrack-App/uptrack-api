@@ -12,7 +12,10 @@ defmodule UptrackWeb.MonitorLive.Show do
   def handle_params(%{"id" => id}, _, socket) do
     %{current_organization: org} = socket.assigns
     monitor = Monitoring.get_organization_monitor!(org.id, id)
-    recent_checks = Monitoring.get_recent_checks(id, 100)
+    recent_checks = case Uptrack.Metrics.Reader.get_recent_checks(id, 100) do
+      {:ok, checks} -> checks
+      {:error, _} -> []
+    end
     uptime = Monitoring.get_uptime_percentage(id)
 
     incidents =

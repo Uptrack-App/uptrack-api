@@ -182,45 +182,24 @@ defmodule UptrackWeb.Api.AnalyticsController do
     json(conn, result)
   end
 
-  # Private helpers — VM Reader with PostgreSQL fallback
+  # Private helpers
 
   defp fetch_response_data(monitor_id, start_time, end_time, step) do
     case Reader.get_response_times(monitor_id, start_time, end_time, step) do
-      {:ok, []} ->
-        # VM has no data — fall back to PostgreSQL
-        days = div(DateTime.diff(end_time, start_time, :second), 86400) |> max(1)
-        pg_data = Monitoring.get_response_time_trends(monitor_id, days)
-        {pg_data, %{p50: 0.0, p95: 0.0, p99: 0.0}}
-
       {:ok, points} ->
-        formatted =
-          Enum.map(points, fn {ts, val} ->
-            %{timestamp: ts, response_time: Float.round(val, 2)}
-          end)
-
+        formatted = Enum.map(points, fn {ts, val} -> %{timestamp: ts, response_time: Float.round(val, 2)} end)
         {:ok, percentiles} = Reader.get_response_time_percentiles(monitor_id, start_time, end_time)
-
         {formatted, percentiles}
 
-      {:error, reason} ->
-        Logger.warning("VM Reader failed for monitor #{monitor_id}, falling back to PG: #{inspect(reason)}")
-        days = div(DateTime.diff(end_time, start_time, :second), 86400) |> max(1)
-        pg_data = Monitoring.get_response_time_trends(monitor_id, days)
-        {pg_data, %{p50: 0.0, p95: 0.0, p99: 0.0}}
+      {:error, _} ->
+        {[], %{p50: 0.0, p95: 0.0, p99: 0.0}}
     end
   end
 
-  defp fetch_uptime_chart(monitor_id, start_time, end_time, days) do
+  defp fetch_uptime_chart(monitor_id, start_time, end_time, _days) do
     case Reader.get_daily_uptime(monitor_id, start_time, end_time) do
-      {:ok, []} ->
-        Monitoring.get_uptime_chart_data(monitor_id, days)
-
-      {:ok, points} ->
-        points
-
-      {:error, reason} ->
-        Logger.warning("VM uptime query failed for monitor #{monitor_id}, falling back to PG: #{inspect(reason)}")
-        Monitoring.get_uptime_chart_data(monitor_id, days)
+      {:ok, points} -> points
+      {:error, _} -> []
     end
   end
 
@@ -235,32 +214,10 @@ defmodule UptrackWeb.Api.AnalyticsController do
   defp parse_days(_), do: 30
 
   defp get_organization_uptime_trends(organization_id, days) do
-    import Ecto.Query
-
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
-
-    query =
-      from mc in Uptrack.Monitoring.MonitorCheck,
-        join: m in Uptrack.Monitoring.Monitor,
-        on: mc.monitor_id == m.id,
-        where: m.organization_id == ^organization_id and mc.checked_at >= ^cutoff_date,
-        select: %{
-          date: fragment("DATE(?)", mc.checked_at),
-          total: count(mc.id),
-          up: count(mc.id) |> filter(mc.status == "up")
-        },
-        group_by: fragment("DATE(?)", mc.checked_at),
-        order_by: [asc: fragment("DATE(?)", mc.checked_at)]
-
-    Uptrack.AppRepo.all(query)
-    |> Enum.map(fn stat ->
-      %{
-        date: stat.date,
-        uptime:
-          if(stat.total > 0, do: Float.round(stat.up / stat.total * 100, 2), else: 100.0),
-        total_checks: stat.total
-      }
-    end)
+    case Reader.get_org_uptime_trends(organization_id, days) do
+      {:ok, points} -> points
+      {:error, _} -> []
+    end
   end
 
   defp get_incident_frequency(organization_id, days) do

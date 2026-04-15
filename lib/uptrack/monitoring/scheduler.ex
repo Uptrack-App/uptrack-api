@@ -100,7 +100,7 @@ defmodule Uptrack.Monitoring.Scheduler do
 
   # Determines if a monitor should be checked based on its interval and last check time.
   defp should_check_monitor?(monitor) do
-    case Monitoring.get_latest_check(monitor.id) do
+    case Uptrack.Cache.get_latest_check(monitor.id) do
       nil ->
         # Never been checked, should check now
         true

@@ -8,26 +8,149 @@ defmodule Uptrack.Metrics.Reader do
   require Logger
 
   @doc """
-  Queries uptime percentage for a monitor over a time range.
+  Queries uptime percentage for a monitor over the last N days.
 
-  Returns a float between 0.0 and 100.0.
+  Returns `{:ok, float}` between 0.0 and 100.0.
   """
-  def get_uptime_percentage(monitor_id, start_time, end_time) do
-    query = "avg_over_time(uptrack_monitor_status{monitor_id=\"#{monitor_id}\"}[1h])"
+  def get_uptime_percentage(monitor_id, days \\ 30) do
+    now = DateTime.utc_now()
+    range = "#{days * 24}h"
+    query = "avg_over_time(uptrack_monitor_status{monitor_id=\"#{monitor_id}\"}[#{range}])"
 
-    case query_range(query, start_time, end_time, "1h") do
-      {:ok, results} ->
-        values = extract_values(results)
+    case query_instant(query, now) do
+      {:ok, value} -> {:ok, Float.round(value * 100, 2)}
+      {:error, _} -> {:ok, 100.0}
+    end
+  end
 
-        if Enum.empty?(values) do
-          {:ok, 100.0}
-        else
-          avg = Enum.sum(values) / length(values) * 100
-          {:ok, Float.round(avg, 2)}
-        end
+  @doc """
+  Returns uptime chart data for a monitor over the last N days.
+
+  Returns `{:ok, [%{date: Date.t(), uptime: float(), total: integer()}]}` with gaps
+  filled as 100% uptime.
+  """
+  def get_uptime_chart_data(monitor_id, days \\ 30) do
+    now = DateTime.utc_now()
+    start_time = DateTime.add(now, -days * 86400, :second)
+
+    case get_daily_uptime(monitor_id, start_time, now) do
+      {:ok, points} ->
+        by_date = Map.new(points, &{&1.date, &1})
+        start_date = Date.add(Date.utc_today(), -days)
+
+        chart =
+          Enum.map(0..(days - 1), fn offset ->
+            date = Date.add(start_date, offset)
+            case Map.get(by_date, date) do
+              nil -> %{date: date, uptime: 100.0, total: 0}
+              point -> Map.put(point, :total, 1)
+            end
+          end)
+
+        {:ok, chart}
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  @doc """
+  Returns daily stats for a monitor between two dates, used by the export endpoint.
+
+  Returns `{:ok, %{Date.t() => %{total, up, avg_rt, p95_rt, p99_rt}}}`.
+  """
+  def get_daily_stats(monitor_id, start_date, end_date) do
+    start_time = DateTime.new!(start_date, ~T[00:00:00])
+    end_time = DateTime.new!(end_date, ~T[23:59:59])
+
+    status_q = "avg_over_time(uptrack_monitor_status{monitor_id=\"#{monitor_id}\"}[1d])"
+    count_q = "count_over_time(uptrack_monitor_status{monitor_id=\"#{monitor_id}\"}[1d])"
+    avg_rt_q = "avg_over_time(uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}[1d])"
+    p95_q = "quantile_over_time(0.95, uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}[1d])"
+    p99_q = "quantile_over_time(0.99, uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}[1d])"
+
+    with {:ok, status_r} <- query_range(status_q, start_time, end_time, "1d"),
+         {:ok, count_r} <- query_range(count_q, start_time, end_time, "1d"),
+         {:ok, avg_rt_r} <- query_range(avg_rt_q, start_time, end_time, "1d"),
+         {:ok, p95_r} <- query_range(p95_q, start_time, end_time, "1d"),
+         {:ok, p99_r} <- query_range(p99_q, start_time, end_time, "1d") do
+      statuses = extract_daily_values(status_r)
+      counts = extract_daily_values(count_r)
+      avg_rts = extract_daily_values(avg_rt_r)
+      p95s = extract_daily_values(p95_r)
+      p99s = extract_daily_values(p99_r)
+
+      result =
+        Map.new(statuses, fn {date, uptime_frac} ->
+          total = Map.get(counts, date, 0) |> trunc()
+          up = round(uptime_frac * total)
+          {date, %{total: total, up: up, avg_rt: Map.get(avg_rts, date), p95_rt: Map.get(p95s, date), p99_rt: Map.get(p99s, date)}}
+        end)
+
+      {:ok, result}
+    end
+  end
+
+  @doc """
+  Returns per-region latest response times for a monitor.
+
+  Returns `{:ok, %{"europe" => 74, "us" => 120, ...}}`.
+  """
+  def get_region_response_times(monitor_id) do
+    case vmselect_url() do
+      nil ->
+        {:ok, %{}}
+
+      url ->
+        query_url = "#{url}/api/v1/query"
+        query = "uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}"
+        params = %{query: query, time: DateTime.to_unix(DateTime.utc_now())}
+
+        case Req.get(query_url, params: params) do
+          {:ok, %{status: 200, body: %{"status" => "success", "data" => %{"result" => results}}}} ->
+            region_map =
+              Map.new(results, fn %{"metric" => m, "value" => [_ts, val]} ->
+                {m["region"] || "unknown", parse_float(val) |> trunc()}
+              end)
+
+            {:ok, region_map}
+
+          _ ->
+            {:ok, %{}}
+        end
+    end
+  rescue
+    _ -> {:ok, %{}}
+  end
+
+  @doc """
+  Returns daily org-level uptime trend averaged across all monitors for the org.
+
+  Returns `{:ok, [%{date: Date.t(), uptime: float(), total_checks: integer()}]}`.
+  """
+  def get_org_uptime_trends(organization_id, days) do
+    now = DateTime.utc_now()
+    start_time = DateTime.add(now, -days * 86400, :second)
+    query = "avg(avg_over_time(uptrack_monitor_status{org_id=\"#{organization_id}\"}[1d]))"
+
+    case query_range(query, start_time, now, "1d") do
+      {:ok, results} ->
+        points =
+          results
+          |> List.first(%{})
+          |> Map.get("values", [])
+          |> Enum.map(fn [ts, val] ->
+            %{
+              date: ts |> trunc() |> DateTime.from_unix!() |> DateTime.to_date(),
+              uptime: parse_float(val) * 100 |> Float.round(2),
+              total_checks: 0
+            }
+          end)
+
+        {:ok, points}
+
+      {:error, _} ->
+        {:ok, []}
     end
   end
 
@@ -389,6 +512,17 @@ defmodule Uptrack.Metrics.Reader do
     |> Map.new(fn [ts, val] -> {ts, parse_float(val)} end)
   end
 
+  # Extracts a map of %{Date.t() => float} from a query_range result with step=1d.
+  defp extract_daily_values(results) do
+    results
+    |> List.first(%{})
+    |> Map.get("values", [])
+    |> Map.new(fn [ts, val] ->
+      date = ts |> trunc() |> DateTime.from_unix!() |> DateTime.to_date()
+      {date, parse_float(val)}
+    end)
+  end
+
   defp query_instant(query, time) do
     case vmselect_url() do
       nil ->
@@ -420,14 +554,6 @@ defmodule Uptrack.Metrics.Reader do
     "#{diff_seconds}s"
   end
 
-  defp extract_values(results) do
-    results
-    |> Enum.flat_map(fn result ->
-      result
-      |> Map.get("values", [])
-      |> Enum.map(fn [_ts, val] -> parse_float(val) end)
-    end)
-  end
 
   defp parse_float(val) when is_binary(val) do
     case Float.parse(val) do

@@ -350,66 +350,6 @@ defmodule Uptrack.Monitoring do
     :ok
   end
 
-  def create_monitor_check(attrs) do
-    MonitorCheck.create_changeset(attrs)
-    |> AppRepo.insert()
-  end
-
-  @doc """
-  Creates a monitor check (alias for create_monitor_check).
-  """
-  def create_check(attrs), do: create_monitor_check(attrs)
-
-  @doc """
-  Returns recent checks for a monitor.
-  """
-  def get_recent_checks(monitor_id, limit \\ 50) do
-    MonitorCheck
-    |> where([mc], mc.monitor_id == ^monitor_id)
-    |> order_by([mc], desc: mc.checked_at)
-    |> limit(^limit)
-    |> AppRepo.all()
-  end
-
-  @doc """
-  Returns the latest check for a monitor.
-  """
-  def get_latest_check(monitor_id) do
-    MonitorCheck
-    |> where([mc], mc.monitor_id == ^monitor_id)
-    |> order_by([mc], desc: mc.checked_at)
-    |> limit(1)
-    |> AppRepo.one()
-  end
-
-  @doc "Returns the latest check that has region_results data."
-  def get_latest_check_with_regions(monitor_id) do
-    MonitorCheck
-    |> where([mc], mc.monitor_id == ^monitor_id and not is_nil(mc.region_results))
-    |> order_by([mc], desc: mc.checked_at)
-    |> limit(1)
-    |> AppRepo.one()
-  end
-
-  @doc """
-  Returns uptime percentage for a monitor over the last N days.
-  """
-  def get_uptime_percentage(monitor_id, days \\ 30) do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
-
-    query =
-      from mc in MonitorCheck,
-        where: mc.monitor_id == ^monitor_id and mc.checked_at >= ^cutoff_date,
-        select: %{
-          total: count(mc.id),
-          up: count(mc.id) |> filter(mc.status == "up")
-        }
-
-    case AppRepo.one(query) do
-      %{total: 0} -> 100.0
-      %{total: total, up: up} -> (up / total * 100) |> Float.round(2)
-    end
-  end
 
   # Alert confirmation functions
 
@@ -810,17 +750,14 @@ defmodule Uptrack.Monitoring do
     if Enum.empty?(monitor_ids) do
       :operational
     else
-      # Get the latest check status for each monitor
+      cached = Uptrack.Cache.get_latest_checks_batch(monitor_ids)
       statuses =
-        Enum.map(monitor_ids, fn monitor_id ->
-          MonitorCheck
-          |> where([mc], mc.monitor_id == ^monitor_id)
-          |> order_by([mc], desc: mc.checked_at)
-          |> limit(1)
-          |> select([mc], mc.status)
-          |> AppRepo.one()
+        Enum.flat_map(monitor_ids, fn mid ->
+          case Map.get(cached, to_string(mid)) do
+            %{status: s} -> [s]
+            _ -> []
+          end
         end)
-        |> Enum.reject(&is_nil/1)
 
       if Enum.empty?(statuses) do
         :operational
@@ -1083,70 +1020,35 @@ defmodule Uptrack.Monitoring do
       |> order_by([m], desc: m.inserted_at)
       |> AppRepo.all()
 
-    # Manually preload the latest check for each monitor
     monitor_ids = Enum.map(monitors, & &1.id)
-
-    latest_checks =
-      if Enum.any?(monitor_ids) do
-        subquery =
-          from mc in MonitorCheck,
-            where: mc.monitor_id in ^monitor_ids,
-            order_by: [desc: mc.checked_at],
-            distinct: mc.monitor_id,
-            select: mc
-
-        AppRepo.all(subquery)
-        |> Enum.group_by(& &1.monitor_id)
-      else
-        %{}
-      end
+    cached_checks = Uptrack.Cache.get_latest_checks_batch(monitor_ids)
 
     Enum.map(monitors, fn monitor ->
-      %{monitor | monitor_checks: Map.get(latest_checks, monitor.id, [])}
+      case Map.get(cached_checks, to_string(monitor.id)) do
+        %{status: status, response_time: rt, checked_at: checked_at} ->
+          check = %MonitorCheck{monitor_id: monitor.id, status: status, response_time: rt, checked_at: checked_at}
+          %{monitor | monitor_checks: [check]}
+
+        _ ->
+          %{monitor | monitor_checks: []}
+      end
     end)
   end
 
   # Analytics functions
 
-  @doc """
-  Returns uptime data for a monitor over the last N days for charting.
-  """
+  @doc "Returns uptime chart data from VictoriaMetrics."
   def get_uptime_chart_data(monitor_id, days \\ 30) do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
+    case Uptrack.Metrics.Reader.get_uptime_chart_data(monitor_id, days) do
+      {:ok, chart} -> chart
+      {:error, _} -> []
+    end
+  end
 
-    # Get checks grouped by day
-    query =
-      from mc in MonitorCheck,
-        where: mc.monitor_id == ^monitor_id and mc.checked_at >= ^cutoff_date,
-        select: %{
-          date: fragment("DATE(?)", mc.checked_at),
-          total: count(mc.id),
-          up: count(mc.id) |> filter(mc.status == "up")
-        },
-        group_by: fragment("DATE(?)", mc.checked_at),
-        order_by: [asc: fragment("DATE(?)", mc.checked_at)]
-
-    daily_stats = AppRepo.all(query)
-
-    # Fill in missing dates with 100% uptime
-    start_date = Date.add(Date.utc_today(), -days)
-
-    Enum.map(0..(days - 1), fn day_offset ->
-      date = Date.add(start_date, day_offset)
-
-      case Enum.find(daily_stats, &(&1.date == date)) do
-        nil ->
-          %{date: date, uptime: 100.0, total: 0}
-
-        stat ->
-          %{
-            date: stat.date,
-            uptime:
-              if(stat.total > 0, do: (stat.up / stat.total * 100) |> Float.round(2), else: 100.0),
-            total: stat.total
-          }
-      end
-    end)
+  @doc "Returns uptime percentage (0.0–100.0) from VictoriaMetrics for the last N days."
+  def get_uptime_percentage(monitor_id, days \\ 30) do
+    {:ok, uptime} = Uptrack.Metrics.Reader.get_uptime_percentage(monitor_id, days)
+    uptime
   end
 
   @doc """
@@ -1227,21 +1129,16 @@ defmodule Uptrack.Monitoring do
   Returns overall uptime for all monitors of an organization.
   """
   def get_organization_overall_uptime(organization_id, days \\ 30) do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
+    case Uptrack.Metrics.Reader.get_org_uptime_trends(organization_id, days) do
+      {:ok, []} ->
+        100.0
 
-    query =
-      from mc in MonitorCheck,
-        join: m in Monitor,
-        on: mc.monitor_id == m.id,
-        where: m.organization_id == ^organization_id and mc.checked_at >= ^cutoff_date,
-        select: %{
-          total: count(mc.id),
-          up: count(mc.id) |> filter(mc.status == "up")
-        }
+      {:ok, points} ->
+        avg = Enum.sum(Enum.map(points, & &1.uptime)) / length(points)
+        Float.round(avg, 2)
 
-    case AppRepo.one(query) do
-      %{total: 0} -> 100.0
-      %{total: total, up: up} -> (up / total * 100) |> Float.round(2)
+      {:error, _} ->
+        100.0
     end
   end
 
