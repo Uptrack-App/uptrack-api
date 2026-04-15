@@ -17,6 +17,10 @@ defmodule UptrackWeb.Router do
     plug UptrackWeb.Plugs.RateLimit, max_requests: 100, interval_ms: 60_000, bucket: "api"
   end
 
+  pipeline :sse do
+    plug :accepts, ["text/event-stream"]
+  end
+
   # Public API with optional session auth (loads user if session exists, but doesn't require it)
   pipeline :api_optional_auth do
     plug :accepts, ["json"]
@@ -402,7 +406,6 @@ defmodule UptrackWeb.Router do
     get "/tools/cluster-health", ToolsController, :cluster_health
 
     # Public status page API (no auth required)
-    get "/status/:slug/stream", SSEController, :status_stream
     get "/status/:slug", StatusPageController, :show_public
     get "/status/:slug/uptime", StatusPageController, :public_uptime
     get "/status/:slug/regions", StatusPageController, :public_regions
@@ -420,6 +423,12 @@ defmodule UptrackWeb.Router do
     post "/status/:slug/subscribe", SubscriberController, :subscribe
     get "/subscribe/verify/:token", SubscriberController, :verify
     get "/subscribe/unsubscribe/:token", SubscriberController, :unsubscribe
+  end
+
+  # SSE endpoints (Accept: text/event-stream)
+  scope "/api", UptrackWeb.Api do
+    pipe_through :sse
+    get "/status/:slug/stream", SSEController, :status_stream
   end
 
   # Enable LiveDashboard, Swoosh mailbox preview, and SwaggerUI in development
