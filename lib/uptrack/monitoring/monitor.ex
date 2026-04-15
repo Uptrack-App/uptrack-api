@@ -4,7 +4,7 @@ defmodule Uptrack.Monitoring.Monitor do
 
   alias Uptrack.Accounts.User
   alias Uptrack.Organizations.Organization
-  alias Uptrack.Monitoring.{MonitorCheck, Incident}
+  alias Uptrack.Monitoring.Incident
 
   @monitor_types ~w(http https tcp ping keyword ssl heartbeat dns)
   @statuses ~w(active paused disabled)
@@ -31,7 +31,7 @@ defmodule Uptrack.Monitoring.Monitor do
 
     belongs_to :organization, Organization
     belongs_to :user, User
-    has_many :monitor_checks, MonitorCheck, preload_order: [desc: :checked_at]
+    field :monitor_checks, {:array, :map}, virtual: true, default: []
     has_many :incidents, Incident, preload_order: [desc: :started_at]
 
     timestamps(type: :utc_datetime)
