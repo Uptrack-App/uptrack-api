@@ -297,10 +297,10 @@ defmodule UptrackWeb.Router do
   end
 
   pipeline :admin_basic_auth do
-    plug :admin_basic_auth
+    plug :check_admin_basic_auth
   end
 
-  defp admin_basic_auth(conn, _opts) do
+  defp check_admin_basic_auth(conn, _opts) do
     creds = Application.get_env(:uptrack, :admin_basic_auth, [])
     Plug.BasicAuth.basic_auth(conn, username: creds[:username] || "", password: creds[:password] || "")
   end
