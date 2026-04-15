@@ -1,5 +1,6 @@
 defmodule UptrackWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :uptrack
+  use ErrorTracker.Integrations.Plug
 
   # The session will be stored in the cookie, signed and encrypted.
   @session_options [

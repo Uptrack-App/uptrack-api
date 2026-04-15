@@ -1,5 +1,6 @@
 defmodule UptrackWeb.Router do
   use UptrackWeb, :router
+  import ErrorTracker.Web.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -295,6 +296,14 @@ defmodule UptrackWeb.Router do
 
   end
 
+  # Error tracker dashboard (platform admin only, browser session required)
+  scope "/admin", UptrackWeb do
+    pipe_through :browser
+
+    error_tracker_dashboard "/errors",
+      on_mount: [{UptrackWeb.UserAuth, :require_admin_user}]
+  end
+
   # Admin endpoints (platform staff only)
   scope "/api/admin", UptrackWeb.Api do
     pipe_through :api_admin
@@ -385,6 +394,7 @@ defmodule UptrackWeb.Router do
     get "/tools/cluster-health", ToolsController, :cluster_health
 
     # Public status page API (no auth required)
+    get "/status/:slug/stream", SSEController, :status_stream
     get "/status/:slug", StatusPageController, :show_public
     get "/status/:slug/uptime", StatusPageController, :public_uptime
     get "/status/:slug/regions", StatusPageController, :public_regions
