@@ -13,6 +13,9 @@ defmodule Uptrack.Application do
         # Database repos - AppRepo handles migrations, ObanRepo has separate pool
         Uptrack.AppRepo,
         Uptrack.ObanRepo,
+        # Verify all Ecto schema fields exist in DB before serving traffic.
+        # Catches columns silently dropped by Citus DDL operations.
+        Uptrack.SchemaVerifier,
         {DNSCluster, query: Application.get_env(:uptrack, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Uptrack.PubSub},
         # In-app cache for expensive queries
