@@ -25,6 +25,7 @@ defmodule Uptrack.Monitoring.Monitor do
     field :consecutive_failures, :integer, default: 0
     field :confirmation_threshold, :integer, default: 2
     field :uptime_percentage, :float, virtual: true
+    field :region_results, :map, virtual: true
     field :escalation_policy_id, Uniq.UUID
     field :reminder_interval_minutes, :integer
 

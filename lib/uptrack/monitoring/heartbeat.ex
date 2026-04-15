@@ -17,7 +17,7 @@ defmodule Uptrack.Monitoring.Heartbeat do
 
   alias Uptrack.AppRepo
   alias Uptrack.Monitoring
-  alias Uptrack.Monitoring.Monitor
+  alias Uptrack.Monitoring.{Monitor, MonitorCheck}
 
   @doc """
   Generates a unique token for a heartbeat monitor.
@@ -60,25 +60,21 @@ defmodule Uptrack.Monitoring.Heartbeat do
           checked_at: DateTime.utc_now() |> DateTime.truncate(:second)
         }
 
-        case Monitoring.create_check(check_attrs) do
-          {:ok, _check} ->
-            # Update monitor settings with last heartbeat time
-            updated_settings =
-              Map.merge(monitor.settings || %{}, %{
-                "last_heartbeat" => DateTime.to_iso8601(DateTime.utc_now()),
-                "last_metadata" => metadata
-              })
+        _check = struct!(MonitorCheck, check_attrs)
 
-            Monitoring.update_monitor(monitor, %{settings: updated_settings})
+        # Update monitor settings with last heartbeat time
+        updated_settings =
+          Map.merge(monitor.settings || %{}, %{
+            "last_heartbeat" => DateTime.to_iso8601(DateTime.utc_now()),
+            "last_metadata" => metadata
+          })
 
-            # Auto-resolve any active incident
-            resolve_active_incident(monitor)
+        Monitoring.update_monitor(monitor, %{settings: updated_settings})
 
-            {:ok, monitor}
+        # Auto-resolve any active incident
+        resolve_active_incident(monitor)
 
-          {:error, changeset} ->
-            {:error, changeset}
-        end
+        {:ok, monitor}
     end
   end
 
@@ -148,20 +144,16 @@ defmodule Uptrack.Monitoring.Heartbeat do
       checked_at: now |> DateTime.truncate(:second)
     }
 
-    case Monitoring.create_check(check_attrs) do
-      {:ok, check} ->
-        Monitoring.create_incident(%{
-          monitor_id: monitor.id,
-          organization_id: monitor.organization_id,
-          status: :investigating,
-          cause: :heartbeat_missed,
-          started_at: now,
-          first_check_id: check.id
-        })
+    _check = struct!(MonitorCheck, check_attrs)
 
-      {:error, _} ->
-        :error
-    end
+    Monitoring.create_incident(%{
+      monitor_id: monitor.id,
+      organization_id: monitor.organization_id,
+      status: :investigating,
+      cause: :heartbeat_missed,
+      started_at: now,
+      first_check_id: nil
+    })
   end
 
   defp parse_datetime(nil), do: nil

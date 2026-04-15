@@ -19,7 +19,7 @@ defmodule Uptrack.Monitoring.SchedulerWorker do
   end
 
   defp should_check_monitor?(monitor) do
-    case Monitoring.get_latest_check(monitor.id) do
+    case Uptrack.Cache.get_latest_check(monitor.id) do
       nil ->
         true
 

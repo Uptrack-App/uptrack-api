@@ -1,6 +1,8 @@
 defmodule UptrackWeb.Api.MonitorController do
   use UptrackWeb, :controller
 
+  require Logger
+
   alias Uptrack.Billing
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.SmartDefaults
@@ -105,8 +107,9 @@ defmodule UptrackWeb.Api.MonitorController do
         {:error, :not_found}
 
       monitor ->
-        uptime = Monitoring.get_uptime_percentage(monitor.id)
-        monitor = %{monitor | uptime_percentage: uptime}
+        {:ok, uptime} = Uptrack.Metrics.Reader.get_uptime_percentage(monitor.id)
+        {:ok, region_results} = Uptrack.Metrics.Reader.get_region_response_times(monitor.id)
+        monitor = %{monitor | uptime_percentage: uptime, region_results: region_results}
         render(conn, :show, monitor: monitor)
     end
   end
@@ -251,14 +254,13 @@ defmodule UptrackWeb.Api.MonitorController do
         {:error, :not_found}
 
       _monitor ->
-        # Try VictoriaMetrics first, fall back to Postgres for historical data
         case Uptrack.Metrics.Reader.get_recent_checks(monitor_id, limit) do
-          {:ok, checks} when checks != [] ->
+          {:ok, checks} ->
             render(conn, :checks_from_vm, checks: checks)
 
-          _ ->
-            checks = Monitoring.get_recent_checks(monitor_id, limit)
-            render(conn, :checks, checks: checks)
+          {:error, reason} ->
+            Logger.warning("VM checks query failed for monitor #{monitor_id}: #{inspect(reason)}")
+            {:error, :service_unavailable}
         end
     end
   end

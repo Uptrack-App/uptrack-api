@@ -77,7 +77,7 @@ defmodule Uptrack.MCP.Tools do
     case Monitoring.get_organization_monitor(org_id, id) do
       nil -> {:error, "Monitor not found"}
       monitor ->
-        uptime = Monitoring.get_uptime_percentage(id, 30)
+        {:ok, uptime} = Uptrack.Metrics.Reader.get_uptime_percentage(id, 30)
         latest = get_latest_check(monitor)
         {:ok, %{
           id: monitor.id, name: monitor.name, url: monitor.url,

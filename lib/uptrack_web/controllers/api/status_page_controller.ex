@@ -56,9 +56,9 @@ defmodule UptrackWeb.Api.StatusPageController do
 
       region_data =
         Enum.map(monitor_ids, fn monitor_id ->
-          case Monitoring.get_latest_check_with_regions(monitor_id) do
-            nil -> %{monitor_id: monitor_id, regions: %{}}
-            check -> %{monitor_id: monitor_id, regions: check.region_results || %{}}
+          case Uptrack.Metrics.Reader.get_region_response_times(monitor_id) do
+            {:ok, regions} -> %{monitor_id: monitor_id, regions: regions}
+            {:error, _} -> %{monitor_id: monitor_id, regions: %{}}
           end
         end)
 
