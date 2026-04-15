@@ -42,12 +42,14 @@ if config_env() == :prod do
   oban_pool_size = String.to_integer(System.get_env("OBAN_POOL_SIZE") || "60")
 
   # AppRepo - app schema + migrations
+  # migration_lock: false — PgBouncer transaction pooling breaks session-scoped advisory locks
   config :uptrack, Uptrack.AppRepo,
     url: database_url,
     pool_size: app_pool_size,
     queue_target: 50,
     queue_interval: 5000,
-    socket_options: maybe_ipv6
+    socket_options: maybe_ipv6,
+    migration_lock: false
 
   # ObanRepo - same database, separate pool for job queue
   # Separate pool isolates Oban from app queries (prevents job starvation)
