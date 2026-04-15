@@ -626,44 +626,18 @@ defmodule Uptrack.Monitoring do
   Gets a status page by slug with monitor status data.
   """
   def get_status_page_with_status!(slug) do
-    status_page = get_status_page_by_slug!(slug)
+    slug |> get_status_page_by_slug!() |> load_monitor_statuses()
+  end
 
-    # Get monitors with their latest checks
-    monitors =
-      from(m in Monitor,
-        join: spm in StatusPageMonitor,
-        on: spm.monitor_id == m.id,
-        where: spm.status_page_id == ^status_page.id,
-        order_by: [asc: spm.sort_order, asc: m.name]
-      )
-      |> AppRepo.all()
-
-    monitor_ids = Enum.map(monitors, & &1.id)
-
-    # Read latest checks from cache (populated by MonitorProcess),
-    # falling back to VictoriaMetrics if cache is empty
-    cached_checks = Uptrack.Cache.get_latest_checks_batch(monitor_ids)
-
-    monitors_with_status =
-      Enum.map(monitors, fn monitor ->
-        mid = to_string(monitor.id)
-
-        case Map.get(cached_checks, mid) do
-          %{status: status, response_time: rt, checked_at: checked_at} ->
-            check = %MonitorCheck{
-              monitor_id: monitor.id,
-              status: status,
-              response_time: rt,
-              checked_at: checked_at
-            }
-            %{monitor | monitor_checks: [check]}
-
-          _ ->
-            %{monitor | monitor_checks: []}
-        end
-      end)
-
-    %{status_page | monitors: monitors_with_status}
+  @doc """
+  Gets a public status page by slug with monitor status data.
+  Returns `{:ok, status_page}` or `{:error, :not_found}`.
+  """
+  def get_public_status_page_with_status(slug) do
+    case get_status_page_by_slug(slug) do
+      nil -> {:error, :not_found}
+      status_page -> {:ok, load_monitor_statuses(status_page)}
+    end
   end
 
   @doc """
@@ -1269,6 +1243,41 @@ defmodule Uptrack.Monitoring do
       %{total: 0} -> 100.0
       %{total: total, up: up} -> (up / total * 100) |> Float.round(2)
     end
+  end
+
+  # Loads monitors with latest check data into a status page struct.
+  # Reads from cache (populated by MonitorProcess), falling back to empty checks.
+  defp load_monitor_statuses(status_page) do
+    monitors =
+      from(m in Monitor,
+        join: spm in StatusPageMonitor,
+        on: spm.monitor_id == m.id,
+        where: spm.status_page_id == ^status_page.id,
+        order_by: [asc: spm.sort_order, asc: m.name]
+      )
+      |> AppRepo.all()
+
+    monitor_ids = Enum.map(monitors, & &1.id)
+    cached_checks = Uptrack.Cache.get_latest_checks_batch(monitor_ids)
+
+    monitors_with_status =
+      Enum.map(monitors, fn monitor ->
+        case Map.get(cached_checks, to_string(monitor.id)) do
+          %{status: status, response_time: rt, checked_at: checked_at} ->
+            check = %MonitorCheck{
+              monitor_id: monitor.id,
+              status: status,
+              response_time: rt,
+              checked_at: checked_at
+            }
+            %{monitor | monitor_checks: [check]}
+
+          _ ->
+            %{monitor | monitor_checks: []}
+        end
+      end)
+
+    %{status_page | monitors: monitors_with_status}
   end
 
   # Cache invalidation helpers

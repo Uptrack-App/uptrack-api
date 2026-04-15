@@ -59,6 +59,7 @@ defmodule Uptrack.MixProject do
        compile: false,
        depth: 1},
       {:appsignal_phoenix, "~> 2.0"},
+      {:error_tracker, "~> 0.5"},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
