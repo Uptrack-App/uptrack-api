@@ -69,5 +69,8 @@ config :phoenix_live_view,
 # Disable auto-start of monitor processes in tests
 config :uptrack, start_monitor_processes: false
 
+# Skip startup schema check in tests (migrations already ensure correctness)
+config :uptrack, verify_schema_on_boot: false
+
 # Use mock check client in tests (no HTTP calls)
 config :uptrack, check_client: Uptrack.Monitoring.CheckClient.Mock
