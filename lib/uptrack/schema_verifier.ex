@@ -93,9 +93,9 @@ defmodule Uptrack.SchemaVerifier do
     import Ecto.Query
 
     from(c in "columns",
+      prefix: "information_schema",
       where: c.table_schema == ^schema and c.table_name == ^table,
-      select: c.column_name,
-      prefix: "information_schema"
+      select: c.column_name
     )
     |> Uptrack.AppRepo.all()
   rescue
