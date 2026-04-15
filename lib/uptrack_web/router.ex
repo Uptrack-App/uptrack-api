@@ -296,12 +296,20 @@ defmodule UptrackWeb.Router do
 
   end
 
-  # Error tracker dashboard (platform admin only, browser session required)
-  scope "/admin", UptrackWeb do
-    pipe_through :browser
+  pipeline :admin_basic_auth do
+    plug :admin_basic_auth
+  end
 
-    error_tracker_dashboard "/errors",
-      on_mount: [{UptrackWeb.UserAuth, :require_admin_user}]
+  defp admin_basic_auth(conn, _opts) do
+    creds = Application.get_env(:uptrack, :admin_basic_auth, [])
+    Plug.BasicAuth.basic_auth(conn, username: creds[:username] || "", password: creds[:password] || "")
+  end
+
+  # Error tracker dashboard (platform admin only, HTTP Basic Auth)
+  scope "/admin", UptrackWeb do
+    pipe_through [:browser, :admin_basic_auth]
+
+    error_tracker_dashboard "/errors"
   end
 
   # Admin endpoints (platform staff only)

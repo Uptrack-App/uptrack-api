@@ -21,6 +21,12 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
+  config :uptrack, :admin_basic_auth,
+    username: System.get_env("ADMIN_BASIC_AUTH_USERNAME", "admin"),
+    password:
+      System.get_env("ADMIN_BASIC_AUTH_PASSWORD") ||
+        raise("environment variable ADMIN_BASIC_AUTH_PASSWORD is missing")
+
   # Single database URL (same for app and oban)
   database_url =
     System.get_env("DATABASE_URL") ||
