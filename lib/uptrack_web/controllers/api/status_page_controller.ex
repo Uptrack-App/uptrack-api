@@ -77,8 +77,10 @@ defmodule UptrackWeb.Api.StatusPageController do
       overall_status = Monitoring.get_status_page_status(status_page.id)
       uptime = Monitoring.get_status_page_uptime(status_page.id, 30)
 
+      monitor_ids = Enum.map(status_page.monitors, & &1.id)
+
       recent_incidents =
-        Monitoring.list_recent_incidents(status_page.organization_id, 10)
+        Monitoring.list_recent_incidents_for_monitors(monitor_ids, 10)
 
       maintenance_windows =
         Maintenance.upcoming_maintenance(status_page.organization_id, days: 1)

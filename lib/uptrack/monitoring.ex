@@ -535,6 +535,20 @@ defmodule Uptrack.Monitoring do
     AppRepo.all(query)
   end
 
+  @doc """
+  Returns recent incidents scoped to a specific list of monitor IDs.
+  Used for public status pages to avoid leaking other monitors' incidents.
+  """
+  def list_recent_incidents_for_monitors(monitor_ids, limit \\ 10) do
+    from(i in Incident,
+      where: i.monitor_id in ^monitor_ids,
+      order_by: [desc: i.started_at],
+      limit: ^limit,
+      preload: [:monitor]
+    )
+    |> AppRepo.all()
+  end
+
   def count_recent_incidents(organization_id, days) do
     cutoff = DateTime.utc_now() |> DateTime.add(-days * 86400, :second)
 
