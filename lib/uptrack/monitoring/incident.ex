@@ -3,7 +3,7 @@ defmodule Uptrack.Monitoring.Incident do
   import Ecto.Changeset
 
   alias Uptrack.Organizations.Organization
-  alias Uptrack.Monitoring.{Monitor, MonitorCheck, IncidentUpdate}
+  alias Uptrack.Monitoring.{Monitor, IncidentUpdate}
 
   @statuses ~w(ongoing resolved)
 
@@ -23,8 +23,6 @@ defmodule Uptrack.Monitoring.Incident do
 
     belongs_to :organization, Organization
     belongs_to :monitor, Monitor
-    belongs_to :first_check, MonitorCheck, type: :integer
-    belongs_to :last_check, MonitorCheck, type: :integer
     has_many :incident_updates, IncidentUpdate, on_delete: :delete_all
 
     timestamps(type: :utc_datetime)
@@ -44,9 +42,7 @@ defmodule Uptrack.Monitoring.Incident do
       :last_reminder_sent_at,
       :reminder_count,
       :organization_id,
-      :monitor_id,
-      :first_check_id,
-      :last_check_id
+      :monitor_id
     ])
     |> validate_required([:started_at, :organization_id, :monitor_id])
     |> validate_inclusion(:status, @statuses)
@@ -54,8 +50,6 @@ defmodule Uptrack.Monitoring.Incident do
     |> validate_resolved_at()
     |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:monitor_id)
-    |> foreign_key_constraint(:first_check_id)
-    |> foreign_key_constraint(:last_check_id)
   end
 
   @doc false
