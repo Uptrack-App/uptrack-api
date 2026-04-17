@@ -30,7 +30,7 @@ in {
   networking.nat = {
     enable = true;
     internalInterfaces = [ "ve-+" ];  # matches all container veth interfaces
-    externalInterface = "eth0";       # verify with `ip link` on nbg4
+    externalInterface = "ens3";       # nbg4's public interface (verified via `ip route`)
   };
 
   # Agenix secret: decrypted to /run/agenix/invoice9-env, bind-mounted read-only into container
