@@ -177,6 +177,8 @@ in
         MIX_ENV = "prod";
         PHX_HOST = cfg.host;
         PHX_PORT = toString cfg.port;
+        # runtime.exs reads PORT (not PHX_PORT) so Phoenix/Bandit binds this port
+        PORT = toString cfg.port;
         APP_POOL_SIZE = toString cfg.poolSize;
         OBAN_POOL_SIZE = toString cfg.obanPoolSize;
         RELEASE_TMP = "${cfg.workDir}/tmp";

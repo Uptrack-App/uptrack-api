@@ -4,6 +4,10 @@
 
 let
   src = self;  # Flake source = git repo root (where mix.exs lives)
+
+  # Pre-fetched AppSignal agent — placed into deps/appsignal/c_src/ below so
+  # mix_helpers.exs skips the (sandbox-blocked) network download at compile time.
+  appsignal-agent = pkgs.callPackage ./appsignal-agent.nix {};
 in
 beamPackages.mixRelease {
   pname = "uptrack";
@@ -29,14 +33,13 @@ beamPackages.mixRelease {
     git
   ];
 
-  # Fix heroicons git dep: fetchMixDeps creates a minimal .git with only HEAD.
-  # Mix's lock check runs `git rev-parse HEAD` which needs objects/ and refs/.
-  # Since deps are already copied writably to $MIX_DEPS_PATH, we just add
-  # the missing git structure.
-  # Fix heroicons git dep: fetchMixDeps creates a minimal .git with only HEAD.
-  # Mix.SCM.Git.lock_status checks both `git config remote.origin.url` and
-  # `git rev-parse HEAD`. We need objects/, refs/, and a config with origin.
-  postConfigure = ''
+  # NOTE: this runs BEFORE `mix deps.compile`, which is invoked inside
+  # configurePhase (see nixpkgs mix-release.nix:181). postConfigure would fire
+  # too late — AppSignal's install task runs during that deps.compile step.
+  preConfigure = ''
+    # Fix heroicons git dep: fetchMixDeps creates a minimal .git with only HEAD.
+    # Mix.SCM.Git.lock_status checks both `git config remote.origin.url` and
+    # `git rev-parse HEAD`. We need objects/, refs/, and a config with origin.
     heroicons_git="$MIX_DEPS_PATH/heroicons/.git"
     if [ -d "$heroicons_git" ] && [ ! -d "$heroicons_git/objects" ]; then
       mkdir -p "$heroicons_git/objects" "$heroicons_git/refs"
@@ -44,6 +47,23 @@ beamPackages.mixRelease {
 [remote "origin"]
 	url = https://github.com/tailwindlabs/heroicons.git
 GITCFG
+    fi
+
+    # Seed AppSignal's c_src/ with the pre-fetched agent so compile skips the
+    # HTTP download (blocked by the Nix sandbox). AppSignal's install task
+    # detects these files via has_local_release_files? and uses them directly
+    # (see deps/appsignal/mix_helpers.exs:112,423).
+    appsignal_c_src="$MIX_DEPS_PATH/appsignal/c_src"
+    if [ -d "$MIX_DEPS_PATH/appsignal" ]; then
+      mkdir -p "$appsignal_c_src"
+      install -m 0755 ${appsignal-agent}/appsignal-agent    "$appsignal_c_src/"
+      install -m 0644 ${appsignal-agent}/appsignal.h        "$appsignal_c_src/"
+      install -m 0644 ${appsignal-agent}/libappsignal.a     "$appsignal_c_src/"
+      install -m 0644 ${appsignal-agent}/appsignal.version  "$appsignal_c_src/"
+      echo "AppSignal seed: files placed in $appsignal_c_src"
+      ls -la "$appsignal_c_src"
+    else
+      echo "AppSignal seed: WARNING — $MIX_DEPS_PATH/appsignal does not exist yet"
     fi
   '';
 

@@ -50,6 +50,7 @@ defmodule UptrackWeb.Api.MonitorJSON do
       response_time: check.response_time,
       status_code: check.status_code,
       error_message: check.error_message,
+      response_body: check.response_body,
       checked_at: check.checked_at
     }
   end

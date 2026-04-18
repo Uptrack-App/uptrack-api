@@ -92,6 +92,12 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
+  # AppSignal: runtime override for push API key (falls back to compile-time
+  # default in config/appsignal.exs when env var isn't set).
+  if key = System.get_env("APPSIGNAL_PUSH_API_KEY") do
+    config :appsignal, :config, push_api_key: key
+  end
+
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
