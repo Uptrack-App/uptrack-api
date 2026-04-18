@@ -85,7 +85,9 @@ defmodule Uptrack.Integrations do
   defp create_slack_alert_channel(token_response, organization_id, user_id) do
     webhook = token_response["incoming_webhook"]
     team_name = token_response["team"]["name"]
-    channel_name = webhook["channel"]
+    # Slack's OAuth response sometimes includes a leading "#" in channel, sometimes not.
+    # Strip any leading "#" so we don't double-hash in the display name.
+    channel_name = webhook["channel"] |> to_string() |> String.trim_leading("#")
 
     attrs = %{
       name: "Slack - #{team_name} ##{channel_name}",

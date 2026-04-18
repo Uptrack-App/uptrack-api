@@ -60,9 +60,11 @@ in {
   };
 
   # Phoenix API application
+  # Port 4001 (not 4000) — haproxy sits on 4000 for API-layer HA failover.
+  # See infra/nixos/modules/services/haproxy.nix for the frontend/backend.
   services.uptrack = {
     enable = true;
-    port = 4000;
+    port = 4001;
     host = "api.uptrack.app";
     poolSize = 10;
     obanPoolSize = 20;
