@@ -25,6 +25,16 @@ let
     nbg2 = "100.64.1.2";
   };
 
+  # Peer node's Tailscale IP — used as failover backend for API HA
+  peerIp = if nodeName == "nbg1" then nodes.nbg2 else nodes.nbg1;
+  peerName = if nodeName == "nbg1" then "nbg2" else "nbg1";
+
+  # Port layout on coordinator nodes:
+  #   4000 → haproxy (what cloudflared targets, unchanged in CF dashboard)
+  #   4001 → uptrack (Phoenix app, local + reachable on Tailscale from peer)
+  appPort = 4001;
+  haproxyApiPort = 4000;
+
 in lib.mkIf isCoordinator {
 
   services.haproxy = {
@@ -58,6 +68,32 @@ in lib.mkIf isCoordinator {
         default-server inter 2s fall 2 rise 1 on-marked-down shutdown-sessions
         server  nbg1 ${nodes.nbg1}:6432 check port 8008
         server  nbg2 ${nodes.nbg2}:6432 check port 8008
+
+      # Uptrack API fronting (API-layer HA)
+      #
+      # cloudflared sends every public request to 127.0.0.1:${toString haproxyApiPort}.
+      # haproxy forwards to the local uptrack on :${toString appPort}. If the local
+      # uptrack is unhealthy (GET /api/health != 200), it fails over to the peer
+      # coordinator via Tailscale. This closes the gap where cloudflared blindly
+      # proxied to a dead local backend and returned 502.
+      #
+      frontend uptrack_api_fe
+        bind 127.0.0.1:${toString haproxyApiPort}
+        mode http
+        option httplog
+        timeout client 1m
+        default_backend uptrack_api_be
+
+      backend uptrack_api_be
+        mode http
+        option httpchk
+        http-check send meth GET uri /api/health
+        http-check expect status 200
+        timeout connect 5s
+        timeout server 1m
+        default-server inter 2s fall 2 rise 1 on-marked-down shutdown-sessions
+        server ${nodeName} 127.0.0.1:${toString appPort} check
+        server ${peerName} ${peerIp}:${toString appPort} check backup
     '';
   };
 
