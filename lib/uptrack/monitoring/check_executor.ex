@@ -55,6 +55,9 @@ defmodule Uptrack.Monitoring.CheckExecutor do
           {:error, msg} -> Map.merge(base, %{status: "down", error_message: "Assertion failed: #{msg}"})
         end
 
+      status_code < 200 or status_code >= 300 ->
+        Map.merge(base, %{status: "down", error_message: "HTTP #{status_code} is not a 2xx success response"})
+
       true ->
         Map.put(base, :status, "up")
     end
