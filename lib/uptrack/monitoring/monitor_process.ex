@@ -295,6 +295,10 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     # Buffer write to VictoriaMetrics (batched for throughput)
     Uptrack.Metrics.Batcher.write(state.monitor, check)
 
+    # Persist failure details for DOWN checks so the dashboard can show
+    # body/headers/error context (UP checks remain VM-only for write volume).
+    Uptrack.Monitoring.CheckFailures.record(check)
+
     # Cache latest check for instant API reads (no VM query needed)
     Uptrack.Cache.put_latest_check(state.monitor_id, %{
       status: check.status,

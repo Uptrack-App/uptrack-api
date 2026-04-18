@@ -31,15 +31,50 @@ defmodule UptrackWeb.Api.MonitorJSON do
     %{data: for(check <- checks, do: check_data(check))}
   end
 
-  def checks_from_vm(%{checks: checks}) do
+  def checks_from_vm(%{checks: checks} = assigns) do
+    failures = Map.get(assigns, :failures, [])
+
     %{data: Enum.map(checks, fn check ->
-      %{
+      base = %{
         status: check.status,
         response_time: check.response_time,
         status_code: check[:status_code],
         checked_at: check.checked_at
       }
+
+      # For DOWN checks, try to attach the nearest failure row (within ±30s).
+      # Matching by closest timestamp because VM buckets to 30s, Postgres
+      # stores microsecond precision.
+      if check.status == "down" do
+        case nearest_failure(failures, check.checked_at) do
+          nil ->
+            base
+
+          f ->
+            Map.merge(base, %{
+              status_code: f.status_code || base.status_code,
+              error_message: f.error_message,
+              response_body: f.response_body,
+              response_headers: f.response_headers
+            })
+        end
+      else
+        base
+      end
     end)}
+  end
+
+  defp nearest_failure([], _), do: nil
+  defp nearest_failure(failures, target) do
+    failures
+    |> Enum.map(fn f -> {f, abs(DateTime.diff(f.checked_at, target, :second))} end)
+    |> Enum.filter(fn {_, dist} -> dist <= 30 end)
+    |> case do
+      [] -> nil
+      list ->
+        {nearest, _} = Enum.min_by(list, fn {_, dist} -> dist end)
+        nearest
+    end
   end
 
   defp check_data(%MonitorCheck{} = check) do

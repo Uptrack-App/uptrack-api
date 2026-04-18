@@ -140,7 +140,9 @@ config :uptrack, Oban,
       # Refresh disposable email domain list daily at 3am UTC
       {"0 3 * * *", Uptrack.AbusePrevention.DisposableEmailWorker},
       # Clean up notification deliveries older than 7 days daily at 3:30am UTC
-      {"30 3 * * *", Uptrack.Alerting.DeliveryCleanupWorker}
+      {"30 3 * * *", Uptrack.Alerting.DeliveryCleanupWorker},
+      # Clean up DOWN-check failure details older than 30 days daily at 3:45am UTC
+      {"45 3 * * *", Uptrack.Monitoring.CheckFailureCleanupWorker}
     ]}
   ],
   queues: [
