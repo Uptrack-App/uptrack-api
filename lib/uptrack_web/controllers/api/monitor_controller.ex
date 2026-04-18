@@ -256,7 +256,10 @@ defmodule UptrackWeb.Api.MonitorController do
       _monitor ->
         case Uptrack.Metrics.Reader.get_recent_checks(monitor_id, limit) do
           {:ok, checks} ->
-            render(conn, :checks_from_vm, checks: checks)
+            # Pull DOWN detail rows for this monitor so we can enrich
+            # failed rows with body/headers/error text.
+            failures = Uptrack.Monitoring.CheckFailures.recent_for_monitor(monitor_id, limit)
+            render(conn, :checks_from_vm, checks: checks, failures: failures)
 
           {:error, reason} ->
             Logger.warning("VM checks query failed for monitor #{monitor_id}: #{inspect(reason)}")
