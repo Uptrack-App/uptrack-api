@@ -24,6 +24,8 @@ defmodule Uptrack.Monitoring.Monitor do
     field :settings, :map, default: %{}
     field :consecutive_failures, :integer, default: 0
     field :confirmation_threshold, :integer, default: 2
+    field :confirmation_window, :string, default: "3m"
+    field :regions_required, :string, default: "majority"
     field :uptime_percentage, :float, virtual: true
     field :region_results, :map, virtual: true
     field :escalation_policy_id, Uniq.UUID
@@ -51,6 +53,8 @@ defmodule Uptrack.Monitoring.Monitor do
       :alert_contacts,
       :settings,
       :confirmation_threshold,
+      :confirmation_window,
+      :regions_required,
       :escalation_policy_id,
       :reminder_interval_minutes,
       :organization_id,
@@ -59,6 +63,12 @@ defmodule Uptrack.Monitoring.Monitor do
     |> validate_required([:name, :url, :organization_id, :user_id])
     |> validate_inclusion(:reminder_interval_minutes, [15, 30, 60, 180, 360],
       message: "must be one of: 15, 30, 60, 180, 360"
+    )
+    |> validate_inclusion(:confirmation_window, ~w(1m 3m 5m 10m),
+      message: "must be one of: 1m, 3m, 5m, 10m"
+    )
+    |> validate_inclusion(:regions_required, ~w(any majority all),
+      message: "must be one of: any, majority, all"
     )
     |> validate_length(:name, max: 100)
     |> validate_change(:name, fn :name, name ->

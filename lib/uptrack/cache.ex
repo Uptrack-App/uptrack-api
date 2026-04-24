@@ -50,17 +50,35 @@ defmodule Uptrack.Cache do
     delete_all()
   end
 
-  @ttl_check :timer.seconds(120)
+  @ttl_check_default :timer.seconds(120)
+  @ttl_check_min :timer.seconds(120)
+  @ttl_check_max :timer.hours(24)
 
   @doc """
   Caches the latest check status for a monitor.
 
   Called by MonitorProcess after every check — always fresh.
   Read by the API listing/detail views instead of querying VM.
+
+  `interval_seconds` (the monitor's check cadence) is used to derive a
+  TTL that outlives the gap between checks. Without this, monitors
+  with intervals > 120s show "Unknown" in the UI 97% of the time.
   """
-  def put_latest_check(monitor_id, check_data) do
-    put("latest_check:#{monitor_id}", check_data, ttl: @ttl_check)
+  def put_latest_check(monitor_id, check_data, interval_seconds \\ nil) do
+    ttl = ttl_for_interval(interval_seconds)
+    put("latest_check:#{monitor_id}", check_data, ttl: ttl)
   end
+
+  defp ttl_for_interval(nil), do: @ttl_check_default
+
+  defp ttl_for_interval(seconds) when is_integer(seconds) and seconds > 0 do
+    # Two full intervals plus 30s buffer so a missed check doesn't flip
+    # the UI to "Unknown" immediately.
+    ms = (seconds * 2 + 30) * 1_000
+    ms |> max(@ttl_check_min) |> min(@ttl_check_max)
+  end
+
+  defp ttl_for_interval(_), do: @ttl_check_default
 
   def get_latest_check(monitor_id) do
     get("latest_check:#{monitor_id}")

@@ -18,37 +18,72 @@ defmodule Uptrack.Alerting do
   Sends alerts for a new incident based on the monitor's alert configuration.
   If the monitor has an escalation policy, uses the policy.
   Otherwise, fires all channels simultaneously (backward compatible).
-  """
-  def send_incident_alerts(%Incident{} = incident, %Monitor{} = monitor) do
-    Logger.info("Sending alerts for incident #{incident.id} on monitor #{monitor.name}")
 
-    # Get user and check notification preferences
+  The `level` option (change #11 §6) routes alerts by severity:
+
+    * `:page` (default) — all configured channels, current behavior.
+    * `:warn` — email channels only, skip Slack/Discord/Telegram/pager.
+    * `:critical` — all channels + escalation chain (same as :page here;
+      the escalation chain runs separately via `EscalationWorker`).
+  """
+  def send_incident_alerts(incident, monitor, opts_or_level \\ [])
+
+  def send_incident_alerts(%Incident{} = incident, %Monitor{} = monitor, level)
+      when level in [:warn, :page, :critical] do
+    send_incident_alerts(incident, monitor, level: level)
+  end
+
+  def send_incident_alerts(%Incident{} = incident, %Monitor{} = monitor, opts)
+      when is_list(opts) do
+    level = Keyword.get(opts, :level, :page)
+    Logger.info("Sending #{level} alerts for incident #{incident.id} on monitor #{monitor.name}")
+
+    # Observability: count every alert fire by level (change #11 §8).
+    Uptrack.Metrics.Writer.write_alert_level(Atom.to_string(level))
+
     user = AppRepo.get!(User, monitor.user_id)
 
     unless User.should_notify?(user, :monitor_down) do
       Logger.info("User #{user.id} has disabled monitor down notifications")
       [{:skipped_user_preferences, user.id}]
     else
-      # Check quiet hours
-      if in_quiet_hours?(user) do
-        Logger.info("Skipping incident alert for user #{user.id} due to quiet hours")
+      if in_quiet_hours?(user) and level != :critical do
+        # CRITICAL bypasses quiet hours — a 10-minute sustained outage
+        # is more important than sleep. WARN/PAGE respect quiet hours.
+        Logger.info("Skipping incident alert for user #{user.id} due to quiet hours (level=#{level})")
         [{:skipped_quiet_hours, user.id}]
       else
-        case Escalation.get_monitor_policy(monitor) do
-          nil ->
-            # No escalation policy — fire all channels simultaneously (backward compatible)
-            send_all_channels(incident, monitor, user)
-
-          policy ->
-            # Has escalation policy — fire step 1 immediately, schedule step 2+
-            send_with_escalation(incident, monitor, user, policy)
-        end
+        dispatch_incident_alerts(incident, monitor, user, level)
       end
     end
   end
 
-  defp send_all_channels(incident, monitor, user) do
-    alert_channels = list_active_alert_channels(monitor.organization_id)
+  defp dispatch_incident_alerts(incident, monitor, user, :warn) do
+    # WARN: email-only. Bypass escalation policy — partial outages
+    # aren't paging events, they're status-visibility events.
+    send_all_channels(incident, monitor, user, channel_filter: &email_only/1)
+  end
+
+  defp dispatch_incident_alerts(incident, monitor, user, level) when level in [:page, :critical] do
+    case Escalation.get_monitor_policy(monitor) do
+      nil ->
+        send_all_channels(incident, monitor, user)
+
+      policy ->
+        send_with_escalation(incident, monitor, user, policy)
+    end
+  end
+
+  defp email_only(%{type: "email"}), do: true
+  defp email_only(_), do: false
+
+  defp send_all_channels(incident, monitor, user, opts \\ []) do
+    channel_filter = Keyword.get(opts, :channel_filter, fn _ -> true end)
+    alert_channels =
+      monitor.organization_id
+      |> list_active_alert_channels()
+      |> Enum.filter(channel_filter)
+
     monitor_alert_contacts = if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
 
     results =
@@ -161,6 +196,64 @@ defmodule Uptrack.Alerting do
 
       {:error, reason} ->
         Logger.error("Failed to enqueue reminder: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Sends an "incident updated" alert when an existing ongoing incident is
+  upgraded in place (e.g. response-time degradation → hard down). Reuses
+  the same configured channels as incident_created but with a distinct
+  event_type so providers can render an update rather than a fresh page.
+  """
+  def send_incident_update_alerts(%Incident{} = incident, %Monitor{} = monitor) do
+    Logger.info("Sending update alerts for incident #{incident.id} on monitor #{monitor.name}")
+
+    user = AppRepo.get!(User, monitor.user_id)
+
+    cond do
+      not User.should_notify?(user, :monitor_down) ->
+        [{:skipped_user_preferences, user.id}]
+
+      in_quiet_hours?(user) ->
+        [{:skipped_quiet_hours, user.id}]
+
+      true ->
+        alert_channels = list_active_alert_channels(monitor.organization_id)
+
+        monitor_alert_contacts =
+          if is_map(monitor.alert_contacts), do: monitor.alert_contacts, else: %{}
+
+        results =
+          Enum.map(alert_channels, fn channel ->
+            if should_send_alert?(channel, monitor_alert_contacts, user) do
+              enqueue_update(channel, incident, monitor)
+            else
+              {:skipped, channel.id}
+            end
+          end)
+
+        successful = Enum.count(results, &match?({:ok, _}, &1))
+        Logger.info("Enqueued #{successful}/#{length(results)} update deliveries for incident #{incident.id}")
+        results
+    end
+  end
+
+  defp enqueue_update(channel, incident, monitor) do
+    %{
+      channel_id: channel.id,
+      incident_id: incident.id,
+      monitor_id: monitor.id,
+      event_type: "incident_updated"
+    }
+    |> AlertDeliveryWorker.new()
+    |> Oban.insert()
+    |> case do
+      {:ok, _job} ->
+        {:ok, :enqueued}
+
+      {:error, reason} ->
+        Logger.error("Failed to enqueue update delivery: #{inspect(reason)}")
         {:error, reason}
     end
   end

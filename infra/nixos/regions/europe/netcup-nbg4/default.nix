@@ -15,6 +15,7 @@ in {
     ../../../modules/services/node-exporter.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/victoria-metrics.nix
+    ../../../modules/services/victorialogs.nix
   ];
 
   # ── invoice9 host setup ───────────────────────────────────────────────────
@@ -102,14 +103,10 @@ in {
     wants = [ "acme-finished-invoice9.2folk.com.target" ];
   };
 
-  # Forward container DB traffic (192.168.100.1:5432) → coordinator via Tailscale
-  networking.nat.forwardPorts = [{
-    sourcePort = 5432;
-    destination = "100.64.1.2:5432";  # nbg2 coordinator (current Patroni leader)
-    proto = "tcp";
-  }];
-
-  # Masquerade container traffic going out via Tailscale
+  # Container reaches Patroni (worker cluster: nbg3/nbg4) directly over Tailscale.
+  # The multi-host DATABASE_URL in invoice9-env.age uses target_session_attrs=read-write
+  # so the driver auto-selects the current leader — no per-node DNAT here, no need
+  # to update this file on failover.
   networking.firewall.extraCommands = ''
     iptables -t nat -A POSTROUTING -o tailscale0 -s 192.168.100.0/24 -j MASQUERADE
   '';
@@ -141,6 +138,15 @@ in {
   services.uptrack.victoria-metrics = {
     enable = true;
     retentionPeriod = "15";
+  };
+
+  # VictoriaLogs single-node instance for DOWN-check forensic events.
+  # HA: independent instance, app Batcher shards write to both nbg3+nbg4.
+  # Retention matches the Business plan's 5-year promise; lower tiers are
+  # clamped at read time via `Uptrack.Metrics.Retention.days_for_plan/1`.
+  services.uptrack.victorialogs = {
+    enable = true;
+    retentionPeriod = "5y";
   };
 
   # User configuration

@@ -61,6 +61,31 @@ defmodule Uptrack.Monitoring.Events do
   end
 
   @doc """
+  Broadcasts when an incident is updated in place (e.g. degradation upgraded to down).
+  """
+  def broadcast_incident_updated(%Incident{} = incident, %Monitor{} = monitor) do
+    event_data = %{
+      incident_id: incident.id,
+      monitor_id: monitor.id,
+      monitor_name: monitor.name,
+      cause: incident.cause,
+      updated_at: incident.updated_at
+    }
+
+    Phoenix.PubSub.broadcast(
+      Uptrack.PubSub,
+      "user:#{monitor.user_id}",
+      {:incident_updated, event_data}
+    )
+
+    Phoenix.PubSub.broadcast(
+      Uptrack.PubSub,
+      "monitor:#{monitor.id}",
+      {:incident_updated, event_data}
+    )
+  end
+
+  @doc """
   Broadcasts when an incident is resolved.
   """
   def broadcast_incident_resolved(%Incident{} = incident, %Monitor{} = monitor) do
@@ -84,6 +109,32 @@ defmodule Uptrack.Monitoring.Events do
       Uptrack.PubSub,
       "monitor:#{monitor.id}",
       {:incident_resolved, event_data}
+    )
+  end
+
+  @doc """
+  Broadcasts when a monitor enters or exits the FLAPPING state.
+  Flap detection is handled by `Uptrack.Monitoring.FlapDetector`; this
+  event lets the dashboard render a FLAPPING pill without polling.
+  """
+  def broadcast_monitor_flapping(%Monitor{} = monitor, flapping?) when is_boolean(flapping?) do
+    event_data = %{
+      monitor_id: monitor.id,
+      monitor_name: monitor.name,
+      flapping: flapping?,
+      observed_at: DateTime.utc_now()
+    }
+
+    Phoenix.PubSub.broadcast(
+      Uptrack.PubSub,
+      "user:#{monitor.user_id}",
+      {:monitor_flapping, event_data}
+    )
+
+    Phoenix.PubSub.broadcast(
+      Uptrack.PubSub,
+      "monitor:#{monitor.id}",
+      {:monitor_flapping, event_data}
     )
   end
 

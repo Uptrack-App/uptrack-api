@@ -252,6 +252,7 @@ defmodule UptrackWeb.Router do
     resources "/incidents", IncidentController, only: [:index, :show, :create, :update] do
       post "/updates", IncidentController, :create_update
       post "/acknowledge", IncidentController, :acknowledge
+      get "/forensic", IncidentController, :forensic
     end
 
     # Escalation policies API

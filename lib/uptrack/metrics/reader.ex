@@ -103,14 +103,42 @@ defmodule Uptrack.Metrics.Reader do
 
       url ->
         query_url = "#{url}/api/v1/query"
-        query = "uptrack_monitor_response_time_ms{monitor_id=\"#{monitor_id}\"}"
+        # `uptrack_check_duration_ms` carries both `region` and `status`
+        # labels (the legacy `uptrack_monitor_response_time_ms` has no
+        # region). Average over a 5-minute window per region so a single
+        # flakey sample doesn't dominate.
+        query =
+          "avg by (region, status) (avg_over_time(uptrack_check_duration_ms{monitor_id=\"#{monitor_id}\"}[5m]))"
+
         params = %{query: query, time: DateTime.to_unix(DateTime.utc_now())}
 
         case Req.get(query_url, params: params) do
           {:ok, %{status: 200, body: %{"status" => "success", "data" => %{"result" => results}}}} ->
+            # Collapse (region, status) rows into one entry per region
+            # holding the latest response_time + overall status. An
+            # "up" row wins over a "down" row for the same region if
+            # both are present (dashboard shows green when any region
+            # check succeeded recently).
             region_map =
-              Map.new(results, fn %{"metric" => m, "value" => [_ts, val]} ->
-                {m["region"] || "unknown", parse_float(val) |> trunc()}
+              Enum.reduce(results, %{}, fn
+                %{"metric" => %{"region" => region} = m, "value" => [_ts, val]}, acc ->
+                  response_time = parse_float(val) |> trunc()
+                  status = m["status"] || "up"
+
+                  case Map.get(acc, region) do
+                    nil ->
+                      Map.put(acc, region, %{status: status, response_time: response_time})
+
+                    %{status: "up"} ->
+                      # already up — only update response_time if newer sample is higher quality
+                      acc
+
+                    _ ->
+                      Map.put(acc, region, %{status: status, response_time: response_time})
+                  end
+
+                _missing_region, acc ->
+                  acc
               end)
 
             {:ok, region_map}
