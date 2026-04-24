@@ -23,7 +23,6 @@ defmodule Uptrack.Alerting.IncidentReminder do
   """
 
   alias Uptrack.Alerting
-  alias Uptrack.Maintenance
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Incident, Monitor}
   require Logger
@@ -74,33 +73,25 @@ defmodule Uptrack.Alerting.IncidentReminder do
   Designed to be called from inside a `Task.Supervisor` task — never
   blocks the caller, never raises (all errors are logged).
   """
-  @spec maybe_send(binary(), Monitor.t()) :: due_result | :maintenance | {:error, term()}
+  @spec maybe_send(binary(), Monitor.t()) :: due_result | {:error, term()}
   def maybe_send(incident_id, %Monitor{} = monitor) do
     incident = Monitoring.get_incident!(incident_id)
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     case due?(incident, monitor, now) do
       {:due, snapped} ->
-        if Maintenance.under_maintenance?(monitor.id, monitor.organization_id) do
-          Logger.info(
-            "Reminder skipped for incident #{incident.id} — monitor under maintenance"
-          )
+        Logger.info(
+          "Reminder due for incident #{incident.id} on monitor #{monitor.name} (count=#{incident.reminder_count + 1})"
+        )
 
-          :maintenance
-        else
-          Logger.info(
-            "Reminder due for incident #{incident.id} on monitor #{monitor.name} (count=#{incident.reminder_count + 1})"
-          )
+        Alerting.send_incident_reminder(incident, monitor)
 
-          Alerting.send_incident_reminder(incident, monitor)
+        Monitoring.update_incident(incident, %{
+          last_reminder_sent_at: snapped,
+          reminder_count: incident.reminder_count + 1
+        })
 
-          Monitoring.update_incident(incident, %{
-            last_reminder_sent_at: snapped,
-            reminder_count: incident.reminder_count + 1
-          })
-
-          {:due, snapped}
-        end
+        {:due, snapped}
 
       other ->
         Logger.debug("Reminder skipped for incident #{incident.id}: #{inspect(other)}")

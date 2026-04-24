@@ -74,6 +74,3 @@ config :uptrack, verify_schema_on_boot: false
 
 # Use mock check client in tests (no HTTP calls)
 config :uptrack, check_client: Uptrack.Monitoring.CheckClient.Mock
-
-# Silence forensic writes in tests — unit tests don't exercise storage.
-config :uptrack, :failures_adapter, Uptrack.Failures.NoopAdapter

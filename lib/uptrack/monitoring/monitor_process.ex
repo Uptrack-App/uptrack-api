@@ -29,7 +29,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   use GenServer
 
-  alias Uptrack.Maintenance
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Monitor, CheckExecutor, CheckWorker, Consensus, MonitorRegistry, Events}
   alias Uptrack.Alerting.IncidentReminder
@@ -48,25 +47,12 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :consecutive_failures,
     :confirmation_threshold,
     :incident_id,
-    :vl_trace_id,
     :status,
     :last_check,
     :last_check_record,
-    :last_failure_fingerprint,
-    :last_failure_recorded_at,
-    :soft_retry_ref,
-    :down_streak_started_at,
     checking: false,
     alerted_this_streak: false,
-    probe_state: :up,
-    consensus: %Consensus{},
-    # Rolling per-worker history of :up | :down samples (change #11 Layer 2)
-    worker_history: %{},
-    # Rolling history of consensus verdicts (change #11 Layer 3)
-    verdict_history: [],
-    # Circuit-breaker state: when true, paging is suppressed until we
-    # fall below `FlapDetector.low_threshold/0`.
-    flapping?: false
+    consensus: %Consensus{}
   ]
 
   # --- Client API ---
@@ -95,29 +81,15 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     :pg.join(:monitor_checks, monitor.id, self())
 
     expected = expected_regions(monitor.id)
-    confirmation_threshold = monitor.confirmation_threshold || 3
-
-    # Hydrate streak/incident flags from the DB so the next UP check after a
-    # restart routes through the resolve clause instead of silently leaving
-    # the incident `ongoing` forever. Also pick up the incident's
-    # `vl_trace_id` so mid-streak forensic events can join to the incident
-    # without an extra DB roundtrip per check.
-    {alerted, incident_id, trace_id, failures} =
-      case Monitoring.get_ongoing_incident(monitor.id) do
-        nil -> {false, nil, nil, 0}
-        %{id: id, vl_trace_id: trace} -> {true, id, trace, confirmation_threshold}
-      end
 
     state = %__MODULE__{
       monitor_id: monitor.id,
       organization_id: monitor.organization_id,
       monitor: monitor,
       interval_ms: monitor.interval * 1000,
-      consecutive_failures: failures,
-      confirmation_threshold: confirmation_threshold,
-      alerted_this_streak: alerted,
-      incident_id: incident_id,
-      vl_trace_id: trace_id,
+      consecutive_failures: 0,
+      confirmation_threshold: monitor.confirmation_threshold || 3,
+      incident_id: nil,
       status: if(monitor.status == "active", do: :active, else: :paused),
       consensus: %Consensus{expected_regions: expected}
     }
@@ -172,142 +144,34 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   # --- Check result + consensus ---
 
-  # Receive async check result from local check. Layer 1 SOFT/HARD
-  # state machine absorbs single-packet DOWN flaps before they reach
-  # the coordinator — only confirmed DOWN (same probe retries and
-  # still fails) gets broadcast.
+  # Receive async check result from local check
   def handle_info({:check_result, result}, state) do
-    state = apply_probe_state(state, result)
-    {:noreply, state}
-  end
-
-  # Fast-retry fired after a SOFT DOWN. Re-run the check via
-  # CheckExecutor and route the result back through handle_info so the
-  # SOFT/HARD transitions apply uniformly.
-  def handle_info(:soft_retry, %{status: :active, monitor: monitor} = state) do
-    parent = self()
-
-    Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-      result =
-        try do
-          CheckExecutor.execute(monitor)
-        rescue
-          e ->
-            %{
-              monitor_id: monitor.id,
-              status: "down",
-              response_time: 0,
-              checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
-              error_message: "Retry error: #{Exception.message(e)}"
-            }
-        catch
-          kind, reason ->
-            %{
-              monitor_id: monitor.id,
-              status: "down",
-              response_time: 0,
-              checked_at: DateTime.utc_now() |> DateTime.truncate(:second),
-              error_message: "Retry #{kind}: #{inspect(reason)}"
-            }
-        end
-
-      send(parent, {:check_result, result})
-    end)
-
-    {:noreply, %{state | soft_retry_ref: nil}}
-  end
-
-  # Ignore :soft_retry when we're no longer active (paused/terminating).
-  def handle_info(:soft_retry, state), do: {:noreply, %{state | soft_retry_ref: nil}}
-
-  # Layer 1: SOFT/HARD probe-state transitions. Returns updated state.
-  # `check_result` is the raw result map coming off CheckExecutor.
-  defp apply_probe_state(state, %{status: "down"} = result) do
-    case state.probe_state do
-      :up ->
-        # First failure — schedule 5s retry, don't broadcast yet.
-        ref = Process.send_after(self(), :soft_retry, 5_000)
-
-        %{
-          state
-          | probe_state: :soft_down,
-            soft_retry_ref: ref,
-            checking: false,
-            last_check_record: struct(Uptrack.Monitoring.MonitorCheck, result)
-        }
-
-      :soft_down ->
-        # Retry also failed — confirm HARD down, fall through to full
-        # consensus handling.
-        state = %{state | probe_state: :down, soft_retry_ref: nil}
-        process_confirmed_result(state, result)
-
-      :down ->
-        # Already confirmed down; treat subsequent DOWN checks as
-        # normal cycles so consensus keeps ticking.
-        process_confirmed_result(state, result)
-    end
-  end
-
-  defp apply_probe_state(state, %{status: "up"} = result) do
-    if state.soft_retry_ref, do: Process.cancel_timer(state.soft_retry_ref)
-    state = %{state | probe_state: :up, soft_retry_ref: nil}
-    process_confirmed_result(state, result)
-  end
-
-  defp apply_probe_state(state, _result), do: %{state | checking: false}
-
-  # Path for results that HAVE cleared Layer 1 — add to consensus +
-  # broadcast + try to decide.
-  defp process_confirmed_result(state, result) do
-    # Cache the local check immediately for UI responsiveness. Consensus
-    # can drop the cycle (e.g. remote workers offline post-restart) in
-    # which case record_result never runs. The cache is UI-only —
-    # record_result overwrites with the full consensus verdict when it
-    # fires.
-    Uptrack.Cache.put_latest_check(
-      state.monitor_id,
-      %{
-        status: result.status,
-        response_time: Map.get(result, :response_time, 0),
-        checked_at: Map.get(result, :checked_at, DateTime.utc_now())
-      },
-      state.monitor.interval
-    )
-
+    # 1. Add our result to consensus
     consensus = Consensus.add_result(state.consensus, region(), result)
+
+    # 2. Broadcast to other regions (impure boundary)
     broadcast_to_group(state.monitor_id, region(), result)
+
+    # 3. Start timeout timer on first result
     consensus = maybe_start_timer(consensus)
 
-    state
-    |> Map.put(:consensus, consensus)
-    |> Map.put(:checking, false)
-    |> try_consensus()
+    # 4. Try consensus
+    state = %{state | consensus: consensus, checking: false}
+    {:noreply, try_consensus(state)}
   end
 
   # Receive result from another region via pg
   def handle_info({:region_result, region, result}, state) do
     consensus = Consensus.add_result(state.consensus, region, result)
-    consensus = maybe_start_timer(consensus)
     state = %{state | consensus: consensus}
     {:noreply, try_consensus(state)}
   end
 
-  # Consensus timeout — evaluate with partial results if we have a majority,
-  # otherwise log and drop the cycle (no verdict, no alert).
+  # Consensus timeout — evaluate with partial results
   def handle_info(:consensus_timeout, state) do
     consensus = Consensus.timeout(state.consensus)
     state = %{state | consensus: consensus}
-
-    if Consensus.enough_results?(consensus) do
-      {:noreply, try_consensus(state)}
-    else
-      Logger.info(
-        "MonitorProcess #{state.monitor_id}: consensus timeout with insufficient data (#{Consensus.result_count(consensus)}/#{consensus.expected_regions} regions) — dropping cycle"
-      )
-
-      {:noreply, %{state | consensus: Consensus.reset(consensus)}}
-    end
+    {:noreply, try_consensus(state)}
   end
 
   # Catch-all for unexpected messages (Task :DOWN, etc.)
@@ -326,12 +190,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       interval_ms: monitor.interval * 1000,
       confirmation_threshold: monitor.confirmation_threshold || 3
     }}
-  end
-
-  # Sent by the Task.Supervisor child that created the incident, so
-  # subsequent mid-streak forensic events can carry the trace_id.
-  def handle_cast({:set_incident_context, incident_id, vl_trace_id}, state) do
-    {:noreply, %{state | incident_id: incident_id, vl_trace_id: vl_trace_id}}
   end
 
   def handle_cast(:pause, state) do
@@ -354,229 +212,16 @@ defmodule Uptrack.Monitoring.MonitorProcess do
 
   # --- Consensus Pipeline ---
 
-  # Per-cycle consensus funnel: when all (or majority-at-timeout)
-  # regions have reported, commit this cycle's samples to the rolling
-  # per-worker history and decide the monitor's status via the
-  # configured strategy (Rolling-count by default; Unanimous for
-  # rollback). The old "compute"-based per-cycle vote is retained in
-  # `apply_consensus` to preserve downstream fields like
-  # region_results and avg_response_time for record_result.
+  # Pure: checks if enough results, then applies consensus
   defp try_consensus(state) do
     if Consensus.enough_results?(state.consensus) do
       state
       |> apply_consensus()
-      |> update_rolling_history()
-      |> apply_strategy_decision()
-      |> update_flap_state()
       |> evaluate_result()
       |> record_result()
       |> maybe_trigger_alert()
     else
       state
-    end
-  end
-
-  # Push one sample per reporting region into the rolling worker history.
-  # Samples are :up or :down atoms. Regions that didn't report this cycle
-  # keep their existing history untouched.
-  #
-  # Also report each worker's agreement with the median-of-others to
-  # `WorkerHealth`, which decides whether a persistently-disagreeing
-  # worker should be quarantined (change #11 §4).
-  defp update_rolling_history(state) do
-    results = state.consensus.region_results
-    ts = DateTime.utc_now()
-
-    record_worker_agreement(results, ts)
-
-    new_history =
-      Enum.reduce(results, state.worker_history, fn
-        {region, %{status: "down"}}, acc ->
-          Uptrack.Monitoring.CheckHistory.push(acc, region, :down)
-
-        {region, %{status: "up"}}, acc ->
-          Uptrack.Monitoring.CheckHistory.push(acc, region, :up)
-
-        _, acc ->
-          acc
-      end)
-
-    %{state | worker_history: new_history}
-  end
-
-  # For each reporting region, determine whether it agreed with the
-  # median verdict of the OTHER regions, and push the result into
-  # WorkerHealth for disagreement-rate tracking.
-  defp record_worker_agreement(results, _ts) when map_size(results) < 2, do: :ok
-
-  defp record_worker_agreement(results, ts) do
-    statuses = Enum.map(results, fn {region, r} -> {region, Map.get(r, :status, "up")} end)
-
-    Enum.each(statuses, fn {region, status} ->
-      others = Enum.reject(statuses, fn {r, _} -> r == region end)
-      other_median = median_status(others)
-      agreed? = status == other_median
-      Uptrack.Monitoring.WorkerHealth.observe(region, agreed?, ts)
-    end)
-  end
-
-  defp median_status(statuses) do
-    down = Enum.count(statuses, fn {_, s} -> s == "down" end)
-    up = length(statuses) - down
-    if down > up, do: "down", else: "up"
-  end
-
-  # Ask the configured strategy for the monitor's status given the
-  # rolling per-worker history. Override `state.last_check.status` with
-  # the strategy's verdict so downstream (evaluate_result, record_result,
-  # maybe_trigger_alert) sees the correct state.
-  defp apply_strategy_decision(state) do
-    monitor = state.monitor
-    trusted = Uptrack.Monitoring.CheckHistory.workers(state.worker_history)
-
-    opts = [
-      trusted_workers: trusted,
-      confirmation_window: monitor_field(monitor, :confirmation_window, "3m"),
-      regions_required: monitor_field(monitor, :regions_required, "majority")
-    ]
-
-    {verdict, _details} = Consensus.decide(state.monitor_id, state.worker_history, opts)
-
-    # Observability (change #11 §8). Fire-and-forget — these writes
-    # never block the decision path.
-    Uptrack.Metrics.Writer.write_consensus_observation(
-      state.monitor_id,
-      Consensus.strategy(),
-      verdict
-    )
-
-    state = maybe_send_warn_alert(state, verdict)
-
-    # Map the strategy's 4-state return to the legacy up/down that the
-    # downstream incident pipeline expects. `:degraded` stays mapped to
-    # "up" here because the paging pipeline only fires on `:down`; WARN
-    # is already dispatched above via `maybe_send_warn_alert`.
-    legacy_status =
-      case verdict do
-        :up -> "up"
-        :down -> "down"
-        :degraded -> "up"
-        :insufficient_data -> Map.get(state.last_check || %{}, :status, "up")
-      end
-
-    last_check = Map.put(state.last_check || %{}, :status, legacy_status)
-    verdict_sample = if legacy_status == "down", do: :down, else: :up
-
-    %{
-      state
-      | last_check: last_check,
-        verdict_history: [verdict_sample | state.verdict_history] |> Enum.take(21)
-    }
-  end
-
-  # WARN routing for `:degraded` (change #11 §6): fire email-only once
-  # per distinct degraded streak. Streak resets whenever consensus
-  # returns `:up`. `warn_alert_fired?` lives on the struct via
-  # Map.put/3 — not pre-defined in defstruct so no migration for
-  # existing in-flight processes on deploy.
-  defp maybe_send_warn_alert(state, :degraded) do
-    if Map.get(state, :warn_alert_fired?) do
-      state
-    else
-      monitor = state.monitor
-
-      # Synthesize a transient Incident struct — WARN does not create a
-      # durable incident row. The dashboard shows degraded-state via
-      # the FLAPPING / monitor-status broadcast; email is informational.
-      transient_incident = %Uptrack.Monitoring.Incident{
-        id: Ecto.UUID.generate(),
-        monitor_id: state.monitor_id,
-        organization_id: state.organization_id,
-        status: "ongoing",
-        cause: "Partial regional outage (degraded)",
-        started_at: DateTime.utc_now() |> DateTime.truncate(:second),
-        alert_level: "warn"
-      }
-
-      Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-        Uptrack.Alerting.send_incident_alerts(transient_incident, monitor, level: :warn)
-      end)
-
-      Logger.info(
-        "MonitorProcess #{state.monitor_id}: dispatched WARN (email-only) for degraded state"
-      )
-
-      Map.put(state, :warn_alert_fired?, true)
-    end
-  end
-
-  defp maybe_send_warn_alert(state, :up), do: Map.put(state, :warn_alert_fired?, false)
-  defp maybe_send_warn_alert(state, _other), do: state
-
-  # Run the Nagios flap detector against `verdict_history`. When
-  # flapping, force last_check.status to "up" so maybe_trigger_alert
-  # suppresses the page — but broadcast a FLAPPING event so the
-  # dashboard still shows the state.
-  defp update_flap_state(state) do
-    alias Uptrack.Monitoring.FlapDetector
-
-    percent = FlapDetector.flap_percent(state.verdict_history)
-    was_flapping = state.flapping?
-    is_flapping = FlapDetector.flapping?(percent, was_flapping)
-
-    # Observability: expose flap_percent as a gauge (change #11 §8).
-    Uptrack.Metrics.Writer.write_flap_percent(state.monitor_id, percent)
-
-    state =
-      cond do
-        is_flapping and not was_flapping ->
-          Logger.info(
-            "MonitorProcess #{state.monitor_id}: entering FLAPPING state (flap_percent=#{Float.round(percent, 1)})"
-          )
-
-          maybe_broadcast_flapping(state, true)
-          %{state | flapping?: true}
-
-        was_flapping and not is_flapping ->
-          Logger.info(
-            "MonitorProcess #{state.monitor_id}: exiting FLAPPING state (flap_percent=#{Float.round(percent, 1)})"
-          )
-
-          maybe_broadcast_flapping(state, false)
-          %{state | flapping?: false}
-
-        true ->
-          state
-      end
-
-    # While flapping, suppress the DOWN signal so maybe_trigger_alert
-    # doesn't fire. The monitor row on the dashboard shows FLAPPING
-    # independently via the broadcast.
-    if state.flapping? and Map.get(state.last_check || %{}, :status) == "down" do
-      put_in(state, [Access.key(:last_check), :status], "up")
-    else
-      state
-    end
-  end
-
-  defp maybe_broadcast_flapping(state, flapping?) do
-    # Events.broadcast_monitor_flapping/2 is wired in change #11 §3.7.
-    # Until the Events helper lands, log at info so meta-monitoring can
-    # still detect transitions from the journal.
-    if function_exported?(Events, :broadcast_monitor_flapping, 2) do
-      Events.broadcast_monitor_flapping(state.monitor, flapping?)
-    else
-      :ok
-    end
-  end
-
-  # Safe accessor for fields that existed before change #11 schema update.
-  # `monitor` may be a pre-migration struct in rare race conditions.
-  defp monitor_field(monitor, field, default) do
-    case Map.get(monitor, field) do
-      nil -> default
-      "" -> default
-      value -> value
     end
   end
 
@@ -610,53 +255,31 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       |> Enum.sort()
 
     if Consensus.home_node?(state.monitor_id, app_nodes) do
-      monitor = state.monitor
-
       Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-        case Monitoring.resolve_all_ongoing_incidents(state.monitor_id) do
-          {:ok, []} ->
+        case Monitoring.get_ongoing_incident(state.monitor_id) do
+          nil ->
+            # No ongoing incident — nothing to resolve, no alerts
             :ok
 
-          {:ok, [primary | _] = resolved_all} ->
-            Enum.each(resolved_all, &Events.broadcast_incident_resolved(&1, monitor))
-            Uptrack.Alerting.send_resolution_alerts(primary, monitor)
-            Uptrack.Alerting.notify_subscribers_resolution(primary, monitor)
+          incident ->
+            case Monitoring.resolve_incident(incident) do
+              {:ok, resolved} ->
+                Events.broadcast_incident_resolved(resolved, state.monitor)
+                Uptrack.Alerting.send_resolution_alerts(resolved, state.monitor)
+                Uptrack.Alerting.notify_subscribers_resolution(resolved, state.monitor)
 
-            Enum.each(resolved_all, fn incident ->
-              emit_lifecycle_event(:incident_resolved, monitor,
-                incident_id: incident.id,
-                trace_id: incident.vl_trace_id,
-                occurred_at: incident.resolved_at || DateTime.utc_now(),
-                region: region()
-              )
-            end)
-
-          _ ->
-            :ok
+              _ ->
+                :ok
+            end
         end
       end)
     end
 
-    %{
-      state
-      | consecutive_failures: 0,
-        alerted_this_streak: false,
-        incident_id: nil,
-        vl_trace_id: nil,
-        last_failure_fingerprint: nil,
-        last_failure_recorded_at: nil
-    }
+    %{state | consecutive_failures: 0, alerted_this_streak: false, incident_id: nil}
   end
 
   defp evaluate_result(%{last_check: %{status: "up"}} = state) do
-    %{
-      state
-      | consecutive_failures: 0,
-        alerted_this_streak: false,
-        vl_trace_id: nil,
-        last_failure_fingerprint: nil,
-        last_failure_recorded_at: nil
-    }
+    %{state | consecutive_failures: 0, alerted_this_streak: false}
   end
 
   defp evaluate_result(%{last_check: %{status: "down"}} = state) do
@@ -672,24 +295,16 @@ defmodule Uptrack.Monitoring.MonitorProcess do
     # Buffer write to VictoriaMetrics (batched for throughput)
     Uptrack.Metrics.Batcher.write(state.monitor, check)
 
-    # Route DOWN-check forensics through Uptrack.Failures — the adapter
-    # decides the durable backend (Postgres today, VictoriaLogs after
-    # cutover). `maybe_emit_failure/2` handles per-monitor fingerprint
-    # dedup so repeat identical failures collapse to a single event.
-    state = maybe_emit_failure(state, check)
+    # Persist failure details for DOWN checks so the dashboard can show
+    # body/headers/error context (UP checks remain VM-only for write volume).
+    Uptrack.Monitoring.CheckFailures.record(check)
 
-    # Cache latest check for instant API reads (no VM query needed).
-    # TTL tracks the monitor's interval so high-interval monitors (SSL,
-    # DNS at 3600s) don't show "Unknown" between checks.
-    Uptrack.Cache.put_latest_check(
-      state.monitor_id,
-      %{
-        status: check.status,
-        response_time: check.response_time,
-        checked_at: check.checked_at
-      },
-      state.monitor.interval
-    )
+    # Cache latest check for instant API reads (no VM query needed)
+    Uptrack.Cache.put_latest_check(state.monitor_id, %{
+      status: check.status,
+      response_time: check.response_time,
+      checked_at: check.checked_at
+    })
 
     # Broadcast for real-time UI updates
     Events.broadcast_check_completed(check, state.monitor)
@@ -705,70 +320,6 @@ defmodule Uptrack.Monitoring.MonitorProcess do
   end
 
   defp record_result(state), do: state
-
-  # --- Forensic emission (dedup + lifecycle) ---
-
-  # 10-minute ceiling: even if the fingerprint is identical, re-emit
-  # after this much time to defend against pathological long outages
-  # collapsing to a single forensic event.
-  @fingerprint_ceiling_seconds 600
-
-  # DOWN checks run through the Failures pipeline; UP checks don't.
-  defp maybe_emit_failure(state, %{status: "down"} = check) do
-    fingerprint = Uptrack.Failures.Fingerprint.compute(check)
-    now = DateTime.utc_now()
-
-    cond do
-      fingerprint_repeat?(state, fingerprint, now) ->
-        state
-
-      true ->
-        event =
-          Uptrack.Failures.Event.new_from_check(check, state.monitor,
-            incident_id: state.incident_id,
-            trace_id: trace_id_for(state),
-            region: region()
-          )
-
-        Uptrack.Failures.record(event)
-
-        %{
-          state
-          | last_failure_fingerprint: fingerprint,
-            last_failure_recorded_at: now
-        }
-    end
-  end
-
-  defp maybe_emit_failure(state, _up_check), do: state
-
-  defp fingerprint_repeat?(%{last_failure_fingerprint: nil}, _fp, _now), do: false
-
-  defp fingerprint_repeat?(%{last_failure_fingerprint: last, last_failure_recorded_at: ts}, fp, now)
-       when last == fp and not is_nil(ts) do
-    DateTime.diff(now, ts) < @fingerprint_ceiling_seconds
-  end
-
-  defp fingerprint_repeat?(_state, _fp, _now), do: false
-
-  # Pulls trace_id from in-memory state (hydrated at init/1 or set via
-  # GenServer.cast({:set_incident_context, ...}) after a successful
-  # create). nil is a valid value — consumers tolerate it.
-  defp trace_id_for(state), do: state.vl_trace_id
-
-  @doc """
-  Emits a lifecycle event (incident_created | incident_resolved |
-  incident_upgraded). Bypasses fingerprint dedup — every transition
-  gets a forensic row.
-
-  Called from the Task.Supervisor children that own incident
-  create/resolve/upgrade so the caller's process stays fast.
-  """
-  def emit_lifecycle_event(event_type, monitor, opts)
-      when event_type in [:incident_created, :incident_resolved, :incident_upgraded] do
-    event = Uptrack.Failures.Event.new_lifecycle(event_type, monitor, opts)
-    Uptrack.Failures.record(event)
-  end
 
   # Home node check — only the assigned node fires alerts (pure check, impure action)
   #
@@ -823,114 +374,36 @@ defmodule Uptrack.Monitoring.MonitorProcess do
       |> Enum.filter(fn n -> n |> to_string() |> String.starts_with?("uptrack@") end)
       |> Enum.sort()
 
-    cond do
-      not Consensus.home_node?(state.monitor_id, app_nodes) ->
-        Logger.debug("MonitorProcess #{state.monitor_id}: #{f} failures but not home node — silent")
+    if Consensus.home_node?(state.monitor_id, app_nodes) do
+      Logger.info("MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert (home node)")
 
-      Maintenance.under_maintenance?(state.monitor_id, state.organization_id) ->
-        Logger.info(
-          "MonitorProcess #{state.monitor_id}: #{f} consecutive failures during maintenance — suppressing alert"
-        )
+      # Create incident in Postgres + send alerts
+      Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
+        incident_attrs = %{
+          monitor_id: state.monitor_id,
+          organization_id: state.organization_id,
+          cause: state.last_check[:error_message] || "Monitor down"
+        }
 
-      true ->
-        Logger.info(
-          "MonitorProcess #{state.monitor_id}: #{f} consecutive failures — triggering alert (home node)"
-        )
+        case Monitoring.create_incident(incident_attrs) do
+          {:ok, incident} ->
+            Events.broadcast_incident_created(incident, state.monitor)
+            Uptrack.Alerting.send_incident_alerts(incident, state.monitor)
+            Uptrack.Alerting.notify_subscribers_incident(incident, state.monitor)
 
-        Task.Supervisor.start_child(Uptrack.TaskSupervisor, fn ->
-          incident_attrs = %{
-            monitor_id: state.monitor_id,
-            organization_id: state.organization_id,
-            cause: state.last_check[:error_message] || "Monitor down",
-            # Progressive alert levels (change #11 §6): the initial fire
-            # is always :page. :critical is promoted later via a
-            # follow-up worker when the incident is sustained >10 min.
-            alert_level: "page"
-          }
+          {:error, _} ->
+            Logger.error("MonitorProcess #{state.monitor_id}: failed to create incident")
+        end
+      end)
 
-          handle_incident_dispatch(incident_attrs, state)
-        end)
+      %{state | alerted_this_streak: true}
+    else
+      Logger.debug("MonitorProcess #{state.monitor_id}: #{f} failures but not home node — silent")
+      %{state | alerted_this_streak: true}
     end
-
-    %{state | alerted_this_streak: true, down_streak_started_at: DateTime.utc_now()}
   end
 
   defp maybe_trigger_alert(state), do: state
-
-  # Creates the incident or upgrades an existing degradation incident in place.
-  defp handle_incident_dispatch(incident_attrs, state) do
-    case Monitoring.get_ongoing_incident(state.monitor_id) do
-      %{cause: cause} = existing when is_binary(cause) ->
-        if String.starts_with?(cause, "Response time degradation") do
-          upgrade_degradation(existing, incident_attrs, state)
-        else
-          Logger.info(
-            "MonitorProcess #{state.monitor_id}: incident already ongoing — suppressing duplicate alert"
-          )
-        end
-
-      _ ->
-        create_new_incident(incident_attrs, state)
-    end
-  end
-
-  defp create_new_incident(incident_attrs, state) do
-    case Monitoring.create_incident(incident_attrs) do
-      {:ok, incident} ->
-        Events.broadcast_incident_created(incident, state.monitor)
-        Uptrack.Alerting.send_incident_alerts(incident, state.monitor)
-        Uptrack.Alerting.notify_subscribers_incident(incident, state.monitor)
-
-        # Back-populate the incident context into the owning MonitorProcess
-        # so mid-streak forensic events carry `trace_id`. This runs inside
-        # a Task — we cast to the registered process, not `self()`.
-        GenServer.cast(
-          MonitorRegistry.via(state.monitor_id),
-          {:set_incident_context, incident.id, incident.vl_trace_id}
-        )
-
-        emit_lifecycle_event(:incident_created, state.monitor,
-          incident_id: incident.id,
-          trace_id: incident.vl_trace_id,
-          error_message: incident.cause,
-          region: region()
-        )
-
-      {:error, :already_ongoing} ->
-        Logger.info(
-          "MonitorProcess #{state.monitor_id}: incident already ongoing — suppressing duplicate alert"
-        )
-
-      {:error, reason} ->
-        Logger.error(
-          "MonitorProcess #{state.monitor_id}: failed to create incident: #{inspect(reason)}"
-        )
-    end
-  end
-
-  defp upgrade_degradation(incident, incident_attrs, state) do
-    case Monitoring.upgrade_incident_to_down(incident, incident_attrs[:cause]) do
-      {:ok, upgraded} ->
-        Logger.info(
-          "MonitorProcess #{state.monitor_id}: upgraded degradation incident #{incident.id} to hard down"
-        )
-
-        Events.broadcast_incident_updated(upgraded, state.monitor)
-        Uptrack.Alerting.send_incident_update_alerts(upgraded, state.monitor)
-
-        emit_lifecycle_event(:incident_upgraded, state.monitor,
-          incident_id: upgraded.id,
-          trace_id: upgraded.vl_trace_id,
-          error_message: upgraded.cause,
-          region: region()
-        )
-
-      {:error, reason} ->
-        Logger.error(
-          "MonitorProcess #{state.monitor_id}: failed to upgrade degradation incident: #{inspect(reason)}"
-        )
-    end
-  end
 
   # --- Impure Boundaries ---
 

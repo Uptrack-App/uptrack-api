@@ -1,29 +1,6 @@
 defmodule Uptrack.Monitoring do
   @moduledoc """
   The Monitoring context.
-
-  ## Incident-creation ownership
-
-  `Uptrack.Monitoring.MonitorProcess` is the **single** writer of new
-  incidents and the dispatcher of initial "incident created" alerts.
-  `Uptrack.Monitoring.CheckWorker` is responsible only for:
-
-    * persisting the `MonitorCheck` row and metrics
-    * resetting `consecutive_failures` on successful checks and resolving
-      any `ongoing` incidents (so sibling-region UP checks can still close
-      incidents promptly)
-    * incrementing `consecutive_failures` on failures and scheduling
-      confirmation re-checks via `ConfirmationCheckWorker`
-
-  `CheckWorker` does NOT create incidents or dispatch "down" alerts on the
-  failure branch — that decision is owned by `MonitorProcess`, which has
-  the cross-region consensus view. This separation prevents duplicate
-  alerts when both paths race on the same failing check.
-
-  The `Uptrack.Monitoring.Heartbeat` path (passive heartbeat monitors) is
-  the one other place that creates incidents — those monitors have no
-  active check cycle, so `Heartbeat.create_missed_heartbeat_incident/3`
-  owns their creation.
   """
 
   import Ecto.Query, warn: false
@@ -406,42 +383,17 @@ defmodule Uptrack.Monitoring do
 
   @doc """
   Creates an incident.
-
-  Returns `{:ok, incident}` on a fresh insert, `{:error, :already_ongoing}`
-  when the partial unique index rejects a duplicate (one ongoing per monitor),
-  or `{:error, changeset}` for any other validation failure. Callers MUST
-  distinguish the `:already_ongoing` branch from `{:ok, _}` to avoid firing
-  "incident created" alerts for incidents that already exist.
   """
   def create_incident(attrs) do
     result =
       Incident.create_changeset(attrs)
       |> AppRepo.insert()
 
-    case result do
-      {:ok, incident} ->
-        invalidate_org_cache(incident.organization_id)
-        invalidate_monitor_cache(incident.monitor_id)
-        {:ok, incident}
-
-      {:error, %Ecto.Changeset{errors: errors} = changeset} ->
-        if ongoing_unique_conflict?(errors) do
-          {:error, :already_ongoing}
-        else
-          {:error, changeset}
-        end
+    with {:ok, incident} <- result do
+      invalidate_org_cache(incident.organization_id)
+      invalidate_monitor_cache(incident.monitor_id)
+      {:ok, incident}
     end
-  end
-
-  defp ongoing_unique_conflict?(errors) do
-    Enum.any?(errors, fn
-      {_, {_, opts}} ->
-        Keyword.get(opts, :constraint) == :unique and
-          Keyword.get(opts, :constraint_name) == "incidents_one_ongoing_per_monitor_idx"
-
-      _ ->
-        false
-    end)
   end
 
   @doc """
@@ -494,37 +446,6 @@ defmodule Uptrack.Monitoring do
     |> order_by([i], asc: i.inserted_at)
     |> limit(1)
     |> AppRepo.one()
-  end
-
-  @doc """
-  Returns every ongoing incident for a monitor, oldest first.
-  """
-  def list_ongoing_incidents_for_monitor(monitor_id) do
-    Incident
-    |> where([i], i.monitor_id == ^monitor_id and i.status == "ongoing")
-    |> order_by([i], asc: i.inserted_at)
-    |> AppRepo.all()
-  end
-
-  @doc """
-  Resolves every ongoing incident for a monitor. Returns `{:ok, [resolved]}`
-  on success. A partial unique index guarantees at most one ongoing row going
-  forward, but historical duplicates from before the index existed can still
-  be present, so this always operates on the full set.
-  """
-  def resolve_all_ongoing_incidents(monitor_id, attrs \\ %{}) do
-    incidents = list_ongoing_incidents_for_monitor(monitor_id)
-
-    Enum.reduce_while(incidents, {:ok, []}, fn incident, {:ok, acc} ->
-      case resolve_incident(incident, attrs) do
-        {:ok, resolved} -> {:cont, {:ok, [resolved | acc]}}
-        error -> {:halt, error}
-      end
-    end)
-    |> case do
-      {:ok, resolved} -> {:ok, Enum.reverse(resolved)}
-      error -> error
-    end
   end
 
   @doc """
@@ -975,27 +896,6 @@ defmodule Uptrack.Monitoring do
     incident
     |> Incident.changeset(attrs)
     |> AppRepo.update()
-  end
-
-  @doc """
-  Upgrades an existing `ongoing` incident (typically a response-time
-  degradation) to reflect a hard-down failure by updating its `cause` in
-  place. Does not change `started_at` so historical duration tracking stays
-  anchored to the degradation start. Returns `{:ok, incident}` or an error
-  changeset.
-  """
-  def upgrade_incident_to_down(%Incident{} = incident, new_cause) do
-    incident
-    |> Incident.changeset(%{cause: new_cause || "Monitor down"})
-    |> AppRepo.update()
-    |> case do
-      {:ok, updated} ->
-        invalidate_monitor_cache(updated.monitor_id)
-        {:ok, updated}
-
-      error ->
-        error
-    end
   end
 
   @doc """
