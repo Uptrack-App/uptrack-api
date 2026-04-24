@@ -277,21 +277,6 @@ defmodule Uptrack.MonitoringTest do
       assert incident.started_at
     end
 
-    test "create_incident/1 returns :already_ongoing when one already exists" do
-      monitor = monitor_fixture()
-
-      attrs = %{
-        monitor_id: monitor.id,
-        organization_id: monitor.organization_id,
-        cause: "First failure"
-      }
-
-      assert {:ok, _first} = Monitoring.create_incident(attrs)
-
-      assert {:error, :already_ongoing} =
-               Monitoring.create_incident(%{attrs | cause: "Second failure"})
-    end
-
     test "resolve_incident/1 sets resolved status and calculates duration" do
       monitor = monitor_fixture()
 

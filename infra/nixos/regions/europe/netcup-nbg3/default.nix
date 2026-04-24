@@ -17,7 +17,6 @@ in {
     ../../../modules/services/node-exporter.nix
     ../../../modules/services/postgres-exporter.nix
     ../../../modules/services/victoria-metrics.nix
-    ../../../modules/services/victorialogs.nix
     ../../../modules/services/twofolk/app.nix
   ];
 
@@ -66,15 +65,6 @@ in {
   services.uptrack.victoria-metrics = {
     enable = true;
     retentionPeriod = "15";
-  };
-
-  # VictoriaLogs single-node instance for DOWN-check forensic events.
-  # HA: independent instance, app Batcher shards write to both nbg3+nbg4.
-  # Retention matches the Business plan's 5-year promise; lower tiers are
-  # clamped at read time via `Uptrack.Metrics.Retention.days_for_plan/1`.
-  services.uptrack.victorialogs = {
-    enable = true;
-    retentionPeriod = "5y";
   };
 
   # User configuration

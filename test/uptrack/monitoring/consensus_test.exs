@@ -98,19 +98,14 @@ defmodule Uptrack.Monitoring.ConsensusTest do
       assert Consensus.compute(c) == "up"
     end
 
-    test "majority-but-not-unanimous down = up (legacy compute/1 now unanimous)" do
-      # Per-cycle compute/1 now requires EVERY expected region to agree
-      # on DOWN (see change #11 unanimous-DOWN fallback); the per-cycle
-      # result is overridden by the strategy-based decide/2 downstream,
-      # so this only affects dead-code paths. Kept for regression
-      # coverage of the legacy entrypoint.
+    test "majority down = down" do
       c =
-        %Consensus{expected_regions: 3}
+        %Consensus{}
         |> Consensus.add_result(:eu, %{status: "down"})
         |> Consensus.add_result(:asia, %{status: "down"})
         |> Consensus.add_result(:us, %{status: "up"})
 
-      assert Consensus.compute(c) == "up"
+      assert Consensus.compute(c) == "down"
     end
 
     test "all down = down" do
@@ -145,7 +140,7 @@ defmodule Uptrack.Monitoring.ConsensusTest do
 
     test "2-region consensus: both down = down" do
       c =
-        %Consensus{expected_regions: 2}
+        %Consensus{}
         |> Consensus.add_result(:eu, %{status: "down"})
         |> Consensus.add_result(:us, %{status: "down"})
 
@@ -158,7 +153,7 @@ defmodule Uptrack.Monitoring.ConsensusTest do
     end
 
     test "single region down = down" do
-      c = %Consensus{expected_regions: 1} |> Consensus.add_result(:eu, %{status: "down"})
+      c = %Consensus{} |> Consensus.add_result(:eu, %{status: "down"})
       assert Consensus.compute(c) == "down"
     end
   end

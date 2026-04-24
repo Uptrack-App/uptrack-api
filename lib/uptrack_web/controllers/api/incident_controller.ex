@@ -1,7 +1,6 @@
 defmodule UptrackWeb.Api.IncidentController do
   use UptrackWeb, :controller
 
-  alias Uptrack.Billing
   alias Uptrack.Monitoring
   alias Uptrack.Teams
 
@@ -39,71 +38,6 @@ defmodule UptrackWeb.Api.IncidentController do
     Ecto.NoResultsError -> {:error, :not_found}
   end
 
-  @doc """
-  GET /api/incidents/:id/forensic
-
-  Returns the forensic events for an incident, pulled from VictoriaLogs
-  via `vl_trace_id`. Falls back gracefully when forensic data is
-  unavailable (pre-retention incident, missing trace_id, or VL down).
-  """
-  def forensic(conn, %{"incident_id" => incident_id}) do
-    org = conn.assigns.current_organization
-    incident = Monitoring.get_incident!(incident_id)
-    retention_cutoff = plan_retention_cutoff(org.plan)
-
-    cond do
-      incident.organization_id != org.id ->
-        {:error, :not_found}
-
-      is_nil(incident.vl_trace_id) ->
-        json(conn, %{
-          events: [],
-          forensic_available: false,
-          reason: "predates_forensic_tracking"
-        })
-
-      DateTime.compare(incident.started_at, retention_cutoff) == :lt ->
-        json(conn, %{
-          events: [],
-          forensic_available: false,
-          reason: "beyond_plan_retention",
-          plan: org.plan,
-          retention_days: Billing.plan_limit(org.plan, :retention_days)
-        })
-
-      true ->
-        case Uptrack.Failures.VlClient.fetch_by_trace_id(
-               incident.monitor_id,
-               incident.vl_trace_id
-             ) do
-          {:ok, events} ->
-            json(conn, %{events: events, forensic_available: true})
-
-          {:error, :all_urls_unreachable} ->
-            conn
-            |> put_status(:service_unavailable)
-            |> json(%{events: [], forensic_available: false, reason: "vl_unreachable"})
-
-          {:error, reason} ->
-            conn
-            |> put_status(:internal_server_error)
-            |> json(%{
-              events: [],
-              forensic_available: false,
-              reason: "vl_error",
-              detail: inspect(reason)
-            })
-        end
-    end
-  rescue
-    Ecto.NoResultsError -> {:error, :not_found}
-  end
-
-  defp plan_retention_cutoff(plan) do
-    days = Billing.plan_limit(plan, :retention_days) || 30
-    DateTime.add(DateTime.utc_now(), -days * 86400, :second)
-  end
-
   def create(conn, %{"monitor_id" => monitor_id} = params) do
     _user = conn.assigns.current_user
     org = conn.assigns.current_organization
@@ -130,11 +64,6 @@ defmodule UptrackWeb.Api.IncidentController do
           conn
           |> put_status(:created)
           |> render(:show, incident: incident)
-
-        {:error, :already_ongoing} ->
-          conn
-          |> put_status(:conflict)
-          |> json(%{error: "An ongoing incident already exists for this monitor"})
 
         {:error, changeset} ->
           {:error, changeset}
