@@ -39,50 +39,77 @@ defmodule Uptrack.Escalation.EscalationWorker do
         :ok
 
       true ->
-        # Fire alerts for this step
-        steps = Escalation.get_steps_for_order(policy_id, step_order)
-        monitor = Monitoring.get_monitor!(monitor_id)
+        # Re-read immediately before dispatch: the initial read at the top
+        # of perform/1 may be stale if the incident was resolved or
+        # acknowledged between then and now.
+        fresh = Monitoring.get_incident(incident_id)
 
-        if monitor do
-          Enum.each(steps, fn step ->
-            channel = step.alert_channel
+        cond do
+          is_nil(fresh) ->
+            Logger.info("Escalation: incident #{incident_id} disappeared before dispatch, cancelling")
+            :ok
 
-            if channel && channel.is_active do
-              Logger.info("Escalation step #{step_order}: sending via #{channel.name} for incident #{incident_id}")
+          fresh.status != "ongoing" ->
+            Logger.info("Escalation: incident #{incident_id} is now #{fresh.status}, cancelling")
+            :ok
 
-              %{
-                channel_id: channel.id,
-                incident_id: incident_id,
-                monitor_id: monitor_id,
-                event_type: "incident_created"
-              }
-              |> AlertDeliveryWorker.new()
-              |> Oban.insert()
-            end
-          end)
+          fresh.acknowledged_at != nil ->
+            Logger.info("Escalation: incident #{incident_id} acknowledged before dispatch, cancelling")
+            :ok
 
-          # Schedule next step if exists
-          max_order = Escalation.max_step_order(policy_id)
-
-          if step_order < max_order do
-            next_step_order = step_order + 1
-            next_steps = Escalation.get_steps_for_order(policy_id, next_step_order)
-            next_delay = next_steps |> List.first() |> then(fn s -> if s, do: s.delay_minutes, else: 5 end)
-
-            %{
-              incident_id: incident_id,
-              policy_id: policy_id,
-              step_order: next_step_order,
-              monitor_id: monitor_id
-            }
-            |> __MODULE__.new(scheduled_at: DateTime.add(DateTime.utc_now(), next_delay * 60, :second))
-            |> Oban.insert()
-
-            Logger.info("Escalation: scheduled step #{next_step_order} in #{next_delay}min for incident #{incident_id}")
-          end
+          true ->
+            dispatch_escalation_step(fresh, policy_id, step_order, monitor_id)
         end
-
-        :ok
     end
+  end
+
+  defp dispatch_escalation_step(incident, policy_id, step_order, monitor_id) do
+    steps = Escalation.get_steps_for_order(policy_id, step_order)
+    monitor = Monitoring.get_monitor!(monitor_id)
+
+    if monitor do
+      Enum.each(steps, fn step ->
+        channel = step.alert_channel
+
+        if channel && channel.is_active do
+          Logger.info(
+            "Escalation step #{step_order}: sending via #{channel.name} for incident #{incident.id}"
+          )
+
+          %{
+            channel_id: channel.id,
+            incident_id: incident.id,
+            monitor_id: monitor_id,
+            event_type: "incident_created"
+          }
+          |> AlertDeliveryWorker.new()
+          |> Oban.insert()
+        end
+      end)
+
+      max_order = Escalation.max_step_order(policy_id)
+
+      if step_order < max_order do
+        next_step_order = step_order + 1
+        next_steps = Escalation.get_steps_for_order(policy_id, next_step_order)
+        next_delay =
+          next_steps |> List.first() |> then(fn s -> if s, do: s.delay_minutes, else: 5 end)
+
+        %{
+          incident_id: incident.id,
+          policy_id: policy_id,
+          step_order: next_step_order,
+          monitor_id: monitor_id
+        }
+        |> __MODULE__.new(scheduled_at: DateTime.add(DateTime.utc_now(), next_delay * 60, :second))
+        |> Oban.insert()
+
+        Logger.info(
+          "Escalation: scheduled step #{next_step_order} in #{next_delay}min for incident #{incident.id}"
+        )
+      end
+    end
+
+    :ok
   end
 end

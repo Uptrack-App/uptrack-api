@@ -20,6 +20,8 @@ defmodule Uptrack.Monitoring.Incident do
     field :acknowledged_by_id, Uniq.UUID
     field :last_reminder_sent_at, :utc_datetime
     field :reminder_count, :integer, default: 0
+    field :vl_trace_id, Uniq.UUID
+    field :alert_level, :string
 
     belongs_to :organization, Organization
     belongs_to :monitor, Monitor
@@ -41,15 +43,22 @@ defmodule Uptrack.Monitoring.Incident do
       :acknowledged_by_id,
       :last_reminder_sent_at,
       :reminder_count,
+      :vl_trace_id,
+      :alert_level,
       :organization_id,
       :monitor_id
     ])
     |> validate_required([:started_at, :organization_id, :monitor_id])
     |> validate_inclusion(:status, @statuses)
+    |> validate_inclusion(:alert_level, ~w(warn page critical flapping))
     |> validate_number(:duration, greater_than_or_equal_to: 0)
     |> validate_resolved_at()
     |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:monitor_id)
+    |> unique_constraint(:monitor_id,
+      name: :incidents_one_ongoing_per_monitor_idx,
+      message: "already has an ongoing incident"
+    )
   end
 
   @doc false
@@ -59,7 +68,11 @@ defmodule Uptrack.Monitoring.Incident do
     # Normalize all keys to strings to avoid Ecto mixed-key errors
     normalized = Map.new(attrs, fn {k, v} -> {to_string(k), v} end)
 
-    defaults = %{"started_at" => now, "status" => "ongoing"}
+    defaults = %{
+      "started_at" => now,
+      "status" => "ongoing",
+      "vl_trace_id" => Uniq.UUID.uuid7()
+    }
 
     merged = Map.merge(defaults, normalized)
 
