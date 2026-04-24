@@ -15,7 +15,7 @@ defmodule Uptrack.Billing.Plans do
     "free" => %{
       monitors: 50, alert_channels: 3, status_pages: 5, team_members: 2,
       min_interval: 30, fast_monitors: 10, quick_monitors: 10,
-      regions: 3, retention_days: 30, subscribers: 100,
+      regions: 3, retention_days: 90, subscribers: 100,
       notify_only_seats: 0
     },
     "pro" => %{

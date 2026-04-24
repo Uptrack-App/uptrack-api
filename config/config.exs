@@ -159,6 +159,17 @@ config :error_tracker,
   otp_app: :uptrack,
   prefix: "app"
 
+# Forensic-event adapter selection. Swappable at runtime so prod can
+# flip PostgresAdapter → DualAdapter → VictoriaLogsAdapter without a
+# code change. See `lib/uptrack/failures.ex`.
+config :uptrack, :failures_adapter, Uptrack.Failures.PostgresAdapter
+
+# Consensus strategy for multi-region monitor verdicts.
+# Default: RollingCount (Netflix Atlas pattern, flap-resistant).
+# Rollback: set `CONSENSUS_STRATEGY=unanimous` to use the legacy rule.
+# See `openspec/changes/robust-multi-region-alert-pipeline`.
+config :uptrack, :consensus_strategy, Uptrack.Monitoring.Consensus.RollingCount
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

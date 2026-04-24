@@ -7,6 +7,18 @@ defmodule Uptrack.Application do
 
   @impl true
   def start(_type, _args) do
+    # Resolve the consensus strategy once at boot. `:persistent_term` so
+    # hot-path lookups in MonitorProcess are lock-free. Runtime changes
+    # require a redeploy — acceptable for a sensitivity knob.
+    strategy =
+      Application.get_env(
+        :uptrack,
+        :consensus_strategy,
+        Uptrack.Monitoring.Consensus.RollingCount
+      )
+
+    Uptrack.Monitoring.Consensus.put_strategy(strategy)
+
     children =
       [
         UptrackWeb.Telemetry,
@@ -30,6 +42,10 @@ defmodule Uptrack.Application do
         }},
         # Task supervisor for monitoring checks
         {Task.Supervisor, name: Uptrack.TaskSupervisor},
+        # Sharded Batcher for forensic events → VictoriaLogs.
+        # Starts disabled-writable (adapter config chooses PostgresAdapter
+        # by default); the shards still start so they're ready at cutover.
+        Uptrack.Failures.Batcher,
         # pg scopes for multi-region consensus and config sync to workers
         %{id: :monitor_checks_pg, start: {:pg, :start_link, [:monitor_checks]}},
         %{id: :monitor_config_pg, start: {:pg, :start_link, [:monitor_config]}},
@@ -40,6 +56,8 @@ defmodule Uptrack.Application do
         Uptrack.SMTP.Fleet,
         # Registry for monitor process lookup
         Uptrack.Monitoring.MonitorRegistry,
+        # Worker-health quarantine tracker (change #11 §4)
+        Uptrack.Monitoring.WorkerHealth,
         # DynamicSupervisor for per-monitor GenServer processes
         Uptrack.Monitoring.MonitorSupervisor,
         # OAuth state storage for Slack/Discord integrations

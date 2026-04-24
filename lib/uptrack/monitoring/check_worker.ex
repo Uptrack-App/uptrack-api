@@ -1,6 +1,18 @@
 defmodule Uptrack.Monitoring.CheckWorker do
   @moduledoc """
   Worker module responsible for performing monitoring checks on URLs and services.
+
+  ## Responsibilities
+
+  This module persists check results, manages the per-monitor
+  `consecutive_failures` counter, resolves ongoing incidents on successful
+  checks, and runs response-time degradation detection.
+
+  It deliberately **does not** create incidents or dispatch initial
+  "incident created" alerts on the DOWN path. That responsibility belongs
+  to `Uptrack.Monitoring.MonitorProcess`, which owns the cross-region
+  consensus decision. See `Uptrack.Monitoring` moduledoc for the full
+  ownership contract.
   """
 
   alias Uptrack.Monitoring
@@ -467,73 +479,58 @@ defmodule Uptrack.Monitoring.CheckWorker do
         # Reset consecutive failure counter on success
         Monitoring.reset_consecutive_failures(monitor.id)
 
-        # If monitor is up, resolve any ongoing incidents
-        case Monitoring.get_ongoing_incident(monitor.id) do
-          nil ->
+        # If monitor is up, resolve every ongoing incident (duplicates can
+        # accumulate across restarts or races — resolve them all so the
+        # dashboard reflects reality)
+        case Monitoring.resolve_all_ongoing_incidents(monitor.id) do
+          {:ok, []} ->
             :ok
 
-          incident ->
-            {:ok, resolved_incident} = Monitoring.resolve_incident(incident)
-            Logger.info("Resolved incident for monitor: #{monitor.name}")
-            Events.broadcast_incident_resolved(resolved_incident, monitor)
+          {:ok, [primary | _] = resolved_all} ->
+            Logger.info(
+              "Resolved #{length(resolved_all)} incident(s) for monitor: #{monitor.name}"
+            )
 
-            # Send resolution alerts
+            Enum.each(resolved_all, &Events.broadcast_incident_resolved(&1, monitor))
+
             Task.start(fn ->
-              Alerting.send_resolution_alerts(resolved_incident, monitor)
-              Alerting.notify_subscribers_resolution(resolved_incident, monitor)
+              Alerting.send_resolution_alerts(primary, monitor)
+              Alerting.notify_subscribers_resolution(primary, monitor)
             end)
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed resolving ongoing incidents for #{monitor.name}: #{inspect(reason)}"
+            )
         end
 
         # Check for response time degradation
         check_degradation(monitor, check)
 
       "down" ->
-        # Skip incident creation during active maintenance
-        if Maintenance.under_maintenance?(monitor.id, monitor.organization_id) do
-          Logger.info("Monitor #{monitor.name} failed during maintenance — suppressing alerts")
-        else
-          case Monitoring.get_ongoing_incident(monitor.id) do
-            nil ->
-              # Increment failure counter (atomic DB update)
-              Monitoring.increment_consecutive_failures(monitor.id)
-              current_failures = Monitoring.get_consecutive_failures(monitor.id)
+        # NOTE: CheckWorker no longer creates incidents or dispatches down alerts.
+        # That responsibility is owned by Uptrack.Monitoring.MonitorProcess, which
+        # has the cross-region consensus view. We still maintain the counter and
+        # schedule confirmation checks so metrics/scheduling stay correct.
+        case Monitoring.get_ongoing_incident(monitor.id) do
+          nil ->
+            Monitoring.increment_consecutive_failures(monitor.id)
+            current_failures = Monitoring.get_consecutive_failures(monitor.id)
 
-              if current_failures >= monitor.confirmation_threshold do
-                # Threshold met — confirmed down, create incident
-                incident_attrs = %{
-                  monitor_id: monitor.id,
-                  organization_id: monitor.organization_id,
-                  cause: check.error_message
-                }
+            if current_failures < monitor.confirmation_threshold do
+              Logger.info(
+                "Check failed (#{current_failures}/#{monitor.confirmation_threshold}), scheduling confirmation for: #{monitor.name}"
+              )
 
-                case Monitoring.create_incident(incident_attrs) do
-                  {:ok, incident} ->
-                    Logger.warning(
-                      "Confirmed DOWN (#{current_failures}/#{monitor.confirmation_threshold} checks failed) for monitor: #{monitor.name}"
-                    )
+              schedule_confirmation_check(monitor)
+            else
+              Logger.debug(
+                "Check failed at threshold (#{current_failures}/#{monitor.confirmation_threshold}) for #{monitor.name} — MonitorProcess owns alert dispatch"
+              )
+            end
 
-                    Events.broadcast_incident_created(incident, monitor)
-
-                    Task.start(fn ->
-                      Alerting.send_incident_alerts(incident, monitor)
-                      Alerting.notify_subscribers_incident(incident, monitor)
-                    end)
-
-                  {:error, changeset} ->
-                    Logger.error("Failed to create incident: #{inspect(changeset.errors)}")
-                end
-              else
-                # Below threshold — schedule confirmation re-check
-                Logger.info(
-                  "Check failed (#{current_failures}/#{monitor.confirmation_threshold}), scheduling confirmation for: #{monitor.name}"
-                )
-
-                schedule_confirmation_check(monitor)
-              end
-
-            _incident ->
-              Logger.info("Ongoing incident for monitor: #{monitor.name}")
-          end
+          _incident ->
+            Logger.debug("Ongoing incident already exists for monitor: #{monitor.name}")
         end
     end
   end
@@ -572,16 +569,26 @@ defmodule Uptrack.Monitoring.CheckWorker do
         :ok
 
       check.response_time > threshold ->
-        # Only create degradation incident if there isn't one already
-        case Monitoring.get_ongoing_incident(monitor.id) do
-          nil ->
-            Logger.info("Monitor #{monitor.name} degraded: #{check.response_time}ms > #{threshold}ms threshold")
+        cond do
+          Maintenance.under_maintenance?(monitor.id, monitor.organization_id) ->
+            Logger.info(
+              "Monitor #{monitor.name} degraded during maintenance — suppressing degradation alert"
+            )
+
+          Monitoring.get_ongoing_incident(monitor.id) != nil ->
+            :ok
+
+          true ->
+            Logger.info(
+              "Monitor #{monitor.name} degraded: #{check.response_time}ms > #{threshold}ms threshold"
+            )
 
             incident_attrs = %{
               monitor_id: monitor.id,
               organization_id: monitor.organization_id,
               status: "investigating",
-              cause: "Response time degradation: #{check.response_time}ms (threshold: #{threshold}ms)",
+              cause:
+                "Response time degradation: #{check.response_time}ms (threshold: #{threshold}ms)",
               started_at: DateTime.utc_now() |> DateTime.truncate(:second)
             }
 
@@ -596,9 +603,6 @@ defmodule Uptrack.Monitoring.CheckWorker do
               {:error, _} ->
                 :ok
             end
-
-          _existing ->
-            :ok
         end
 
       true ->
