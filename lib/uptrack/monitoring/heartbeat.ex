@@ -15,14 +15,9 @@ defmodule Uptrack.Monitoring.Heartbeat do
 
   import Ecto.Query
 
-  require Logger
-
-  alias Uptrack.Alerting
   alias Uptrack.AppRepo
-  alias Uptrack.Maintenance
   alias Uptrack.Monitoring
   alias Uptrack.Monitoring.{Monitor, MonitorCheck}
-  alias Uptrack.Monitoring.Events
 
   @doc """
   Generates a unique token for a heartbeat monitor.
@@ -151,46 +146,13 @@ defmodule Uptrack.Monitoring.Heartbeat do
 
     _check = struct!(MonitorCheck, check_attrs)
 
-    result =
-      Monitoring.create_incident(%{
-        monitor_id: monitor.id,
-        organization_id: monitor.organization_id,
-        status: :investigating,
-        cause: :heartbeat_missed,
-        started_at: now
-      })
-
-    case result do
-      {:ok, incident} ->
-        if Maintenance.under_maintenance?(monitor.id, monitor.organization_id) do
-          Logger.info(
-            "Heartbeat missed for monitor #{monitor.name} during maintenance — suppressing alert"
-          )
-        else
-          Events.broadcast_incident_created(incident, monitor)
-
-          Task.start(fn ->
-            Alerting.send_incident_alerts(incident, monitor)
-            Alerting.notify_subscribers_incident(incident, monitor)
-          end)
-        end
-
-        {:ok, incident}
-
-      {:error, :already_ongoing} ->
-        Logger.info(
-          "Heartbeat missed for monitor #{monitor.name} — incident already ongoing, no new alert"
-        )
-
-        {:error, :already_ongoing}
-
-      {:error, reason} ->
-        Logger.error(
-          "Heartbeat: failed to create missed-heartbeat incident for #{monitor.name}: #{inspect(reason)}"
-        )
-
-        {:error, reason}
-    end
+    Monitoring.create_incident(%{
+      monitor_id: monitor.id,
+      organization_id: monitor.organization_id,
+      status: :investigating,
+      cause: :heartbeat_missed,
+      started_at: now
+    })
   end
 
   defp parse_datetime(nil), do: nil

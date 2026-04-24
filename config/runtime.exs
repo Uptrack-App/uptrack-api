@@ -27,32 +27,6 @@ if config_env() == :prod do
       System.get_env("ADMIN_BASIC_AUTH_PASSWORD") ||
         raise("environment variable ADMIN_BASIC_AUTH_PASSWORD is missing")
 
-  # Forensic-event adapter. Runtime-overridable via FAILURES_ADAPTER env:
-  #   "postgres"            → Postgres only, legacy path
-  #   "dual" (default here) → Postgres + VictoriaLogs (cutover validation window)
-  #   "victorialogs"        → VictoriaLogs only (post-cutover)
-  failures_adapter =
-    case System.get_env("FAILURES_ADAPTER", "dual") do
-      "postgres" -> Uptrack.Failures.PostgresAdapter
-      "victorialogs" -> Uptrack.Failures.VictoriaLogsAdapter
-      "dual" -> Uptrack.Failures.DualAdapter
-      other -> raise "invalid FAILURES_ADAPTER=#{other}"
-    end
-
-  config :uptrack, :failures_adapter, failures_adapter
-
-  # Consensus strategy. Env override for instant rollback without a
-  # code change — flip to "unanimous" if RollingCount misbehaves in
-  # production, redeploy, done.
-  consensus_strategy =
-    case System.get_env("CONSENSUS_STRATEGY", "rolling_count") do
-      "rolling_count" -> Uptrack.Monitoring.Consensus.RollingCount
-      "unanimous" -> Uptrack.Monitoring.Consensus.Unanimous
-      other -> raise "invalid CONSENSUS_STRATEGY=#{other}"
-    end
-
-  config :uptrack, :consensus_strategy, consensus_strategy
-
   # Single database URL (same for app and oban)
   database_url =
     System.get_env("DATABASE_URL") ||

@@ -29,7 +29,7 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
   require Logger
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: args, id: job_id, attempt: attempt}) do
+  def perform(%Oban.Job{args: args}) do
     %{
       "channel_id" => channel_id,
       "incident_id" => incident_id,
@@ -41,13 +41,6 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
     incident = Monitoring.get_incident!(incident_id)
     monitor = Monitoring.get_monitor!(monitor_id)
     user = Accounts.get_user!(monitor.user_id)
-
-    # Observability for delivery dedup: the (job_id, channel.type, incident.id)
-    # tuple uniquely identifies a delivery attempt. Retries share job_id so
-    # post-hoc dedup is possible when provider idempotency is unavailable.
-    Logger.info(
-      "delivery attempt job_id=#{job_id} attempt=#{attempt} channel=#{channel.type} event=#{event_type} incident=#{incident.id}"
-    )
 
     delivery_attrs = %{
       channel_type: channel.type,
@@ -123,12 +116,5 @@ defmodule Uptrack.Alerting.AlertDeliveryWorker do
         Logger.error("Unsupported alert channel type for reminder: #{type}")
         {:error, :unsupported_type}
     end
-  end
-
-  # An "incident_updated" event (e.g. degradation upgraded to hard down)
-  # reuses the per-channel incident-created renderer, so the user sees the
-  # new cause on their existing incident notification thread.
-  defp dispatch_alert(channel, incident, monitor, user, "incident_updated") do
-    dispatch_alert(channel, incident, monitor, user, "incident_created")
   end
 end

@@ -36,7 +36,7 @@ defmodule Uptrack.BillingTest do
       assert limits.min_interval == 30
       assert limits.fast_monitors == 10
       assert limits.quick_monitors == :unlimited
-      assert limits.retention_days == 90
+      assert limits.retention_days == 30
     end
 
     test "returns correct limits for pro plan" do

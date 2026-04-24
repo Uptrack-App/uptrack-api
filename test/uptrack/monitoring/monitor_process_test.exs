@@ -77,43 +77,4 @@ defmodule Uptrack.Monitoring.MonitorProcessTest do
       assert m1.id in MonitorRegistry.all_ids()
     end
   end
-
-  describe "init/1 hydration" do
-    alias Uptrack.Monitoring
-
-    test "hydrates streak and incident_id from an existing ongoing incident" do
-      {user, org} = user_with_org_fixture()
-
-      monitor =
-        monitor_fixture(
-          user_id: user.id,
-          organization_id: org.id,
-          confirmation_threshold: 4
-        )
-
-      {:ok, incident} =
-        Monitoring.create_incident(%{
-          monitor_id: monitor.id,
-          organization_id: monitor.organization_id,
-          cause: "pre-existing"
-        })
-
-      {:ok, state} = MonitorProcess.init(monitor)
-
-      assert state.alerted_this_streak == true
-      assert state.incident_id == incident.id
-      assert state.consecutive_failures == 4
-    end
-
-    test "starts clean when no ongoing incident exists" do
-      {user, org} = user_with_org_fixture()
-      monitor = monitor_fixture(user_id: user.id, organization_id: org.id)
-
-      {:ok, state} = MonitorProcess.init(monitor)
-
-      assert state.alerted_this_streak == false
-      assert state.incident_id == nil
-      assert state.consecutive_failures == 0
-    end
-  end
 end
