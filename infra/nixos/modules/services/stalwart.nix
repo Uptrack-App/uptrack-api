@@ -49,11 +49,13 @@ let
     };
   }) allSigningDomains);
 
-  # Pick which signatures to apply based on the From: header domain.
+  # Pick which signatures to apply based on the envelope MAIL FROM domain.
   # Stalwart evaluates these in order and applies the first matching `then`.
+  # NOTE: Stalwart's expression language uses `sender_domain` (envelope-level)
+  # rather than `from_domain` (RFC 5322 header) — the variable name is fixed.
   dkimSignRules =
     map (s: {
-      "if" = "from_domain = '${s.domain}'";
+      "if" = "sender_domain = '${s.domain}'";
       "then" = "['${s.sigName}']";
     }) allSigningDomains
     ++ [{ "else" = "false"; }];
