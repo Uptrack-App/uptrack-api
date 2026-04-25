@@ -35,6 +35,17 @@ in {
   services.uptrack.stalwart = {
     enable = true;
     bindAddresses = [ "127.0.0.1" "100.64.1.2" ];
+    # Mirror nbg1's invoice9.2folk.com DKIM signing — both nodes must use the
+    # same private key (same selector, same DNS record). Copy the file from
+    # nbg1 after generating it there.
+    additionalDkimDomains = [
+      {
+        sigName = "invoice9-2folk";
+        domain = "invoice9.2folk.com";
+        selector = "stalwart";
+        keyName = "invoice9-2folk-com.key";
+      }
+    ];
   };
 
   # Hostname
