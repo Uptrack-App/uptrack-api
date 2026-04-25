@@ -11,7 +11,52 @@ with lib;
 let
   cfg = config.services.uptrack.stalwart;
   ext = cfg.externalSubmission;
-  dkimKeyPath = "/var/lib/stalwart-mail/dkim/uptrack-app.key";
+  dkimKeyDir = "/var/lib/stalwart-mail/dkim";
+
+  # Primary signing key (uptrack.app)
+  primaryKeyName = "uptrack-app.key";
+  primaryKeyPath = "${dkimKeyDir}/${primaryKeyName}";
+
+  # All signing entries: primary + extras. Each gets a unique sig name and
+  # its own private key on disk.
+  allSigningDomains = [
+    {
+      sigName = "rsa";
+      domain = cfg.dkimDomain;
+      selector = cfg.dkimSelector;
+      keyPath = primaryKeyPath;
+    }
+  ] ++ map (d: d // {
+    keyPath = "${dkimKeyDir}/${d.keyName}";
+  }) cfg.additionalDkimDomains;
+
+  # Build a Stalwart signature.X attrset per signing domain.
+  signatureAttrs = lib.listToAttrs (map (s: {
+    name = s.sigName;
+    value = {
+      private-key = "%{file:${s.keyPath}}%";
+      domain = s.domain;
+      selector = s.selector;
+      headers = [
+        "From" "To" "Cc" "Date" "Subject" "Message-ID"
+        "MIME-Version" "Content-Type" "In-Reply-To" "References"
+      ];
+      algorithm = "rsa-sha256";
+      canonicalization = "relaxed/relaxed";
+      expire = "10d";
+      set-body-length = false;
+      report = true;
+    };
+  }) allSigningDomains);
+
+  # Pick which signatures to apply based on the From: header domain.
+  # Stalwart evaluates these in order and applies the first matching `then`.
+  dkimSignRules =
+    map (s: {
+      "if" = "from_domain = '${s.domain}'";
+      "then" = "['${s.sigName}']";
+    }) allSigningDomains
+    ++ [{ "else" = "false"; }];
 in
 {
   options.services.uptrack.stalwart = {
@@ -71,6 +116,45 @@ in
       default = "stalwart";
       description = "DKIM selector. DNS record will be at <selector>._domainkey.<domain>.";
     };
+
+    additionalDkimDomains = mkOption {
+      type = types.listOf (types.submodule {
+        options = {
+          sigName = mkOption {
+            type = types.str;
+            description = ''
+              Internal signature name used in Stalwart's `signature.X` config
+              and the `auth.dkim.sign` rules. Must be unique across all
+              signing domains. Use a short slug (e.g. "invoice9-2folk").
+            '';
+          };
+          domain = mkOption {
+            type = types.str;
+            description = "Sender domain to sign for (matches From: header).";
+          };
+          selector = mkOption {
+            type = types.str;
+            default = "stalwart";
+            description = "DKIM selector. DNS record at <selector>._domainkey.<domain>.";
+          };
+          keyName = mkOption {
+            type = types.str;
+            description = ''
+              Filename of the DKIM private key under
+              /var/lib/stalwart-mail/dkim/. Generate with:
+                openssl genrsa -out <keyName> 2048
+              and place on the host before deploying.
+            '';
+          };
+        };
+      });
+      default = [];
+      description = ''
+        Additional DKIM-signing domains beyond the primary `dkimDomain`.
+        Each message is signed with the entry whose `domain` matches the
+        From: header domain. If none match, no DKIM signature is applied.
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -79,11 +163,12 @@ in
       "d /var/lib/stalwart-mail/dkim 0750 stalwart-mail stalwart-mail -"
     ];
 
-    systemd.services.stalwart-mail.preStart = ''
-      if [ ! -f ${dkimKeyPath} ]; then
-        echo "WARNING: DKIM private key not found at ${dkimKeyPath}. DKIM signing will fail."
-      fi
-    '';
+    systemd.services.stalwart-mail.preStart = lib.concatStringsSep "\n"
+      (map (s: ''
+        if [ ! -f ${s.keyPath} ]; then
+          echo "WARNING: DKIM private key not found at ${s.keyPath} (domain=${s.domain}). DKIM signing for that domain will fail."
+        fi
+      '') allSigningDomains);
 
     # Open SMTPS port in firewall when external submission is enabled
     networking.firewall.allowedTCPPorts = mkIf ext.enable [ ext.port ];
@@ -177,22 +262,11 @@ in
           spam-filter.enable = false;
 
           # ── DKIM signing ───────────────────────────────────────────
-          signature."rsa" = {
-            private-key = "%{file:${dkimKeyPath}}%";
-            domain = cfg.dkimDomain;
-            selector = cfg.dkimSelector;
-            headers = [
-              "From" "To" "Cc" "Date" "Subject" "Message-ID"
-              "MIME-Version" "Content-Type" "In-Reply-To" "References"
-            ];
-            algorithm = "rsa-sha256";
-            canonicalization = "relaxed/relaxed";
-            expire = "10d";
-            set-body-length = false;
-            report = true;
-          };
+          # One signature config per signing domain (primary + additionals);
+          # auth.dkim.sign picks the right one based on From: header domain.
+          signature = signatureAttrs;
 
-          auth.dkim.sign = "['rsa']";
+          auth.dkim.sign = dkimSignRules;
         };
 
         # ── External submission (conditional) ─────────────────────

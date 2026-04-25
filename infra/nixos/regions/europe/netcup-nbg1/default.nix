@@ -38,6 +38,21 @@ in {
       enable = true;
       passwordFile = config.age.secrets.smtp-password.path;
     };
+    # Sign mail sent from invoice9.2folk.com (e.g. support@) with its own DKIM
+    # key. Generate once on this node:
+    #   ssh nbg1 'openssl genrsa -out /var/lib/stalwart-mail/dkim/invoice9-2folk-com.key 2048
+    #             chown stalwart-mail:stalwart-mail /var/lib/stalwart-mail/dkim/invoice9-2folk-com.key
+    #             chmod 600 /var/lib/stalwart-mail/dkim/invoice9-2folk-com.key'
+    # then copy the same private key to nbg2 (so either node signs identically).
+    # Publish the matching public key as TXT at stalwart._domainkey.invoice9.2folk.com.
+    additionalDkimDomains = [
+      {
+        sigName = "invoice9-2folk";
+        domain = "invoice9.2folk.com";
+        selector = "stalwart";
+        keyName = "invoice9-2folk-com.key";
+      }
+    ];
   };
 
   # Hostname
