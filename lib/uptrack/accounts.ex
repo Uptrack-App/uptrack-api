@@ -9,6 +9,7 @@ defmodule Uptrack.Accounts do
 
   alias Uptrack.Accounts.User
   alias Uptrack.Organizations.Organization
+  alias Uptrack.Alerting.NotificationDelivery
 
   @doc """
   Returns the list of users.
@@ -356,6 +357,10 @@ defmodule Uptrack.Accounts do
     else
       Multi.new()
       |> Multi.delete(:user, user)
+      |> Multi.delete_all(
+        :notification_deliveries,
+        from(nd in NotificationDelivery, where: nd.organization_id == ^user.organization_id)
+      )
       |> Multi.run(:organization, fn _repo, _changes ->
         org = Uptrack.Organizations.get_organization!(user.organization_id)
         AppRepo.delete(org)
