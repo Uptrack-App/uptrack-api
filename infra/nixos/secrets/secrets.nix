@@ -122,6 +122,12 @@ in {
   # Deployed to nbg4 only (invoice9 container runs there)
   "invoice9-env.age".publicKeys = adminKeys ++ nbg4Key;
 
+  # invoice9-wc env (DATABASE_URL_WC for dedicated WC Postgres DB,
+  # WC_SAAS_BILLING_API_SECRET for Woo SaaS Billing webhook HMAC).
+  # Deployed to nbg4 only (invoice9-wc container runs alongside Shopify on nbg4).
+  # Create with: cd uptrack-api/infra/nixos/secrets && agenix -e invoice9-wc-env.age
+  "invoice9-wc-env.age".publicKeys = adminKeys ++ nbg4Key;
+
   # SMTP auth password for Gmail Send-as (Stalwart external submission)
   # Content: just the password string
   "smtp-password.age".publicKeys = adminKeys ++ nbg1Key;
