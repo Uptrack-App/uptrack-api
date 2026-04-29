@@ -7,7 +7,7 @@ defmodule Uptrack.Accounts do
   alias Uptrack.AppRepo
   alias Ecto.Multi
 
-  alias Uptrack.Accounts.User
+  alias Uptrack.Accounts.{User, ApiKey}
   alias Uptrack.Organizations.Organization
   alias Uptrack.Alerting.NotificationDelivery
 
@@ -356,6 +356,7 @@ defmodule Uptrack.Accounts do
       {:error, :invalid_password}
     else
       Multi.new()
+      |> Multi.delete_all(:api_keys, from(k in ApiKey, where: k.created_by_id == ^user.id))
       |> Multi.delete(:user, user)
       |> Multi.delete_all(
         :notification_deliveries,
