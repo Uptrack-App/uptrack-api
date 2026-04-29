@@ -9,6 +9,7 @@ defmodule Uptrack.Monitoring do
   alias Uptrack.Monitoring.{
     Monitor,
     MonitorCheck,
+    MonitorRegion,
     Incident,
     IncidentUpdate,
     AlertChannel,
