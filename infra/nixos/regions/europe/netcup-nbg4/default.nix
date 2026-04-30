@@ -77,11 +77,27 @@ in {
         chmod 640 haproxy.pem
       '';
     };
+    # Phase 2 of openspec/changes/2folk-brand-architecture: API hosts move
+    # under the api.<product>-<platform>.2folk.com pattern. The old
+    # invoice9-wc.2folk.com cert + frontend stays alive in parallel until
+    # the WC plugin (which has the URL constant baked in) reaches a clean
+    # cutover; per the proposal, both URLs route to the same backend.
+    certs."api.invoice9-wc.2folk.com" = {
+      dnsProvider = "cloudflare";
+      environmentFile = config.age.secrets.invoice9-cloudflare-token.path;
+      group = "haproxy";
+      postRun = ''
+        cat fullchain.pem key.pem > haproxy.pem
+        chown acme:haproxy haproxy.pem
+        chmod 640 haproxy.pem
+      '';
+    };
   };
 
-  # HAProxy: HTTP→HTTPS redirect + TLS termination, two domains:
-  #   invoice9.2folk.com    → 192.168.100.2:3001    (Shopify backend)
-  #   invoice9-wc.2folk.com → 192.168.101.2:3001   (WooCommerce backend)
+  # HAProxy: HTTP→HTTPS redirect + TLS termination.
+  #   invoice9.2folk.com        → 192.168.100.2:3001    (Shopify backend)
+  #   api.invoice9-wc.2folk.com → 192.168.101.2:3001   (WooCommerce backend, canonical)
+  #   invoice9-wc.2folk.com     → 192.168.101.2:3001   (WC backend, transitional alias)
   services.haproxy = {
     enable = true;
     config = ''
@@ -105,9 +121,9 @@ in {
         redirect scheme https code 301 if !{ ssl_fc }
 
       frontend https-in
-        bind *:443 ssl crt /var/lib/acme/invoice9.2folk.com/haproxy.pem crt /var/lib/acme/invoice9-wc.2folk.com/haproxy.pem
+        bind *:443 ssl crt /var/lib/acme/invoice9.2folk.com/haproxy.pem crt /var/lib/acme/invoice9-wc.2folk.com/haproxy.pem crt /var/lib/acme/api.invoice9-wc.2folk.com/haproxy.pem
         http-request set-header X-Forwarded-Proto https
-        acl is_invoice9_wc hdr(host) -i invoice9-wc.2folk.com
+        acl is_invoice9_wc hdr(host) -i invoice9-wc.2folk.com api.invoice9-wc.2folk.com
         use_backend invoice9_wc if is_invoice9_wc
         default_backend invoice9
 
@@ -119,7 +135,7 @@ in {
 
       backend invoice9_wc
         option httpchk
-        http-check send meth GET uri /health ver HTTP/1.1 hdr Host invoice9-wc.2folk.com
+        http-check send meth GET uri /health ver HTTP/1.1 hdr Host api.invoice9-wc.2folk.com
         http-check expect status 200
         server invoice9_wc 192.168.101.2:3001 check inter 10s
     '';
@@ -129,10 +145,12 @@ in {
     after = [
       "acme-finished-invoice9.2folk.com.target"
       "acme-finished-invoice9-wc.2folk.com.target"
+      "acme-finished-api.invoice9-wc.2folk.com.target"
     ];
     wants = [
       "acme-finished-invoice9.2folk.com.target"
       "acme-finished-invoice9-wc.2folk.com.target"
+      "acme-finished-api.invoice9-wc.2folk.com.target"
     ];
   };
 
