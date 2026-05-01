@@ -4,8 +4,11 @@ defmodule UptrackWeb.AuthController do
 
   # The request action is called before Ueberauth redirects to the OAuth provider.
   # Ueberauth handles the redirect automatically via the plug, so we just return the conn.
+  # For unknown/invalid providers Ueberauth passes through without halting, so we must
+  # always send a response as a fallback.
   def request(conn, _params) do
     conn
+    |> redirect(external: "#{frontend_url()}/login?error=auth_failed")
   end
 
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
