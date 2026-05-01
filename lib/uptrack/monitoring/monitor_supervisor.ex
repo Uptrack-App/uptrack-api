@@ -74,7 +74,7 @@ defmodule Uptrack.Monitoring.MonitorSupervisor do
 
   @doc "Checks if a monitor should run on this node (hash partitioning)."
   def assigned_to_this_node?(monitor) do
-    nodes = [node() | Node.list()] |> Enum.sort()
+    nodes = app_nodes()
     node_count = length(nodes)
 
     if node_count <= 1 do
@@ -83,5 +83,14 @@ defmodule Uptrack.Monitoring.MonitorSupervisor do
       hash = :erlang.phash2(monitor.id, node_count)
       Enum.at(nodes, hash) == node()
     end
+  end
+
+  # App nodes are named `uptrack@...`. Worker nodes (`uptrack_worker@...`)
+  # run their own MonitorSupervisor with the full monitor set, so they
+  # must be excluded from the app-side partition.
+  defp app_nodes do
+    [node() | Node.list()]
+    |> Enum.filter(fn n -> n |> to_string() |> String.starts_with?("uptrack@") end)
+    |> Enum.sort()
   end
 end

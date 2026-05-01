@@ -54,7 +54,9 @@ config :uptrack, UptrackWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "REMOVED_DEV_SECRET_KEY_BASE",
+  secret_key_base:
+    System.get_env("SECRET_KEY_BASE") ||
+      raise("SECRET_KEY_BASE environment variable is missing. Generate one with: mix phx.gen.secret"),
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:uptrack, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:uptrack, ~w(--watch)]}
@@ -118,15 +120,16 @@ config :phoenix_live_view,
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
-# Paddle billing (sandbox — always enabled in dev with sandbox credentials)
+# Paddle billing — sandbox credentials must be supplied via env vars.
+# See https://developer.paddle.com/ for sandbox account setup.
 config :uptrack, :paddle,
-  api_key: System.get_env("PADDLE_API_KEY", "REMOVED_PADDLE_API_KEY"),
-  webhook_secret: System.get_env("PADDLE_WEBHOOK_SECRET", "REMOVED_PADDLE_WEBHOOK_SECRET"),
+  api_key: System.get_env("PADDLE_API_KEY"),
+  webhook_secret: System.get_env("PADDLE_WEBHOOK_SECRET"),
   base_url: System.get_env("PADDLE_BASE_URL", "https://sandbox-api.paddle.com"),
   checkout_url: System.get_env("PADDLE_CHECKOUT_URL", "https://sandbox-checkout.paddle.com"),
-  price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO", "pri_01khkcqn8pv207r6j8qnjfmj5t"),
-  price_id_pro_annual: System.get_env("PADDLE_PRICE_ID_PRO_ANNUAL", "pri_01khkcqn8pv207r6j8qnjfmj5t"),
-  price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM", "pri_01khkcrv2b6a5kc9cftsh503gc"),
-  price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL", "pri_01khkcrv2b6a5kc9cftsh503gc")
+  price_id_pro: System.get_env("PADDLE_PRICE_ID_PRO"),
+  price_id_pro_annual: System.get_env("PADDLE_PRICE_ID_PRO_ANNUAL"),
+  price_id_team: System.get_env("PADDLE_PRICE_ID_TEAM"),
+  price_id_team_annual: System.get_env("PADDLE_PRICE_ID_TEAM_ANNUAL")
 
 config :appsignal, :config, active: true

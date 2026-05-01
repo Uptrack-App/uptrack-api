@@ -38,7 +38,9 @@ config :uptrack, Uptrack.ResultsRepo,
 # you can enable the server option below.
 config :uptrack, UptrackWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "REMOVED_TEST_SECRET_KEY_BASE",
+  secret_key_base:
+    System.get_env("SECRET_KEY_BASE") ||
+      raise("SECRET_KEY_BASE environment variable is missing. Generate one with: mix phx.gen.secret"),
   server: false
 
 # In test we don't send emails
